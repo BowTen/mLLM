@@ -4,6 +4,7 @@ cmake_minimum_required(VERSION 3.14)
 add_library(base 
     base/allocator.cpp
     base/buffer.cpp
+    base/tensor.cpp
 )
 
 # Add tokenizer library

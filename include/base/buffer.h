@@ -2,6 +2,7 @@
 #define MLLM_BUFFER_H
 
 #include <cstddef>
+#include <memory>
 
 namespace mllm
 {
@@ -16,6 +17,8 @@ namespace mllm
             void *data_;
 
         public:
+            using BufferPtr = std::shared_ptr<Buffer>;
+
             Buffer(Allocator *alloc, size_t size);
             virtual ~Buffer();
 

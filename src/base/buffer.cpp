@@ -44,8 +44,8 @@ namespace mllm
         // VecBuffer implementation
         VecBuffer::VecBuffer(Allocator *alloc, size_t initial_capacity, size_t initial_size)
             : Buffer(alloc, std::max(initial_size, initial_capacity)),
-              capacity_(std::max(initial_capacity, initial_size)),
-              size_(initial_size)
+              size_(initial_size),
+              capacity_(std::max(initial_capacity, initial_size))
         {
         }
 

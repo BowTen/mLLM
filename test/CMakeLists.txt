@@ -18,6 +18,7 @@ include_directories(${CMAKE_SOURCE_DIR}/src)
 add_executable(tokenizer_test tokenizer_test.cpp)
 add_executable(allocator_test allocator_test.cpp)
 add_executable(buffer_test buffer_test.cpp)
+add_executable(tensor_test tensor_test.cpp)
 
 # Link libraries
 target_link_libraries(tokenizer_test 
@@ -51,6 +52,17 @@ target_link_libraries(buffer_test
 target_include_directories(buffer_test PRIVATE ${GTEST_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS})
 target_compile_options(buffer_test PRIVATE ${GTEST_CFLAGS_OTHER})
 
+target_link_libraries(tensor_test 
+    base  # Link to the base library from src
+    ${GTEST_LIBRARIES}
+    ${GTEST_MAIN_LIBRARIES}
+    Threads::Threads
+    ${CUDA_LIBRARIES}
+    cudart
+)
+target_include_directories(tensor_test PRIVATE ${GTEST_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS})
+target_compile_options(tensor_test PRIVATE ${GTEST_CFLAGS_OTHER})
+
 # Enable testing
 enable_testing()
 
@@ -58,3 +70,4 @@ enable_testing()
 add_test(NAME TokenizerTest COMMAND tokenizer_test)
 add_test(NAME AllocatorTest COMMAND allocator_test)
 add_test(NAME BufferTest COMMAND buffer_test)
+add_test(NAME TensorTest COMMAND tensor_test)

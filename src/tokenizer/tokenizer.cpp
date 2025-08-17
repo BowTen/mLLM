@@ -161,13 +161,13 @@ namespace mllm
                 throw std::runtime_error("Cannot encode an empty string.");
             }
             std::vector<int> vis(text.size(), -1);
-            int cnt = 0;
+            size_t cnt = 0;
             for (auto &[token, id] : sorted_vocab)
             {
                 for (int i = 0; i + token.size() <= text.size(); i++)
                 {
                     bool ok = true;
-                    for (int j = 0; j < token.size(); j++)
+                    for (size_t j = 0; j < token.size(); j++)
                     {
                         if (vis[i + j] != -1 || text[i + j] != token[j])
                         {
@@ -179,7 +179,7 @@ namespace mllm
                     {
                         cnt += token.size();
                         vis[i] = id;
-                        for (int j = 1; j < token.size(); j++)
+                        for (size_t j = 1; j < token.size(); j++)
                         {
                             vis[i + j] = -2; // Mark as part of a token
                         }
@@ -197,7 +197,7 @@ namespace mllm
                 throw std::runtime_error("Text could not be fully tokenized.");
             }
             std::vector<uint32_t> ids;
-            for (int i = 0; i < vis.size(); i++)
+            for (size_t i = 0; i < vis.size(); i++)
             {
                 if (vis[i] >= 0)
                 {
