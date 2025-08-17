@@ -38,11 +38,15 @@ namespace mllm
 
         size_t Tensor::size() const
         {
+            if (!buffer_)
+                return 0;
             return buffer_->size() / sizeof(float);
         }
 
         float *Tensor::data()
         {
+            if (!buffer_)
+                return nullptr;
             return static_cast<float *>(buffer_->data());
         }
     } // namespace base

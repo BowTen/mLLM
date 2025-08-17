@@ -1,3 +1,6 @@
+#ifndef MLLM_BASE_TENSOR_H
+#define MLLM_BASE_TENSOR_H
+
 #include <iostream>
 #include <vector>
 #include "allocator.h"
@@ -20,7 +23,10 @@ namespace mllm
             Device device_;
 
         public:
-            Tensor(const std::vector<size_t> &shape, Device device, bool mut = false);
+            Tensor() : shape_(),
+                       buffer_(nullptr),
+                       device_(Device::CPU) {}
+            Tensor(const std::vector<size_t> &shape, Device device = Device::CPU, bool mut = false);
 
             const std::vector<size_t> &shape() const;
             size_t size() const;
@@ -28,3 +34,5 @@ namespace mllm
         };
     } // namespace base
 } // namespace mllm
+
+#endif // MLLM_BASE_TENSOR_H

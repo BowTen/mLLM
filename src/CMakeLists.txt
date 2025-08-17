@@ -1,26 +1,48 @@
 cmake_minimum_required(VERSION 3.14)
 
-# Add base library
 add_library(base 
     base/allocator.cpp
     base/buffer.cpp
     base/tensor.cpp
+    base/safetensors.cpp
+    base/util.cpp
 )
-
-# Add tokenizer library
 add_library(tokenizer 
     tokenizer/tokenizer.cpp
+)
+add_library(op
+    op/layer.cpp
+    op/embedding.cpp
+)
+add_library(kernel
+    kernel/kernel.cpp
+    kernel/embedding_kernel.cpp
+)
+add_library(model 
+    model/qwen3.cpp
 )
 
 # Link libraries
 target_link_libraries(tokenizer base)
+target_link_libraries(op base)
+target_link_libraries(kernel base)
+target_link_libraries(model tokenizer op)
+
 
 # Include directories for the libraries
 target_include_directories(base PUBLIC 
     ${CMAKE_SOURCE_DIR}/include
 )
-
 target_include_directories(tokenizer PUBLIC 
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_include_directories(op PUBLIC 
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_include_directories(kernel PUBLIC 
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_include_directories(model PUBLIC 
     ${CMAKE_SOURCE_DIR}/include
 )
 
