@@ -3,7 +3,7 @@
 #include <string>
 #include <fstream>
 #include <filesystem>
-#include "tokenizer.hpp"
+#include "tokenizer/tokenizer.hpp"
 
 using namespace mllm::tokenizer;
 

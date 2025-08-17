@@ -8,8 +8,7 @@ pkg_check_modules(GTEST_MAIN REQUIRED gtest_main)
 find_package(Threads REQUIRED)
 
 # Include directories
-include_directories(${CMAKE_SOURCE_DIR}/src/tokenizer)
-include_directories(${CMAKE_SOURCE_DIR}/src/base)
+include_directories(${CMAKE_SOURCE_DIR}/src)
 
 # Create test executable
 add_executable(tokenizer_test tokenizer_test.cpp)
