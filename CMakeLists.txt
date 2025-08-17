@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_compile_options(-Wall -Wextra)
 
 # Include directories
-include_directories(src/base)
+include_directories(include)
 
 # Add subdirectories
 add_subdirectory(src)
