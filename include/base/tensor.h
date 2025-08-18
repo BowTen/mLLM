@@ -3,8 +3,12 @@
 
 #include <iostream>
 #include <vector>
+#include <armadillo>
 #include "allocator.h"
 #include "buffer.h"
+
+#define GLOG_USE_GLOG_EXPORT
+#include <glog/logging.h>
 
 namespace mllm
 {

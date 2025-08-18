@@ -10,7 +10,7 @@ namespace mllm
                             base::Tensor *output,
                             size_t vocab_size,
                             size_t hidden_size,
-                            void *stream)
+                            [[maybe_unused]] void *stream)
         {
             // Simple CPU implementation of the embedding kernel
             const uint32_t *input_data = reinterpret_cast<const uint32_t *>(input->data());

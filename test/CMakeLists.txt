@@ -18,6 +18,7 @@ add_executable(tensor_test tensor_test.cpp)
 add_executable(safetensors_test safetensors_test.cpp)
 add_executable(emb_kernel_test emb_kernel_test.cpp)
 add_executable(qwen3_test qwen3_test.cpp)
+add_executable(rms_norm_kernel_test rms_nrom_kernel_test.cpp)
 
 # Link libraries
 target_link_libraries(tokenizer_test 
@@ -87,6 +88,16 @@ target_link_libraries(qwen3_test
 target_include_directories(qwen3_test PRIVATE ${GTEST_INCLUDE_DIRS})
 target_compile_options(qwen3_test PRIVATE ${GTEST_CFLAGS_OTHER})
 
+target_link_libraries(rms_norm_kernel_test 
+    base  # Link to the base library from src
+    kernel  # Link to the kernel library from src
+    ${GTEST_LIBRARIES}
+    ${GTEST_MAIN_LIBRARIES}
+    Threads::Threads
+)
+target_include_directories(rms_norm_kernel_test PRIVATE ${GTEST_INCLUDE_DIRS})
+target_compile_options(rms_norm_kernel_test PRIVATE ${GTEST_CFLAGS_OTHER})
+
 # Enable testing
 enable_testing()
 
@@ -98,3 +109,4 @@ add_test(NAME TensorTest COMMAND tensor_test)
 add_test(NAME SafeTensorsTest COMMAND safetensors_test)
 add_test(NAME EmbKernelTest COMMAND emb_kernel_test)
 add_test(NAME Qwen3Test COMMAND qwen3_test)
+add_test(NAME RMSNormKernelTest COMMAND rms_norm_kernel_test)

@@ -14,8 +14,14 @@ namespace mllm
                                         size_t vocab_size,
                                         size_t hidden_size,
                                         void *stream);
+        typedef void (*RMSNormKernel)(base::Tensor *input,
+                                      base::Tensor *weight,
+                                      base::Tensor *output,
+                                      float eps,
+                                      void *stream);
 
         EmbeddingKernel get_emb_kernel(base::Device device);
+        RMSNormKernel get_rmsnorm_kernel(base::Device device);
     }
 }
 
