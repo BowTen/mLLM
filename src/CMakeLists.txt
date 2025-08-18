@@ -21,6 +21,8 @@ add_library(kernel
     kernel/cuda/embedding_kernel.cu
     kernel/cpu/rms_norm_kernel.cpp
     kernel/cuda/rms_norm_kernel.cu
+    kernel/cpu/add_kernel.cpp
+    kernel/cuda/add_kernel.cu
 )
 add_library(model 
     model/qwen3.cpp
