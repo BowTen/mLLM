@@ -8,6 +8,9 @@
 
 namespace mllm
 {
+#define DEBUG 1
+#define TRACE 2
+
     namespace base
     {
         enum Device
@@ -21,6 +24,7 @@ namespace mllm
             std::vector<size_t> shape_;
             Buffer::BufferPtr buffer_;
             Device device_;
+            bool mut_;
 
         public:
             Tensor() : shape_(),
@@ -32,6 +36,7 @@ namespace mllm
             size_t size() const;
             float *data();
             bool empty() const { return buffer_ == nullptr; }
+            void toDevice(Device device);
         };
     } // namespace base
 } // namespace mllm

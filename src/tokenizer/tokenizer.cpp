@@ -1,4 +1,5 @@
 #include "tokenizer/tokenizer.h"
+#include "base/tensor.h"
 #include <fstream>
 #include <iostream>
 #include <algorithm>
@@ -16,7 +17,7 @@ namespace mllm
     {
         BPETokenizer::BPETokenizer(std::string tokenizer_path)
         {
-            VLOG(1) << "Loading tokenizer from: " << tokenizer_path;
+            VLOG(TRACE) << "Loading tokenizer from: " << tokenizer_path;
             std::ifstream file(tokenizer_path);
             if (!file.is_open())
             {
@@ -80,7 +81,7 @@ namespace mllm
             {
                 vocab[id] = token;
             }
-            VLOG(1) << "Successfully loaded tokenizer with vocab size: " << vocab.size();
+            VLOG(TRACE) << "Successfully loaded tokenizer with vocab size: " << vocab.size();
         }
 
         std::string BPETokenizer::get_unicode(uint32_t c)

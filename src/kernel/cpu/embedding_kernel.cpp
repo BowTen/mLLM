@@ -1,4 +1,5 @@
-#include "kernel/embedding_kernel.h"
+#include "kernel/cpu/embedding_kernel.h"
+#include <cuda_runtime.h>
 
 namespace mllm
 {
@@ -29,19 +30,6 @@ namespace mllm
                                   &weight_data[idx * hidden_size],
                                   hidden_size * sizeof(float));
             }
-        }
-
-        void emb_kernel_cuda(base::Tensor *input,
-                             base::Tensor *weight,
-                             base::Tensor *output,
-                             size_t vocab_size,
-                             size_t hidden_size,
-                             void *stream)
-        {
-            // CUDA implementation of the embedding kernel
-            // This is a placeholder implementation. Replace with actual CUDA kernel launch.
-            // For now, we will just throw an error to indicate it's not implemented.
-            throw std::runtime_error("CUDA embedding kernel not implemented");
         }
     }
 }

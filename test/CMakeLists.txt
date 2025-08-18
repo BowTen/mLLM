@@ -1,9 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
 
-# Enable CUDA language
-enable_language(CUDA)
-find_package(CUDA REQUIRED)
-
 # Find Google Test from system installation
 set(CMAKE_PREFIX_PATH /usr/local ${CMAKE_PREFIX_PATH})
 find_package(PkgConfig REQUIRED)
@@ -38,10 +34,8 @@ target_link_libraries(allocator_test
     ${GTEST_LIBRARIES}
     ${GTEST_MAIN_LIBRARIES}
     Threads::Threads
-    ${CUDA_LIBRARIES}
-    cudart
 )
-target_include_directories(allocator_test PRIVATE ${GTEST_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS})
+target_include_directories(allocator_test PRIVATE ${GTEST_INCLUDE_DIRS})
 target_compile_options(allocator_test PRIVATE ${GTEST_CFLAGS_OTHER})
 
 target_link_libraries(buffer_test 
@@ -49,10 +43,8 @@ target_link_libraries(buffer_test
     ${GTEST_LIBRARIES}
     ${GTEST_MAIN_LIBRARIES}
     Threads::Threads
-    ${CUDA_LIBRARIES}
-    cudart
 )
-target_include_directories(buffer_test PRIVATE ${GTEST_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS})
+target_include_directories(buffer_test PRIVATE ${GTEST_INCLUDE_DIRS})
 target_compile_options(buffer_test PRIVATE ${GTEST_CFLAGS_OTHER})
 
 target_link_libraries(tensor_test 
@@ -60,10 +52,8 @@ target_link_libraries(tensor_test
     ${GTEST_LIBRARIES}
     ${GTEST_MAIN_LIBRARIES}
     Threads::Threads
-    ${CUDA_LIBRARIES}
-    cudart
 )
-target_include_directories(tensor_test PRIVATE ${GTEST_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS})
+target_include_directories(tensor_test PRIVATE ${GTEST_INCLUDE_DIRS})
 target_compile_options(tensor_test PRIVATE ${GTEST_CFLAGS_OTHER})
 
 target_link_libraries(safetensors_test 
@@ -81,10 +71,8 @@ target_link_libraries(emb_kernel_test
     ${GTEST_LIBRARIES}
     ${GTEST_MAIN_LIBRARIES}
     Threads::Threads
-    ${CUDA_LIBRARIES}
-    cudart
 )
-target_include_directories(emb_kernel_test PRIVATE ${GTEST_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS})
+target_include_directories(emb_kernel_test PRIVATE ${GTEST_INCLUDE_DIRS})
 target_compile_options(emb_kernel_test PRIVATE ${GTEST_CFLAGS_OTHER})
 
 target_link_libraries(qwen3_test 
@@ -93,12 +81,10 @@ target_link_libraries(qwen3_test
     ${GTEST_LIBRARIES}
     ${GTEST_MAIN_LIBRARIES}
     Threads::Threads
-    ${CUDA_LIBRARIES}
-    cudart
     model
     glog
 )
-target_include_directories(qwen3_test PRIVATE ${GTEST_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS})
+target_include_directories(qwen3_test PRIVATE ${GTEST_INCLUDE_DIRS})
 target_compile_options(qwen3_test PRIVATE ${GTEST_CFLAGS_OTHER})
 
 # Enable testing

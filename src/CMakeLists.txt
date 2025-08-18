@@ -16,14 +16,16 @@ add_library(op
 )
 add_library(kernel
     kernel/kernel.cpp
-    kernel/embedding_kernel.cpp
+    kernel/cpu/embedding_kernel.cpp
+    kernel/cuda/embedding_kernel.cu
 )
 add_library(model 
     model/qwen3.cpp
 )
 
 # Link libraries
-target_link_libraries(base glog)
+find_package(CUDAToolkit REQUIRED)
+target_link_libraries(base glog CUDA::cudart)
 target_link_libraries(tokenizer base)
 target_link_libraries(kernel base)
 target_link_libraries(op base kernel)
@@ -47,9 +49,9 @@ target_include_directories(model PUBLIC
     ${CMAKE_SOURCE_DIR}/include
 )
 
-# Optional: Find and link CUDA if available
-find_package(CUDA QUIET)
-if(CUDA_FOUND)
-    target_link_libraries(base ${CUDA_LIBRARIES})
-    target_include_directories(base PRIVATE ${CUDA_INCLUDE_DIRS})
-endif()
+# Set CUDA properties for the kernel library
+set_property(TARGET kernel PROPERTY CUDA_SEPARABLE_COMPILATION ON)
+set_property(TARGET kernel PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON)
+
+# Link CUDA runtime for kernel library
+target_link_libraries(kernel ${CMAKE_CUDA_IMPLICIT_LINK_LIBRARIES})

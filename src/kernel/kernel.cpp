@@ -1,5 +1,6 @@
 #include "kernel/kernel.h"
-#include "kernel/embedding_kernel.h"
+#include "kernel/cpu/embedding_kernel.h"
+#include "kernel/cuda/embedding_kernel.cuh"
 #include <stdexcept>
 
 namespace mllm

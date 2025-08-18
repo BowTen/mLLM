@@ -1,7 +1,8 @@
 #ifndef MLLM_KERNEL_H
 #define MLLM_KERNEL_H
 
-#include "embedding_kernel.h"
+#include <cstddef>
+#include "base/tensor.h"
 
 namespace mllm
 {

@@ -3,6 +3,7 @@
 
 #include "tokenizer/tokenizer.h"
 #include "op/embedding.h"
+#include <cuda_runtime.h>
 
 namespace mllm
 {
@@ -20,11 +21,15 @@ namespace mllm
             BPETokenizer tokenizer;
             Embedding embed_tokens;
             base::Device device_;
+            cudaStream_t stream_;
 
             Qwen3(std::string model_path, base::Device device = base::Device::CPU);
 
         public:
-            static Qwen3 from_pretrained(const std::string &model_path);
+            static Qwen3 from_pretrained(const std::string &model_path, base::Device device = base::Device::CPU)
+            {
+                return Qwen3(model_path, device);
+            }
 
             Tensor forward_test(std::string text);
             JsonConfig config() const { return config_; }

@@ -13,13 +13,6 @@ namespace mllm
                             size_t vocab_size,
                             size_t hidden_size,
                             void *stream);
-
-        void emb_kernel_cuda(base::Tensor *input,
-                             base::Tensor *weight,
-                             base::Tensor *output,
-                             size_t vocab_size,
-                             size_t hidden_size,
-                             void *stream);
     }
 }
 

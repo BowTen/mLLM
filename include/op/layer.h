@@ -3,6 +3,7 @@
 
 #include "base/tensor.h"
 #include "base/json.hpp"
+#include <cuda_runtime.h>
 
 namespace mllm
 {
@@ -18,9 +19,10 @@ namespace mllm
             std::vector<Tensor> outputs;
             std::string name_;
             base::Device device_;
+            cudaStream_t stream_;
 
-            Layer(size_t input_count, size_t output_count, base::Device device = base::Device::CPU)
-                : inputs(input_count), outputs(output_count), device_(device) {}
+            Layer(size_t input_count, size_t output_count, base::Device device = base::Device::CPU, cudaStream_t stream = nullptr)
+                : inputs(input_count), outputs(output_count), device_(device), stream_(stream) {}
 
         public:
             virtual ~Layer() = default;
@@ -33,6 +35,8 @@ namespace mllm
             Tensor &getOutput(size_t index);
             void setName(const std::string &name) { name_ = name; }
             const std::string &name() const { return name_; }
+            void setStream(cudaStream_t stream) { stream_ = stream; }
+            cudaStream_t stream() const { return stream_; }
         };
 
         class WLayer : public Layer
@@ -43,8 +47,9 @@ namespace mllm
             WLayer(size_t input_count,
                    size_t output_count,
                    const std::vector<size_t> &shape,
-                   base::Device device = base::Device::CPU) : Layer(input_count, output_count, device),
-                                                              weight_(Tensor(shape, device)) {}
+                   base::Device device = base::Device::CPU,
+                   cudaStream_t stream = nullptr) : Layer(input_count, output_count, device, stream),
+                                                    weight_(Tensor(shape, device)) {}
 
         public:
             const Tensor &weight() const { return weight_; }

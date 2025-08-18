@@ -8,8 +8,8 @@ namespace mllm
 {
     namespace op
     {
-        Embedding::Embedding(size_t vocab_size, size_t hidden_size, base::Device device)
-            : WLayer(1, 1, {vocab_size, hidden_size}, device)
+        Embedding::Embedding(size_t vocab_size, size_t hidden_size, base::Device device, cudaStream_t stream)
+            : WLayer(1, 1, {vocab_size, hidden_size}, device, stream)
         {
         }
 
@@ -17,7 +17,11 @@ namespace mllm
         {
             CHECK(!inputs.empty());
             CHECK(!outputs.empty());
-            kernel::get_emb_kernel(device_)(&inputs[0], &weight_, &outputs[0], weight_.shape()[0], weight_.shape()[1], nullptr);
+            if (device_ == base::Device::CUDA)
+            {
+                CHECK(stream_ != nullptr) << "CUDA stream must be set for CUDA device.";
+            }
+            kernel::get_emb_kernel(device_)(&inputs[0], &weight_, &outputs[0], weight_.shape()[0], weight_.shape()[1], stream_ ? stream_ : nullptr);
         }
     }
 }
