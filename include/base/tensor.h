@@ -31,6 +31,7 @@ namespace mllm
             const std::vector<size_t> &shape() const;
             size_t size() const;
             float *data();
+            bool empty() const { return buffer_ == nullptr; }
         };
     } // namespace base
 } // namespace mllm

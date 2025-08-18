@@ -6,6 +6,9 @@
 #include <stdexcept>
 #include <cstring>
 
+#define GLOG_USE_GLOG_EXPORT
+#include <glog/logging.h>
+
 namespace mllm
 {
     namespace base
@@ -96,22 +99,15 @@ namespace mllm
 
         void *SafeTensors::get_weight(std::string weight_name) const
         {
-            if (header.find(weight_name) == header.end())
-            {
-                return nullptr;
-            }
+            CHECK(weight != nullptr);
+
+            CHECK(header.find(weight_name) != header.end()) << "Weight name not found in header: " << weight_name;
 
             const auto &weight_info = header[weight_name];
-            if (weight_info.find("data_offsets") == weight_info.end())
-            {
-                return nullptr;
-            }
+            CHECK(weight_info.find("data_offsets") != weight_info.end());
 
             const auto &offsets = weight_info["data_offsets"];
-            if (offsets.size() < 2)
-            {
-                return nullptr;
-            }
+            CHECK(offsets.size() == 2);
 
             uint64_t start_offset = offsets[0];
             return reinterpret_cast<char *>(weight) + start_offset;

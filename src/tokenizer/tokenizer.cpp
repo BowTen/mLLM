@@ -5,6 +5,9 @@
 #include <stdexcept>
 #include "base/json.hpp"
 
+#define GLOG_USE_GLOG_EXPORT
+#include <glog/logging.h>
+
 using json = nlohmann::json;
 
 namespace mllm
@@ -13,6 +16,7 @@ namespace mllm
     {
         BPETokenizer::BPETokenizer(std::string tokenizer_path)
         {
+            VLOG(1) << "Loading tokenizer from: " << tokenizer_path;
             std::ifstream file(tokenizer_path);
             if (!file.is_open())
             {
@@ -76,6 +80,7 @@ namespace mllm
             {
                 vocab[id] = token;
             }
+            VLOG(1) << "Successfully loaded tokenizer with vocab size: " << vocab.size();
         }
 
         std::string BPETokenizer::get_unicode(uint32_t c)

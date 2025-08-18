@@ -1,6 +1,4 @@
 #include "kernel/embedding_kernel.h"
-#include <stdexcept>
-#include <cstring>
 
 namespace mllm
 {
@@ -18,6 +16,7 @@ namespace mllm
             const float *weight_data = weight->data();
             float *output_data = output->data();
 
+            auto allocator = base::HostAllocator::getInstance();
             size_t input_size = input->size();
             for (size_t i = 0; i < input_size; ++i)
             {
@@ -26,9 +25,9 @@ namespace mllm
                 {
                     throw std::out_of_range("Input index out of range");
                 }
-                std::memcpy(&output_data[i * hidden_size],
-                            &weight_data[idx * hidden_size],
-                            hidden_size * sizeof(float));
+                allocator->memcpy(&output_data[i * hidden_size],
+                                  &weight_data[idx * hidden_size],
+                                  hidden_size * sizeof(float));
             }
         }
 

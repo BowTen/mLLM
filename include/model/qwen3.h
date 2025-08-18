@@ -14,16 +14,20 @@ namespace mllm
 
         class Qwen3
         {
-            JsonConfig config;
+            JsonConfig config_;
             size_t vocab_size;
             size_t hidden_size;
             BPETokenizer tokenizer;
             Embedding embed_tokens;
+            base::Device device_;
 
             Qwen3(std::string model_path, base::Device device = base::Device::CPU);
 
         public:
             static Qwen3 from_pretrained(const std::string &model_path);
+
+            Tensor forward_test(std::string text);
+            JsonConfig config() const { return config_; }
         };
     }
 }

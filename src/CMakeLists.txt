@@ -23,9 +23,10 @@ add_library(model
 )
 
 # Link libraries
+target_link_libraries(base glog)
 target_link_libraries(tokenizer base)
-target_link_libraries(op base)
 target_link_libraries(kernel base)
+target_link_libraries(op base kernel)
 target_link_libraries(model tokenizer op)
 
 

@@ -5,6 +5,9 @@
 #include <vector>
 #include <cstring>
 
+#define GLOG_USE_GLOG_EXPORT
+#include <glog/logging.h>
+
 using namespace mllm::base;
 
 // Test fixture for SafeTensors tests
@@ -134,20 +137,6 @@ TEST_F(SafeTensorsTest, GetWeightData)
     }
 }
 
-// Test getting non-existent weight
-TEST_F(SafeTensorsTest, GetNonExistentWeight)
-{
-    // Create test file
-    ASSERT_TRUE(create_test_safetensors_file(test_file_path));
-
-    // Load safetensors file
-    SafeTensors st(test_file_path);
-
-    // Test getting non-existent weight
-    void *nonexistent_ptr = st.get_weight("nonexistent_weight");
-    EXPECT_EQ(nonexistent_ptr, nullptr);
-}
-
 // Test error handling for non-existent file
 TEST_F(SafeTensorsTest, NonExistentFile)
 {
@@ -200,4 +189,14 @@ TEST_F(SafeTensorsTest, InvalidJsonHeader)
     EXPECT_THROW({ SafeTensors st(invalid_file); }, std::runtime_error);
 
     std::remove(invalid_file.c_str());
+}
+
+TEST(Qwen3Safetensors, Test)
+{
+    std::string file_path = "/home/hznuojai/ai_infra/MiniLLM/resources/Qwen/Qwen3-0.6B/model.safetensors";
+    SafeTensors st(file_path);
+    auto header = st.get_header();
+    // auto head_str = header.dump(4); // 打印header内容
+    // LOG(INFO) << "Header: \n"
+    //           << head_str;
 }

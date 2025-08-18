@@ -17,9 +17,10 @@ namespace mllm
             std::vector<Tensor> inputs;
             std::vector<Tensor> outputs;
             std::string name_;
+            base::Device device_;
 
-            Layer(size_t input_count, size_t output_count)
-                : inputs(input_count), outputs(output_count) {}
+            Layer(size_t input_count, size_t output_count, base::Device device = base::Device::CPU)
+                : inputs(input_count), outputs(output_count), device_(device) {}
 
         public:
             virtual ~Layer() = default;
@@ -42,7 +43,7 @@ namespace mllm
             WLayer(size_t input_count,
                    size_t output_count,
                    const std::vector<size_t> &shape,
-                   base::Device device = base::Device::CPU) : Layer(input_count, output_count),
+                   base::Device device = base::Device::CPU) : Layer(input_count, output_count, device),
                                                               weight_(Tensor(shape, device)) {}
 
         public:
