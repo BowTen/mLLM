@@ -15,6 +15,7 @@ add_library(op
     op/embedding.cpp
     op/rms_norm.cpp
     op/add.cpp
+    op/linear.cpp
 )
 add_library(kernel
     kernel/kernel.cpp
@@ -29,6 +30,9 @@ add_library(kernel
 )
 add_library(model 
     model/qwen3.cpp
+    model/qwen3_decode_layer.cpp
+    model/qwen3_self_attn.cpp
+    model/qwen3_mlp.cpp
 )
 
 # Link libraries

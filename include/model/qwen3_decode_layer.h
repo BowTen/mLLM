@@ -1,0 +1,36 @@
+#ifndef MLLM_MODEL_QWEN3_DECODE_LAYER_H
+#define MLLM_MODEL_QWEN3_DECODE_LAYER_H
+
+#include "tokenizer/tokenizer.h"
+#include "base/safetensors.h"
+#include "op/embedding.h"
+#include "op/rms_norm.h"
+#include "qwen3_self_attn.h"
+#include "qwen3_mlp.h"
+#include <cuda_runtime.h>
+
+namespace mllm
+{
+    namespace model
+    {
+
+        using namespace tokenizer;
+        using namespace op;
+
+        class Qwen3DecodeLayer : public Layer
+        {
+            size_t layer_index_;
+            RMSNorm input_layernorm;
+            RMSNorm post_attention_layernorm;
+            Qwen3SelfAttn self_attn;
+            Qwen3MLP mlp;
+
+        public:
+            Qwen3DecodeLayer(size_t layer_index, JsonConfig config, base::Device device = base::Device::CPU, cudaStream_t stream = nullptr);
+            void forward() override;
+            void loadWeight(const std::string &name, base::SafeTensors &st);
+        };
+    }
+}
+
+#endif // MLLM_MODEL_QWEN3_DECODE_LAYER_H

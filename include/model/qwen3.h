@@ -5,6 +5,7 @@
 #include "base/safetensors.h"
 #include "op/embedding.h"
 #include "op/rms_norm.h"
+#include "qwen3_decode_layer.h"
 #include <cuda_runtime.h>
 
 namespace mllm
@@ -23,6 +24,7 @@ namespace mllm
             BPETokenizer tokenizer;
             Embedding embed_tokens;
             RMSNorm norm;
+            std::vector<Qwen3DecodeLayer> layers;
             base::Device device_;
             cudaStream_t stream_;
 
@@ -41,8 +43,6 @@ namespace mllm
             base::Device device() const { return device_; }
             cudaStream_t stream() const { return stream_; }
         };
-
-        // class Qwen3DecodeLayer
     }
 }
 

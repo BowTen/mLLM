@@ -38,6 +38,13 @@ namespace mllm
             norm.setStream(stream_);
             embed_tokens.loadWeight("model.embed_tokens", st);
             norm.loadWeight("model.norm", st);
+
+            VLOG(TRACE) << "Loading layers";
+            for (size_t i = 0; i < config_["num_hidden_layers"]; ++i)
+            {
+                layers.emplace_back(i, config_, device, stream_);
+                layers.back().loadWeight("model.layers." + std::to_string(i), st);
+            }
             VLOG(TRACE) << "Successfully loaded all weights";
         }
     } // namespace model
