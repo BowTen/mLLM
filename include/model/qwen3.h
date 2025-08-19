@@ -27,8 +27,6 @@ namespace mllm
             cudaStream_t stream_;
 
             Qwen3(std::string model_path, base::Device device = base::Device::CPU);
-            void load_weight_for_embed_tokens(mllm::base::SafeTensors &st);
-            void load_weight_for_norm(mllm::base::SafeTensors &st);
 
         public:
             static Qwen3 from_pretrained(const std::string &model_path, base::Device device = base::Device::CPU)
@@ -43,6 +41,8 @@ namespace mllm
             base::Device device() const { return device_; }
             cudaStream_t stream() const { return stream_; }
         };
+
+        // class Qwen3DecodeLayer
     }
 }
 

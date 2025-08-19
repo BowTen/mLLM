@@ -1,10 +1,18 @@
 #include "op/layer.h"
+#include "base/util.h"
 
 namespace mllm
 {
     namespace op
     {
         using base::Tensor;
+
+        void Layer::forward(base::Tensor &intput, base::Tensor &output)
+        {
+            setInput(0, intput);
+            setOutput(0, output);
+            forward();
+        }
 
         void Layer::setInput(size_t index, const Tensor &tensor)
         {
@@ -39,6 +47,28 @@ namespace mllm
                 throw std::out_of_range("Output index out of range");
             }
             return outputs.at(index);
+        }
+
+        void WLayer::loadWeight(const std::string &name, base::SafeTensors &st)
+        {
+            name_ = name;
+            auto weight_data = weight_.data();
+            size_t weight_size = weight_.size();
+            if (device_ == base::Device::CPU)
+            {
+                VLOG(TRACE) << "Loading " << name << " weights to CPU";
+                // CPU设备，直接加载权重
+                base::load_bf16_to_f32(st.get_weight(name_ + ".weight"), weight_data, weight_size);
+            }
+            else if (device_ == base::Device::CUDA)
+            {
+                VLOG(TRACE) << "Loading " << name << " weights to CUDA";
+                // CUDA设备，先拷贝到临时缓冲区处理
+                base::ArrBuffer buffer(base::HostAllocator::getInstance(), weight_size * sizeof(float));
+                base::load_bf16_to_f32(st.get_weight(name_ + ".weight"), buffer.data(), weight_size);
+                cudaMemcpy(weight_data, buffer.data(), weight_size * sizeof(float), cudaMemcpyHostToDevice);
+            }
+            VLOG(TRACE) << "Successfully loaded " << name << " weights";
         }
     }
 }

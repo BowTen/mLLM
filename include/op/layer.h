@@ -3,6 +3,7 @@
 
 #include "base/tensor.h"
 #include "base/json.hpp"
+#include "base/safetensors.h"
 #include <cuda_runtime.h>
 
 namespace mllm
@@ -28,6 +29,7 @@ namespace mllm
             virtual ~Layer() = default;
 
             virtual void forward() = 0;
+            virtual void forward(base::Tensor &intput, base::Tensor &output);
 
             void setInput(size_t index, const Tensor &tensor);
             void setOutput(size_t index, const Tensor &tensor);
@@ -55,6 +57,7 @@ namespace mllm
             const Tensor &weight() const { return weight_; }
             void setWeight(const Tensor &weight) { weight_ = weight; }
             Tensor &getWeight() { return weight_; }
+            void loadWeight(const std::string &name, base::SafeTensors &st);
         };
 
     }
