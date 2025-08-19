@@ -12,19 +12,6 @@ namespace mllm
 {
     namespace base
     {
-
-        bool isDevicePointer(void *ptr)
-        {
-            cudaPointerAttributes attributes;
-            cudaError_t err = cudaPointerGetAttributes(&attributes, ptr);
-
-            if (err == cudaSuccess)
-            {
-                return (attributes.type == cudaMemoryTypeDevice);
-            }
-            return false;
-        }
-
         Tensor::Tensor(const std::vector<size_t> &shape, Device device, bool mut)
             : shape_(shape), device_(device), mut_(mut)
         {
@@ -119,6 +106,11 @@ namespace mllm
             buffer_ = new_buffer;
             device_ = device;
             VLOG(DEBUG) << "Tensor transferred successfully.";
+        }
+
+        Tensor Tensor::clone()
+        {
+            return Tensor(shape_, Buffer::BufferPtr(buffer_->clone()), device_, mut_);
         }
     } // namespace base
 } // namespace mllm

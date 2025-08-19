@@ -16,7 +16,7 @@ namespace mllm
         using namespace tokenizer;
         using namespace op;
 
-        class Qwen3
+        class Qwen3 : public op::Layer
         {
             JsonConfig config_;
             size_t vocab_size;
@@ -25,8 +25,6 @@ namespace mllm
             Embedding embed_tokens;
             RMSNorm norm;
             std::vector<Qwen3DecodeLayer> layers;
-            base::Device device_;
-            cudaStream_t stream_;
 
             Qwen3(std::string model_path, base::Device device = base::Device::CPU);
 
@@ -35,6 +33,8 @@ namespace mllm
             {
                 return Qwen3(model_path, device);
             }
+
+            void forward() override;
 
             JsonConfig config() const { return config_; }
             BPETokenizer *get_tokenizer() { return &tokenizer; }

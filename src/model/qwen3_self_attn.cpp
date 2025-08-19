@@ -2,6 +2,7 @@
 #include "base/util.h"
 #include "base/safetensors.h"
 #include "cuda_runtime.h"
+#include "kernel/kernel.h"
 
 #define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
@@ -29,11 +30,17 @@ namespace mllm
 
         void Qwen3SelfAttn::forward()
         {
-            // Forward pass logic for Qwen3DecodeLayer
-            // This should be implemented based on the specific requirements of the layer
             VLOG(TRACE) << "Forward pass for Qwen3SelfAttn at index: " << layer_index_;
+            auto hidden_state = this->getInput(0);
+            Tensor q_output({hidden_state.shape()[0], num_attention_heads * head_dim}, device_, stream_);
+            Tensor k_output({hidden_state.shape()[0], num_key_value_heads * head_dim}, device_, stream_);
+            Tensor v_output({hidden_state.shape()[0], num_key_value_heads * head_dim}, device_, stream_);
+
+            q_proj.forward(hidden_state, q_output);
+            k_proj.forward(hidden_state, k_output);
+            v_proj.forward(hidden_state, v_output);
+
             throw std::runtime_error("Forward pass not implemented for Qwen3SelfAttn");
-            // Example: Use inputs and outputs tensors to perform computations
         }
 
         void Qwen3SelfAttn::loadWeight(const std::string &name, base::SafeTensors &st)

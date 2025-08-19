@@ -6,6 +6,7 @@ add_library(base
     base/tensor.cpp
     base/safetensors.cpp
     base/util.cpp
+    base/common.cpp
 )
 add_library(tokenizer 
     tokenizer/tokenizer.cpp

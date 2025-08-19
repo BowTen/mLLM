@@ -12,14 +12,13 @@ namespace mllm
     {
 
         Qwen3::Qwen3(std::string model_path, base::Device device)
-            : config_(base::load_json(model_path + "/config.json")),
+            : Layer(1, 1, device),
+              config_(base::load_json(model_path + "/config.json")),
               vocab_size(config_["vocab_size"]),
               hidden_size(config_["hidden_size"]),
               tokenizer(BPETokenizer::from_file(model_path + "/tokenizer.json")),
               embed_tokens(vocab_size, hidden_size, device),
-              norm(hidden_size, config_["rms_norm_eps"], device),
-              device_(device),
-              stream_(nullptr)
+              norm(hidden_size, config_["rms_norm_eps"], device)
         {
             VLOG(TRACE) << "Loading Qwen3 model from: " << model_path;
             // 初始化CUDA流
@@ -46,6 +45,23 @@ namespace mllm
                 layers.back().loadWeight("model.layers." + std::to_string(i), st);
             }
             VLOG(TRACE) << "Successfully loaded all weights";
+        }
+
+        void Qwen3::forward()
+        {
+            VLOG(TRACE) << "Forward pass through Qwen3 model";
+
+            auto token_id = inputs[0];
+            Tensor hidden_state({token_id.shape()[0], hidden_size}, device_);
+            embed_tokens.forward(token_id, hidden_state);
+
+            // Forward pass through each decode layer
+            for (auto &layer : layers)
+            {
+                layer.forward(hidden_state, hidden_state);
+            }
+
+            norm.forward(hidden_state, hidden_state);
         }
     } // namespace model
 } // namespace mllm

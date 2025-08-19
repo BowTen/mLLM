@@ -5,6 +5,7 @@
 #include "base/safetensors.h"
 #include "op/embedding.h"
 #include "op/rms_norm.h"
+#include "op/add.h"
 #include "qwen3_self_attn.h"
 #include "qwen3_mlp.h"
 #include <cuda_runtime.h>
@@ -24,10 +25,12 @@ namespace mllm
             RMSNorm post_attention_layernorm;
             Qwen3SelfAttn self_attn;
             Qwen3MLP mlp;
+            Add add_op;
 
         public:
             Qwen3DecodeLayer(size_t layer_index, JsonConfig config, base::Device device = base::Device::CPU, cudaStream_t stream = nullptr);
             void forward() override;
+            using Layer::forward;
             void loadWeight(const std::string &name, base::SafeTensors &st);
         };
     }

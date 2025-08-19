@@ -64,6 +64,13 @@ namespace mllm
             return size_;
         }
 
+        Buffer *ArrBuffer::clone() const
+        {
+            auto new_buffer = new ArrBuffer(this->allocator, this->size());
+            allocator->memcpy(new_buffer->data(), this->data_, this->size());
+            return new_buffer;
+        }
+
         // VecBuffer implementation
         VecBuffer::VecBuffer(Allocator *alloc, size_t initial_capacity, size_t initial_size)
             : Buffer(alloc, std::max(initial_size, initial_capacity)),
@@ -116,6 +123,13 @@ namespace mllm
         size_t VecBuffer::capacity() const
         {
             return capacity_;
+        }
+
+        Buffer *VecBuffer::clone() const
+        {
+            auto new_buffer = new VecBuffer(this->allocator, this->capacity_, this->size_);
+            allocator->memcpy(new_buffer->data(), this->data_, this->size_);
+            return new_buffer;
         }
     } // namespace base
 } // namespace mllm

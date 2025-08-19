@@ -16,17 +16,26 @@ namespace mllm
               input_layernorm(config["hidden_size"], config["rms_norm_eps"]),
               post_attention_layernorm(config["hidden_size"], config["rms_norm_eps"]),
               self_attn(layer_index, config, device, stream),
-              mlp(layer_index, config, device, stream)
+              mlp(layer_index, config, device, stream),
+              add_op(device, stream)
         {
         }
 
         void Qwen3DecodeLayer::forward()
         {
-            // Forward pass logic for Qwen3DecodeLayer
-            // This should be implemented based on the specific requirements of the layer
             VLOG(TRACE) << "Forward pass for Qwen3DecodeLayer at index: " << layer_index_;
-            throw std::runtime_error("Forward pass not implemented for Qwen3DecodeLayer");
-            // Example: Use inputs and outputs tensors to perform computations
+            auto hidden_state = this->getInput(0);
+            auto residual = hidden_state.clone();
+
+            input_layernorm.forward(hidden_state, hidden_state);
+            self_attn.forward(hidden_state, hidden_state);
+            add_op.forward(hidden_state, residual, hidden_state);
+
+            residual = hidden_state.clone();
+
+            post_attention_layernorm.forward(hidden_state, hidden_state);
+            mlp.forward(hidden_state, hidden_state);
+            add_op.forward(hidden_state, residual, this->getOutput(0));
         }
 
         void Qwen3DecodeLayer::loadWeight(const std::string &name, base::SafeTensors &st)

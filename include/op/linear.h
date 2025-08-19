@@ -13,6 +13,7 @@ namespace mllm
         public:
             Linear(std::vector<size_t> shape, base::Device device = base::Device::CPU, cudaStream_t stream = nullptr);
             void forward() override;
+            using WLayer::forward;
         };
     }
 }

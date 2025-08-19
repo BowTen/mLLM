@@ -7,6 +7,14 @@ namespace mllm
     {
 #define DEBUG 1
 #define TRACE 2
+
+        enum Device
+        {
+            CPU = 0,
+            CUDA = 1,
+        };
+
+        bool isDevicePointer(void *ptr);
     } // namespace base
 } // namespace mllm
 

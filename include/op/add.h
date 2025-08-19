@@ -14,6 +14,7 @@ namespace mllm
                 : Layer(2, 1, device, stream) {}
 
             void forward() override;
+            using Layer::forward;
             void add(const Tensor &input0, const Tensor &input1, Tensor &output);
         };
     }

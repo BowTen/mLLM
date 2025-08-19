@@ -15,17 +15,10 @@ namespace mllm
 {
     namespace base
     {
-        enum Device
-        {
-            CPU = 0,
-            CUDA = 1,
-        };
-
-        bool isDevicePointer(void *ptr);
-
         class Tensor
         {
             std::vector<size_t> shape_;
+            // std::vector<size_t> stride_;
             Buffer::BufferPtr buffer_;
             Device device_;
             bool mut_;
@@ -34,6 +27,8 @@ namespace mllm
             Tensor() : shape_(),
                        buffer_(nullptr),
                        device_(Device::CPU) {}
+            Tensor(const std::vector<size_t> &shape, Buffer::BufferPtr buffer, Device device = Device::CPU, bool mut = false)
+                : shape_(shape), buffer_(buffer), device_(device), mut_(mut) {}
             Tensor(const std::vector<size_t> &shape, Device device = Device::CPU, bool mut = false);
             Tensor(void *data, const std::vector<size_t> &shape, Device device = Device::CPU, bool mut = false);
 
@@ -42,6 +37,7 @@ namespace mllm
             float *data();
             bool empty() const { return buffer_ == nullptr; }
             void toDevice(Device device);
+            Tensor clone();
         };
     } // namespace base
 } // namespace mllm

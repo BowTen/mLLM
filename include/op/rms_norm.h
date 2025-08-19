@@ -14,6 +14,7 @@ namespace mllm
         public:
             RMSNorm(size_t hidden_size, float eps, base::Device device = base::Device::CPU, cudaStream_t stream = nullptr);
             void forward() override;
+            using WLayer::forward;
         };
     }
 }
