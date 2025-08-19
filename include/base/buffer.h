@@ -20,6 +20,7 @@ namespace mllm
             using BufferPtr = std::shared_ptr<Buffer>;
 
             Buffer(Allocator *alloc, size_t size);
+            Buffer(Allocator *alloc, void *data);
             virtual ~Buffer();
 
             virtual size_t size() const = 0;
@@ -33,6 +34,7 @@ namespace mllm
 
         public:
             ArrBuffer(Allocator *alloc, size_t size);
+            ArrBuffer(Allocator *alloc, void *data, size_t size);
 
             size_t size() const override;
         };
@@ -44,6 +46,7 @@ namespace mllm
 
         public:
             VecBuffer(Allocator *alloc, size_t initial_capacity, size_t initial_size);
+            VecBuffer(Allocator *alloc, void *data, size_t initial_capacity, size_t initial_size);
 
             void concat(const void *bytes, size_t num_bytes);
 

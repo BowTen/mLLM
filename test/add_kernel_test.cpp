@@ -1,5 +1,6 @@
 #include "kernel/kernel.h"
 #include "base/tensor.h"
+#include "op/add.h"
 #include <gtest/gtest.h>
 #include <vector>
 #include <cmath>
@@ -25,6 +26,118 @@ protected:
     size_t test_size;
     float tolerance;
 };
+
+using namespace mllm::base;
+TEST(AddLayerTest, AddCPU)
+{
+    float *a = new float[3];
+    float *b = new float[3];
+    float *c = new float[3];
+    float *e = new float[3];
+    for (int i = 0; i < 3; ++i)
+    {
+        a[i] = static_cast<float>(i);
+        b[i] = static_cast<float>(i) * 2.0f;
+        e[i] = a[i] + b[i];
+    }
+
+    Tensor input0(static_cast<void *>(a), {3}, Device::CPU, true);
+    Tensor input1(static_cast<void *>(b), {3}, Device::CPU, true);
+    Tensor output(static_cast<void *>(c), {3}, Device::CPU, true);
+
+    op::Add add_op;
+    add_op.add(input0, input1, output);
+
+    for (int i = 0; i < 3; ++i)
+    {
+        EXPECT_NEAR(c[i], e[i], 1e-6f) << "Mismatch at index " << i;
+    }
+}
+TEST(AddLayerTest, AddCUDA)
+{
+    float *a = new float[3];
+    float *b = new float[3];
+    float *e = new float[3];
+    for (int i = 0; i < 3; ++i)
+    {
+        a[i] = static_cast<float>(i);
+        b[i] = static_cast<float>(i) * 2.0f;
+        e[i] = a[i] + b[i];
+    }
+
+    Tensor input0(static_cast<void *>(a), {3}, Device::CPU, true);
+    Tensor input1(static_cast<void *>(b), {3}, Device::CPU, true);
+    Tensor output({3}, Device::CPU, true);
+    input0.toDevice(Device::CUDA);
+    input1.toDevice(Device::CUDA);
+    output.toDevice(Device::CUDA);
+
+    cudaStream_t stream = nullptr;
+    cudaStreamCreate(&stream);
+
+    op::Add add_op(Device::CUDA, stream);
+    add_op.add(input0, input1, output);
+    output.toDevice(Device::CPU);
+    float *c = output.data();
+
+    for (int i = 0; i < 3; ++i)
+    {
+        EXPECT_NEAR(c[i], e[i], 1e-6f) << "Mismatch at index " << i;
+    }
+}
+TEST(AddLayerTest, AddCPUCover)
+{
+    float *a = new float[3];
+    float *b = new float[3];
+    float *e = new float[3];
+    for (int i = 0; i < 3; ++i)
+    {
+        a[i] = static_cast<float>(i);
+        b[i] = static_cast<float>(i) * 2.0f;
+        e[i] = a[i] + b[i];
+    }
+
+    Tensor input0(static_cast<void *>(a), {3}, Device::CPU, true);
+    Tensor input1(static_cast<void *>(b), {3}, Device::CPU, true);
+
+    op::Add add_op;
+    add_op.add(input0, input1, input1);
+
+    for (int i = 0; i < 3; ++i)
+    {
+        EXPECT_NEAR(b[i], e[i], 1e-6f) << "Mismatch at index " << i;
+    }
+}
+TEST(AddLayerTest, AddCUDACover)
+{
+    float *a = new float[3];
+    float *b = new float[3];
+    float *e = new float[3];
+    for (int i = 0; i < 3; ++i)
+    {
+        a[i] = static_cast<float>(i);
+        b[i] = static_cast<float>(i) * 2.0f;
+        e[i] = a[i] + b[i];
+    }
+
+    Tensor input0(static_cast<void *>(a), {3}, Device::CPU, true);
+    Tensor input1(static_cast<void *>(b), {3}, Device::CPU, true);
+    input0.toDevice(Device::CUDA);
+    input1.toDevice(Device::CUDA);
+
+    cudaStream_t stream = nullptr;
+    cudaStreamCreate(&stream);
+
+    op::Add add_op(Device::CUDA, stream);
+    add_op.add(input0, input1, input1);
+    input1.toDevice(Device::CPU);
+    float *c = input1.data();
+
+    for (int i = 0; i < 3; ++i)
+    {
+        EXPECT_NEAR(c[i], e[i], 1e-6f) << "Mismatch at index " << i;
+    }
+}
 
 TEST_F(AddKernelTest, CPUAddSameSize)
 {

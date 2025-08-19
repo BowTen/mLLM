@@ -14,6 +14,7 @@ add_library(op
     op/layer.cpp
     op/embedding.cpp
     op/rms_norm.cpp
+    op/add.cpp
 )
 add_library(kernel
     kernel/kernel.cpp

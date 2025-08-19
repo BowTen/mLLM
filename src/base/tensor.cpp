@@ -13,6 +13,18 @@ namespace mllm
     namespace base
     {
 
+        bool isDevicePointer(void *ptr)
+        {
+            cudaPointerAttributes attributes;
+            cudaError_t err = cudaPointerGetAttributes(&attributes, ptr);
+
+            if (err == cudaSuccess)
+            {
+                return (attributes.type == cudaMemoryTypeDevice);
+            }
+            return false;
+        }
+
         Tensor::Tensor(const std::vector<size_t> &shape, Device device, bool mut)
             : shape_(shape), device_(device), mut_(mut)
         {
@@ -33,6 +45,32 @@ namespace mllm
                 buffer_ = std::make_shared<VecBuffer>(allocator, expected_size * sizeof(float) * 2, expected_size * sizeof(float));
             else
                 buffer_ = std::make_shared<ArrBuffer>(allocator, expected_size * sizeof(float));
+        }
+
+        Tensor::Tensor(void *data, const std::vector<size_t> &shape, Device device, bool mut)
+            : shape_(shape), device_(device), mut_(mut)
+        {
+            if (isDevicePointer(data) != (device == Device::CUDA))
+            {
+                throw std::invalid_argument("Data pointer device type does not match Tensor device type.");
+            }
+            size_t expected_size = 1;
+            for (auto dim : shape)
+            {
+                expected_size *= dim;
+            }
+
+            Allocator *allocator = nullptr;
+            if (device == Device::CPU)
+                allocator = HostAllocator::getInstance();
+            else if (device == Device::CUDA)
+                allocator = CudaAllocator::getInstance();
+            else
+                throw std::invalid_argument("Unsupported device type.");
+            if (mut)
+                buffer_ = std::make_shared<VecBuffer>(allocator, data, expected_size * sizeof(float), expected_size * sizeof(float));
+            else
+                buffer_ = std::make_shared<ArrBuffer>(allocator, data, expected_size * sizeof(float));
         }
 
         const std::vector<size_t> &Tensor::shape() const

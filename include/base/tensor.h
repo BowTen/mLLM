@@ -23,6 +23,8 @@ namespace mllm
             CUDA = 1,
         };
 
+        bool isDevicePointer(void *ptr);
+
         class Tensor
         {
             std::vector<size_t> shape_;
@@ -35,6 +37,7 @@ namespace mllm
                        buffer_(nullptr),
                        device_(Device::CPU) {}
             Tensor(const std::vector<size_t> &shape, Device device = Device::CPU, bool mut = false);
+            Tensor(void *data, const std::vector<size_t> &shape, Device device = Device::CPU, bool mut = false);
 
             const std::vector<size_t> &shape() const;
             size_t size() const;

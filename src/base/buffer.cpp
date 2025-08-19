@@ -3,6 +3,9 @@
 #include <iostream>
 #include <algorithm>
 
+#define GLOG_USE_GLOG_EXPORT
+#include <glog/logging.h>
+
 namespace mllm
 {
     namespace base
@@ -15,6 +18,10 @@ namespace mllm
             {
                 throw std::bad_alloc();
             }
+        }
+        Buffer::Buffer(Allocator *alloc, void *data)
+            : allocator(alloc), data_(data)
+        {
         }
 
         Buffer::~Buffer()
@@ -35,6 +42,14 @@ namespace mllm
             : Buffer(alloc, size), size_(size)
         {
         }
+        ArrBuffer::ArrBuffer(Allocator *alloc, void *data, size_t size)
+            : Buffer(alloc, data), size_(size)
+        {
+            if (!data_ && size > 0)
+            {
+                LOG(ERROR) << "ArrBuffer initialized with null data pointer but size is greater than zero.";
+            }
+        }
 
         size_t ArrBuffer::size() const
         {
@@ -47,6 +62,16 @@ namespace mllm
               size_(initial_size),
               capacity_(std::max(initial_capacity, initial_size))
         {
+        }
+        VecBuffer::VecBuffer(Allocator *alloc, void *data, size_t initial_capacity, size_t initial_size)
+            : Buffer(alloc, data),
+              size_(initial_size),
+              capacity_(std::max(initial_capacity, initial_size))
+        {
+            if (!data_ && initial_size > 0)
+            {
+                LOG(ERROR) << "VecBuffer initialized with null data pointer but size is greater than zero.";
+            }
         }
 
         void VecBuffer::concat(const void *bytes, size_t num_bytes)
