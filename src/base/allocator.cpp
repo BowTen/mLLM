@@ -3,6 +3,9 @@
 #include <cstring>
 #include <cuda_runtime.h>
 
+#define GLOG_USE_GLOG_EXPORT
+#include <glog/logging.h>
+
 namespace mllm
 {
     namespace base
@@ -49,7 +52,12 @@ namespace mllm
         void *CudaAllocator::allocate(size_t size)
         {
             void *ptr;
-            cudaMalloc(&ptr, size);
+            auto err = cudaMalloc(&ptr, size);
+            if (err != cudaSuccess)
+            {
+                LOG(FATAL) << "Cuda allocation failed while alloce " << size << " bytes: " << cudaGetErrorString(err);
+                throw std::bad_alloc();
+            }
             return ptr;
         }
 

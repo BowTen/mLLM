@@ -6,15 +6,13 @@
 #include <armadillo>
 #include "allocator.h"
 #include "buffer.h"
+#include "common.h"
 
 #define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 namespace mllm
 {
-#define DEBUG 1
-#define TRACE 2
-
     namespace base
     {
         enum Device

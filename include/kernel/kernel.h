@@ -23,10 +23,15 @@ namespace mllm
                                   base::Tensor *input1,
                                   base::Tensor *output,
                                   void *stream);
+        typedef void (*MatMulKernel)(base::Tensor *input0,
+                                     base::Tensor *input1,
+                                     base::Tensor *output,
+                                     void *stream);
 
         EmbeddingKernel get_emb_kernel(base::Device device);
         RMSNormKernel get_rmsnorm_kernel(base::Device device);
         AddKernel get_add_kernel(base::Device device);
+        MatMulKernel get_matmul_kernel(base::Device device);
     }
 }
 

@@ -20,6 +20,7 @@ add_executable(emb_kernel_test emb_kernel_test.cpp)
 add_executable(qwen3_test qwen3_test.cpp)
 add_executable(rms_norm_kernel_test rms_nrom_kernel_test.cpp)
 add_executable(add_kernel_test add_kernel_test.cpp)
+add_executable(mat_mul_kernel_test mat_mul_kernel_test.cpp)
 
 # Link libraries
 target_link_libraries(tokenizer_test 
@@ -73,6 +74,8 @@ target_link_libraries(emb_kernel_test
     ${GTEST_LIBRARIES}
     ${GTEST_MAIN_LIBRARIES}
     Threads::Threads
+    armadillo
+    openblas
 )
 target_include_directories(emb_kernel_test PRIVATE ${GTEST_INCLUDE_DIRS})
 target_compile_options(emb_kernel_test PRIVATE ${GTEST_CFLAGS_OTHER})
@@ -85,6 +88,8 @@ target_link_libraries(qwen3_test
     Threads::Threads
     model
     glog
+    armadillo
+    openblas
 )
 target_include_directories(qwen3_test PRIVATE ${GTEST_INCLUDE_DIRS})
 target_compile_options(qwen3_test PRIVATE ${GTEST_CFLAGS_OTHER})
@@ -95,6 +100,8 @@ target_link_libraries(rms_norm_kernel_test
     ${GTEST_LIBRARIES}
     ${GTEST_MAIN_LIBRARIES}
     Threads::Threads
+    armadillo
+    openblas
 )
 target_include_directories(rms_norm_kernel_test PRIVATE ${GTEST_INCLUDE_DIRS})
 target_compile_options(rms_norm_kernel_test PRIVATE ${GTEST_CFLAGS_OTHER})
@@ -106,9 +113,24 @@ target_link_libraries(add_kernel_test
     ${GTEST_LIBRARIES}
     ${GTEST_MAIN_LIBRARIES}
     Threads::Threads
+    armadillo
+    openblas
 )
 target_include_directories(add_kernel_test PRIVATE ${GTEST_INCLUDE_DIRS})
 target_compile_options(add_kernel_test PRIVATE ${GTEST_CFLAGS_OTHER})
+
+target_link_libraries(mat_mul_kernel_test 
+    base  # Link to the base library from src
+    kernel  # Link to the kernel library from src
+    op
+    ${GTEST_LIBRARIES}
+    ${GTEST_MAIN_LIBRARIES}
+    Threads::Threads
+    armadillo
+    openblas
+)
+target_include_directories(mat_mul_kernel_test PRIVATE ${GTEST_INCLUDE_DIRS})
+target_compile_options(mat_mul_kernel_test PRIVATE ${GTEST_CFLAGS_OTHER})
 
 # Enable testing
 enable_testing()
@@ -123,3 +145,4 @@ add_test(NAME EmbKernelTest COMMAND emb_kernel_test)
 add_test(NAME Qwen3Test COMMAND qwen3_test)
 add_test(NAME RMSNormKernelTest COMMAND rms_norm_kernel_test)
 add_test(NAME AddKernelTest COMMAND add_kernel_test)
+add_test(NAME MatMulKernelTest COMMAND mat_mul_kernel_test)

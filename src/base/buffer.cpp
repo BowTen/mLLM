@@ -1,5 +1,6 @@
 #include "base/buffer.h"
 #include "base/allocator.h"
+#include "base/common.h"
 #include <iostream>
 #include <algorithm>
 
@@ -12,8 +13,15 @@ namespace mllm
     {
         // Buffer implementation
         Buffer::Buffer(Allocator *alloc, size_t size)
-            : allocator(alloc), data_(allocator->allocate(size))
+            : allocator(alloc)
         {
+            if (size == 0)
+            {
+                VLOG(DEBUG) << "allocating zero size buffer, data pointer will be null.";
+                data_ = nullptr;
+                return;
+            }
+            data_ = allocator->allocate(size);
             if (!data_)
             {
                 throw std::bad_alloc();

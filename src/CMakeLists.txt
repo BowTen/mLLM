@@ -24,6 +24,8 @@ add_library(kernel
     kernel/cuda/rms_norm_kernel.cu
     kernel/cpu/add_kernel.cpp
     kernel/cuda/add_kernel.cu
+    kernel/cpu/mat_mul_kernel.cpp
+    kernel/cuda/mat_mul_kernel.cu
 )
 add_library(model 
     model/qwen3.cpp
@@ -31,9 +33,12 @@ add_library(model
 
 # Link libraries
 find_package(CUDAToolkit REQUIRED)
-target_link_libraries(base glog CUDA::cudart)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(ARMADILLO REQUIRED armadillo)
+
+target_link_libraries(base glog CUDA::cudart armadillo openblas)
 target_link_libraries(tokenizer base)
-target_link_libraries(kernel base)
+target_link_libraries(kernel base armadillo openblas)
 target_link_libraries(op base kernel)
 target_link_libraries(model tokenizer op)
 

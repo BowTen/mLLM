@@ -1,8 +1,193 @@
 #include <gtest/gtest.h>
 #include "base/buffer.h"
 #include "base/allocator.h"
+#include "base/tensor.h"
 #include <cstring>
 #include <vector>
+
+#define GLOG_USE_GLOG_EXPORT
+#include <glog/logging.h>
+
+// ArrBuffer测试
+class ArrBufferTestCUDA : public ::testing::Test
+{
+protected:
+    void SetUp() override
+    {
+        google::InitGoogleLogging("ArrBufferTest");
+        FLAGS_logtostderr = true; // Log to stderr for visibility in tests
+        allocator = mllm::base::CudaAllocator::getInstance();
+    }
+
+    void TearDown() override
+    {
+        // Clean up resources if needed
+        google::ShutdownGoogleLogging();
+    }
+
+    mllm::base::Allocator *allocator;
+};
+
+TEST_F(ArrBufferTestCUDA, AllocMore)
+{
+    size_t test_size = 1024 * 1024; // 1MB
+    std::vector<mllm::base::ArrBuffer> vec;
+    for (size_t i = 1; i <= 250; i++)
+    {
+        vec.push_back(mllm::base::ArrBuffer(allocator, test_size));
+    }
+
+    LOG(INFO) << "alloc 10 GB on CUDA, keep 5 sec...";
+    sleep(5);
+    LOG(INFO) << "alloc 10 GB on CUDA, keep 5 sec over";
+
+    for (auto &buffer : vec)
+    {
+        EXPECT_EQ(buffer.size(), test_size);
+        EXPECT_NE(buffer.data(), nullptr);
+    }
+}
+
+TEST_F(ArrBufferTestCUDA, BasicConstruction)
+{
+    size_t test_size = 1024;
+    mllm::base::ArrBuffer buffer(allocator, test_size);
+
+    EXPECT_EQ(buffer.size(), test_size);
+    EXPECT_NE(buffer.data(), nullptr);
+}
+
+TEST_F(ArrBufferTestCUDA, ZeroSizeConstruction)
+{
+    mllm::base::ArrBuffer buffer(allocator, 0);
+
+    EXPECT_EQ(buffer.size(), 0);
+    EXPECT_EQ(buffer.data(), nullptr); // 即使大小为0，data()也应该返回有效指针
+}
+
+TEST_F(ArrBufferTestCUDA, LargeSizeConstruction)
+{
+    size_t large_size = 1024 * 1024; // 1MB
+    mllm::base::ArrBuffer buffer(allocator, large_size);
+
+    EXPECT_EQ(buffer.size(), large_size);
+    EXPECT_NE(buffer.data(), nullptr);
+}
+
+// VecBuffer测试
+class VecBufferTestCUDA : public ::testing::Test
+{
+protected:
+    void SetUp() override
+    {
+        allocator = mllm::base::CudaAllocator::getInstance();
+        google::InitGoogleLogging("VecBufferTest");
+        FLAGS_logtostderr = true; // Log to stderr for visibility in tests
+    }
+
+    void TearDown() override
+    {
+        // Clean up resources if needed
+        google::ShutdownGoogleLogging();
+    }
+
+    mllm::base::Allocator *allocator;
+};
+
+TEST_F(VecBufferTestCUDA, BasicConstruction)
+{
+    size_t initial_capacity = 100;
+    size_t initial_size = 50;
+    mllm::base::VecBuffer buffer(allocator, initial_capacity, initial_size);
+
+    EXPECT_EQ(buffer.size(), initial_size);
+    EXPECT_EQ(buffer.capacity(), initial_capacity);
+    EXPECT_NE(buffer.data(), nullptr);
+}
+
+TEST_F(VecBufferTestCUDA, ConstructionWithSizeLargerThanCapacity)
+{
+    size_t initial_capacity = 50;
+    size_t initial_size = 100;
+    mllm::base::VecBuffer buffer(allocator, initial_capacity, initial_size);
+
+    EXPECT_EQ(buffer.size(), initial_size);
+    EXPECT_EQ(buffer.capacity(), initial_size); // capacity应该扩展到size
+    EXPECT_NE(buffer.data(), nullptr);
+}
+
+TEST_F(VecBufferTestCUDA, ReserveSmallerCapacity)
+{
+    size_t initial_capacity = 100;
+    size_t initial_size = 50;
+    mllm::base::VecBuffer buffer(allocator, initial_capacity, initial_size);
+
+    size_t smaller_capacity = 30; // 小于当前capacity
+    buffer.reserve(smaller_capacity);
+
+    // capacity不应该缩小
+    EXPECT_EQ(buffer.capacity(), initial_capacity);
+    EXPECT_EQ(buffer.size(), initial_size);
+}
+
+// 边界条件和异常处理测试
+class BufferExceptionTestCUDA : public ::testing::Test
+{
+protected:
+    void SetUp() override
+    {
+        allocator = mllm::base::CudaAllocator::getInstance();
+    }
+
+    mllm::base::Allocator *allocator;
+};
+
+TEST_F(BufferExceptionTestCUDA, ArrBufferMaxSize)
+{
+    // 测试非常大的size（但不会导致内存分配失败的size）
+    size_t large_size = 1024 * 1024 * 10; // 10MB
+    try
+    {
+        mllm::base::ArrBuffer buffer(allocator, large_size);
+        EXPECT_EQ(buffer.size(), large_size);
+        EXPECT_NE(buffer.data(), nullptr);
+    }
+    catch (const std::bad_alloc &)
+    {
+        // 如果内存不足，这是可以接受的
+        SUCCEED() << "Memory allocation failed as expected for very large size";
+    }
+}
+
+TEST_F(BufferExceptionTestCUDA, VecBufferGrowthPattern)
+{
+    size_t initial_capacity = 4;
+    size_t initial_size = 0;
+    mllm::base::VecBuffer buffer(allocator, initial_capacity, initial_size);
+
+    // 测试容量增长模式
+    std::vector<size_t> capacities;
+    capacities.push_back(buffer.capacity());
+
+    // 连续添加数据，观察容量增长
+    for (int i = 0; i < 10; ++i)
+    {
+        std::string data = "data" + std::to_string(i) + " ";
+        buffer.concat(data.c_str(), data.length());
+
+        size_t current_capacity = buffer.capacity();
+        if (current_capacity != capacities.back())
+        {
+            capacities.push_back(current_capacity);
+        }
+    }
+
+    // 验证容量是递增的
+    for (size_t i = 1; i < capacities.size(); ++i)
+    {
+        EXPECT_GT(capacities[i], capacities[i - 1]);
+    }
+}
 
 // ArrBuffer测试
 class ArrBufferTest : public ::testing::Test
@@ -10,7 +195,15 @@ class ArrBufferTest : public ::testing::Test
 protected:
     void SetUp() override
     {
+        google::InitGoogleLogging("Qwen3Test");
+        FLAGS_logtostderr = true; // Log to stderr for visibility in tests
         allocator = mllm::base::HostAllocator::getInstance();
+    }
+
+    void TearDown() override
+    {
+        // Clean up resources if needed
+        google::ShutdownGoogleLogging();
     }
 
     mllm::base::Allocator *allocator;
@@ -30,7 +223,7 @@ TEST_F(ArrBufferTest, ZeroSizeConstruction)
     mllm::base::ArrBuffer buffer(allocator, 0);
 
     EXPECT_EQ(buffer.size(), 0);
-    EXPECT_NE(buffer.data(), nullptr); // 即使大小为0，data()也应该返回有效指针
+    EXPECT_EQ(buffer.data(), nullptr); // 即使大小为0，data()也应该返回有效指针
 }
 
 TEST_F(ArrBufferTest, LargeSizeConstruction)
@@ -68,6 +261,14 @@ protected:
     void SetUp() override
     {
         allocator = mllm::base::HostAllocator::getInstance();
+        google::InitGoogleLogging("Qwen3Test");
+        FLAGS_logtostderr = true; // Log to stderr for visibility in tests
+    }
+
+    void TearDown() override
+    {
+        // Clean up resources if needed
+        google::ShutdownGoogleLogging();
     }
 
     mllm::base::Allocator *allocator;

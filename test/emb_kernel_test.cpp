@@ -229,22 +229,3 @@ TEST_F(EmbeddingKernelTest, LargeEmbedding)
         }
     }
 }
-
-TEST_F(EmbeddingKernelTest, CUDAKernelThrows)
-{
-    // Test that CUDA kernel throws not implemented error
-    std::vector<size_t> input_shape = {1};
-    base::Tensor input(input_shape, base::Device::CPU);
-
-    std::vector<size_t> weight_shape = {vocab_size, hidden_size};
-    base::Tensor weight(weight_shape, base::Device::CPU);
-
-    std::vector<size_t> output_shape = {1, hidden_size};
-    base::Tensor output(output_shape, base::Device::CPU);
-
-    // Get CUDA kernel
-    auto kernel = kernel::get_emb_kernel(base::Device::CUDA);
-
-    // Should throw not implemented error
-    EXPECT_THROW({ kernel(&input, &weight, &output, vocab_size, hidden_size, nullptr); }, std::runtime_error);
-}

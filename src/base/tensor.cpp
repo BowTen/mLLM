@@ -118,6 +118,7 @@ namespace mllm
             cudaMemcpy(new_buffer->data(), buffer_->data(), buffer_->size(), device == Device::CPU ? cudaMemcpyDeviceToHost : cudaMemcpyHostToDevice);
             buffer_ = new_buffer;
             device_ = device;
+            VLOG(DEBUG) << "Tensor transferred successfully.";
         }
     } // namespace base
 } // namespace mllm
