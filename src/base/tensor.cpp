@@ -3,6 +3,7 @@
 #include "base/tensor.h"
 #include "base/allocator.h"
 #include "base/buffer.h"
+#include "kernel/kernel.h"
 #include <cuda_runtime.h>
 
 #define GLOG_USE_GLOG_EXPORT
@@ -12,8 +13,21 @@ namespace mllm
 {
     namespace base
     {
+        std::vector<size_t> Tensor::default_stride(const std::vector<size_t> &shape)
+        {
+            if (shape.empty())
+                return {};
+            std::vector<size_t> stride(shape.size());
+            stride.back() = 1;
+            for (int i = shape.size() - 2; i >= 0; --i)
+            {
+                stride[i] = stride[i + 1] * shape[i + 1];
+            }
+            return stride;
+        }
+
         Tensor::Tensor(const std::vector<size_t> &shape, Device device, bool mut)
-            : shape_(shape), device_(device), mut_(mut)
+            : shape_(shape), stride_(default_stride(shape)), is_contiguous_(true), device_(device), mut_(mut)
         {
             size_t expected_size = 1;
             for (auto dim : shape)
@@ -35,7 +49,7 @@ namespace mllm
         }
 
         Tensor::Tensor(void *data, const std::vector<size_t> &shape, Device device, bool mut)
-            : shape_(shape), device_(device), mut_(mut)
+            : shape_(shape), stride_(default_stride(shape)), is_contiguous_(true), device_(device), mut_(mut)
         {
             if (isDevicePointer(data) != (device == Device::CUDA))
             {
@@ -58,11 +72,6 @@ namespace mllm
                 buffer_ = std::make_shared<VecBuffer>(allocator, data, expected_size * sizeof(float), expected_size * sizeof(float));
             else
                 buffer_ = std::make_shared<ArrBuffer>(allocator, data, expected_size * sizeof(float));
-        }
-
-        const std::vector<size_t> &Tensor::shape() const
-        {
-            return shape_;
         }
 
         size_t Tensor::size() const
@@ -110,7 +119,83 @@ namespace mllm
 
         Tensor Tensor::clone()
         {
-            return Tensor(shape_, Buffer::BufferPtr(buffer_->clone()), device_, mut_);
+            auto new_tensor = Tensor(shape_, buffer_->clone(), device_, mut_);
+            new_tensor.stride_ = stride_;
+            return new_tensor;
+        }
+
+        void Tensor::check_contiguous()
+        {
+            if (stride_.back() != 1)
+            {
+                is_contiguous_ = false;
+                return;
+            }
+            for (int32_t i = stride_.size() - 2; i >= 0; --i)
+            {
+                if (stride_[i] != stride_[i + 1] * shape_[i + 1])
+                {
+                    is_contiguous_ = false;
+                    return;
+                }
+            }
+            is_contiguous_ = true;
+        }
+
+        void Tensor::view(std::vector<size_t> shape)
+        {
+            if (!is_contiguous_)
+            {
+                throw std::runtime_error("Tensor must be contiguous to use view.");
+            }
+            size_t new_size = 1;
+            for (auto s : shape)
+            {
+                new_size *= s;
+            }
+            if (new_size != this->size())
+            {
+                throw std::invalid_argument("New shape size must match the original size.");
+            }
+            shape_ = shape;
+            stride_ = Tensor::default_stride(shape_);
+        }
+
+        void Tensor::reshape(std::vector<size_t> shape)
+        {
+            if (!is_contiguous_)
+            {
+                this->contiguous();
+            }
+            view(shape);
+        }
+
+        void Tensor::contiguous(cudaStream_t stream)
+        {
+            if (is_contiguous_)
+                return;
+            kernel::get_contiguous_kernel(device_)(this, stream);
+            stride_ = default_stride(shape_);
+            check_contiguous();
+            CHECK(is_contiguous_) << "Tensor faild to contiguous";
+        }
+        void Tensor::transpose(size_t i, size_t j)
+        {
+            if (i >= shape_.size() || j >= shape_.size())
+            {
+                throw std::invalid_argument("Invalid transpose dimensions.");
+            }
+            std::swap(shape_[i], shape_[j]);
+            std::swap(stride_[i], stride_[j]);
+            check_contiguous();
+        }
+        void Tensor::t()
+        {
+            if (shape_.size() < 2)
+            {
+                throw std::invalid_argument("Invalid transpose dimensions.");
+            }
+            transpose(shape_.size() - 1, shape_.size() - 2);
         }
     } // namespace base
 } // namespace mllm

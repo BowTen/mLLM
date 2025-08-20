@@ -52,6 +52,7 @@ target_compile_options(buffer_test PRIVATE ${GTEST_CFLAGS_OTHER})
 
 target_link_libraries(tensor_test 
     base  # Link to the base library from src
+    kernel
     ${GTEST_LIBRARIES}
     ${GTEST_MAIN_LIBRARIES}
     Threads::Threads

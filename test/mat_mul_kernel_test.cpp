@@ -235,7 +235,6 @@ TEST_F(MatMulKernelTest, CPUMatMulLargeMatrices)
     // Verify a few sample positions manually
     auto shape0_vec = input0.shape();
     auto shape1_vec = input1.shape();
-    size_t M = shape0_vec[0];
     size_t K = shape0_vec[1];
     size_t N = shape1_vec[1];
 

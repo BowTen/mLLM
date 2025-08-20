@@ -28,6 +28,8 @@ add_library(kernel
     kernel/cuda/add_kernel.cu
     kernel/cpu/mat_mul_kernel.cpp
     kernel/cuda/mat_mul_kernel.cu
+    kernel/cpu/contiguous_kernel.cpp
+    kernel/cuda/contiguous_kernel.cu
 )
 add_library(model 
     model/qwen3.cpp

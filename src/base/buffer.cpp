@@ -64,10 +64,11 @@ namespace mllm
             return size_;
         }
 
-        Buffer *ArrBuffer::clone() const
+        Buffer::BufferPtr ArrBuffer::clone(bool copy_data) const
         {
-            auto new_buffer = new ArrBuffer(this->allocator, this->size());
-            allocator->memcpy(new_buffer->data(), this->data_, this->size());
+            auto new_buffer = std::make_shared<ArrBuffer>(this->allocator, this->size());
+            if (copy_data)
+                allocator->memcpy(new_buffer->data(), this->data_, this->size());
             return new_buffer;
         }
 
@@ -125,10 +126,11 @@ namespace mllm
             return capacity_;
         }
 
-        Buffer *VecBuffer::clone() const
+        Buffer::BufferPtr VecBuffer::clone(bool copy_data) const
         {
-            auto new_buffer = new VecBuffer(this->allocator, this->capacity_, this->size_);
-            allocator->memcpy(new_buffer->data(), this->data_, this->size_);
+            auto new_buffer = std::make_shared<VecBuffer>(this->allocator, this->capacity_, this->size_);
+            if (copy_data)
+                allocator->memcpy(new_buffer->data(), this->data_, this->size_);
             return new_buffer;
         }
     } // namespace base

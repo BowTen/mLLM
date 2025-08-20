@@ -24,7 +24,7 @@ namespace mllm
             virtual ~Buffer();
 
             virtual size_t size() const = 0;
-            virtual Buffer *clone() const = 0;
+            virtual BufferPtr clone(bool copy_data = true) const = 0;
 
             void *data();
         };
@@ -38,7 +38,7 @@ namespace mllm
             ArrBuffer(Allocator *alloc, void *data, size_t size);
 
             size_t size() const override;
-            Buffer *clone() const override;
+            BufferPtr clone(bool copy_data = true) const override;
         };
 
         class VecBuffer : public Buffer
@@ -55,7 +55,7 @@ namespace mllm
             void reserve(size_t new_capacity);
 
             size_t size() const override;
-            Buffer *clone() const override;
+            BufferPtr clone(bool copy_data = true) const override;
 
             size_t capacity() const;
         };
