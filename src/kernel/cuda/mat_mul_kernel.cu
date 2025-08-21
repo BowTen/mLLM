@@ -8,120 +8,206 @@ namespace mllm
 {
     namespace kernel
     {
-        __global__ void mat_mul_kernel_cuda_fp32_vec_fine(float *input0_data,
-                                                          float *input1_data,
+        __device__ void mat_mul_kernel_cuda_fp32_vec_fine(float *mat0_data,
+                                                          float *mat1_data,
                                                           float *output_data,
-                                                          uint32_t hidden_size)
+                                                          uint32_t N,
+                                                          uint32_t K,
+                                                          uint32_t M)
         {
-            uint32_t vec_size = hidden_size / 4; // 每个线程处理4个元素
-            uint32_t row = blockIdx.x;
-            uint32_t col = blockIdx.y;
-            uint32_t m = gridDim.y;
-            uint32_t thread_id = threadIdx.x;
+            int32_t row = blockIdx.y;
+            int32_t col = blockIdx.z;
 
-            float4 *input0_vec = reinterpret_cast<float4 *>(input0_data + row * hidden_size);
+            float4 *row_data_vec = reinterpret_cast<float4 *>(mat0_data + row * K);
+            int32_t vec_size = K / 4; // 每个线程处理4个元素
+            int32_t vec_end = vec_size * 4;
 
-            float sum = 0.f;
-            for (int32_t i = thread_id; i < vec_size; i += blockDim.x)
+            float sum = 0.0f;
+            for (int32_t i = threadIdx.x; i < vec_size; i += blockDim.x)
             {
-                float4 a = input0_vec[i];
-                sum += a.x * input1_data[i * 4 * m + col] +
-                       a.y * input1_data[(i * 4 + 1) * m + col] +
-                       a.z * input1_data[(i * 4 + 2) * m + col] +
-                       a.w * input1_data[(i * 4 + 3) * m + col];
+                float4 a = row_data_vec[i];
+                sum += a.x * mat1_data[i * 4 * M + col] +
+                       a.y * mat1_data[(i * 4 + 1) * M + col] +
+                       a.z * mat1_data[(i * 4 + 2) * M + col] +
+                       a.w * mat1_data[(i * 4 + 3) * M + col];
             }
-            uint32_t vec_end = vec_size * 4;
-            for (int32_t i = vec_end + thread_id; i < hidden_size; i += blockDim.x)
+            for (int32_t i = vec_end + threadIdx.x; i < K; i += blockDim.x)
             {
-                sum += input0_data[row * hidden_size + i] * input1_data[i * m + col];
+                sum += mat0_data[row * K + i] * mat1_data[i * M + col];
             }
 
             using BlockReduce = cub::BlockReduce<float, 128>;
             __shared__ typename BlockReduce::TempStorage temp_storage;
             sum = BlockReduce(temp_storage).Sum(sum);
-            if (thread_id == 0)
+            if (threadIdx.x == 0)
             {
-                output_data[row * m + col] = sum;
+                output_data[row * M + col] = sum;
             }
         }
+        __global__ void mat_mul_kernel_cuda_fp32_vec_fine_router(float *input0_data,
+                                                                 float *input1_data,
+                                                                 float *output_data,
+                                                                 uint32_t N,
+                                                                 uint32_t K,
+                                                                 uint32_t M)
+        {
+            uint32_t mat_id = blockIdx.x;
+            mat_mul_kernel_cuda_fp32_vec_fine(input0_data + mat_id * N * K,
+                                              input1_data + mat_id * K * M,
+                                              output_data + mat_id * N * M,
+                                              N, K, M);
+        }
 
-        __global__ void mat_mul_kernel_cuda_fp32_vec(float *input0_data,
-                                                     float *input1_data,
+        __device__ void mat_mul_kernel_cuda_fp32_vec(float *mat0_data,
+                                                     float *mat1_data,
                                                      float *output_data,
+                                                     uint32_t N,
                                                      uint32_t K,
                                                      uint32_t M)
         {
+            uint32_t row = blockIdx.y;
+
+            float4 *row_data_vec = reinterpret_cast<float4 *>(mat0_data + row * K);
             uint32_t vec_size = K / 4; // 每个线程处理4个元素
             uint32_t vec_end = vec_size * 4;
-            uint32_t row = blockIdx.x;
-            float4 *input0_vec = reinterpret_cast<float4 *>(input0_data + row * K);
 
-            for (uint32_t j = 0; j < M; j++)
+            using BlockReduce = cub::BlockReduce<float, 128>;
+
+            for (uint32_t col = 0; col < M; col++)
             {
-                float sum = 0.f;
-                for (int32_t i = threadIdx.x; i < vec_size; i += blockDim.x)
+                float sum = 0.0f;
+                for (uint32_t i = threadIdx.x; i < vec_size; i += blockDim.x)
                 {
-                    float4 a = input0_vec[i];
-                    sum += a.x * input1_data[i * 4 * M + j] +
-                           a.y * input1_data[(i * 4 + 1) * M + j] +
-                           a.z * input1_data[(i * 4 + 2) * M + j] +
-                           a.w * input1_data[(i * 4 + 3) * M + j];
+                    float4 a = row_data_vec[i];
+                    sum += a.x * mat1_data[i * 4 * M + col] +
+                           a.y * mat1_data[(i * 4 + 1) * M + col] +
+                           a.z * mat1_data[(i * 4 + 2) * M + col] +
+                           a.w * mat1_data[(i * 4 + 3) * M + col];
                 }
-                for (int32_t i = vec_end + threadIdx.x; i < K; i += blockDim.x)
+                for (uint32_t i = vec_end + threadIdx.x; i < K; i += blockDim.x)
                 {
-                    sum += input0_data[row * K + i] * input1_data[i * M + j];
+                    sum += mat0_data[row * K + i] * mat1_data[i * M + col];
                 }
-
-                using BlockReduce = cub::BlockReduce<float, 128>;
                 __shared__ typename BlockReduce::TempStorage temp_storage;
                 sum = BlockReduce(temp_storage).Sum(sum);
                 if (threadIdx.x == 0)
                 {
-                    output_data[row * M + j] = sum;
+                    output_data[row * M + col] = sum;
                 }
+                __syncthreads();
             }
+        }
+        __global__ void mat_mul_kernel_cuda_fp32_vec_router(float *input0_data,
+                                                            float *input1_data,
+                                                            float *output_data,
+                                                            uint32_t N,
+                                                            uint32_t K,
+                                                            uint32_t M)
+        {
+            uint32_t mat_id = blockIdx.x;
+            mat_mul_kernel_cuda_fp32_vec(input0_data + mat_id * N * K,
+                                         input1_data + mat_id * K * M,
+                                         output_data + mat_id * N * M,
+                                         N, K, M);
+        }
+
+        void _mat_mul(base::Tensor *input0, base::Tensor *input1, base::Tensor *output, uint32_t N, uint32_t K, uint32_t M)
+        {
+            using namespace std;
+            input0->toDevice(base::Device::CPU);
+            input1->toDevice(base::Device::CPU);
+            output->toDevice(base::Device::CPU);
+            cout << "input0: \n";
+            for (size_t i = 0; i < N; i++)
+            {
+                for (size_t j = 0; j < K; j++)
+                {
+                    cout << *((*input0)[std::vector<size_t>({i, j})]) << " ";
+                }
+                cout << '\n';
+            }
+            cout << "input1: \n";
+            for (size_t i = 0; i < K; i++)
+            {
+                for (size_t j = 0; j < M; j++)
+                {
+                    cout << *((*input1)[std::vector<size_t>({i, j})]) << " ";
+                }
+                cout << '\n';
+            }
+            cout << "output:\n";
+            for (size_t i = 0; i < N; i++)
+            {
+                for (size_t j = 0; j < M; j++)
+                {
+                    *((*output)[std::vector<size_t>({i, j})]) = 0.0f;
+                    for (size_t k = 0; k < K; k++)
+                    {
+                        *((*output)[std::vector<size_t>({i, j})]) +=
+                            *((*input0)[std::vector<size_t>({i, k})]) * *((*input1)[std::vector<size_t>({k, j})]);
+                    }
+                    cout << *((*output)[std::vector<size_t>({i, j})]) << ' ';
+                }
+                cout << '\n';
+            }
+            // input0->toDevice(base::Device::CUDA);
+            // input1->toDevice(base::Device::CUDA);
+            // output->toDevice(base::Device::CUDA);
         }
 
         // TODO: 优化列数小的矩阵
         void mat_mul_kernel_cuda_vec(base::Tensor *input0, base::Tensor *input1, base::Tensor *output, void *stream)
         {
-            auto shape0 = input0->shape();
-            auto shape1 = input1->shape();
-            uint32_t N = shape0[0];
-            uint32_t K = shape0[1];
-            uint32_t M = shape1[1];
+            CHECK(input0->num_mats() > 0);
+            CHECK(input0->num_mats() == input1->num_mats());
+            CHECK(input0->num_mats() == output->num_mats());
+            CHECK(input0->shape(-1) == input1->shape(-2));
+            CHECK(input0->shape(-2) == output->shape(-2));
+            CHECK(input1->shape(-1) == output->shape(-1));
+            input0->contiguous();
+            input1->contiguous();
+            output->contiguous();
+            uint32_t num_mats = input0->num_mats();
+            uint32_t N = input0->shape(-2);
+            uint32_t K = input0->shape(-1);
+            uint32_t M = input1->shape(-1);
+            VLOG(DEBUG) << "Matrix multiplication dimensions: " << num_mats << "x" << N << "x" << K << " and " << K << "x" << M;
 
             constexpr uint32_t MAX_BLOCK = 4096;
-            if (N * M > MAX_BLOCK)
+            if (num_mats * N * M > MAX_BLOCK)
             {
+                VLOG(DEBUG) << "Using mat_mul_kernel_cuda_fp32_vec for large matrix multiplication.";
+                // 每个线程块处理output中的一行
+                dim3 blockDim(128);
+                dim3 gridDim(num_mats, N);
                 if (stream == nullptr)
                 {
-                    VLOG(DEBUG) << "Using mat_mul_kernel_cuda_fp32_vec for large matrix multiplication. without stream.";
-                    mat_mul_kernel_cuda_fp32_vec<<<N, dim3(128)>>>(
-                        input0->data(), input1->data(), output->data(), K, M);
-                    VLOG(DEBUG) << "Finished mat_mul_kernel_cuda_fp32_vec for large matrix multiplication. without stream.";
+                    LOG(WARNING) << "Using mat_mul_kernel_cuda_fp32_vec for large matrix multiplication. without stream.";
+                    mat_mul_kernel_cuda_fp32_vec_router<<<gridDim, blockDim>>>(
+                        input0->data(), input1->data(), output->data(), N, K, M);
                 }
                 else
                 {
-                    mat_mul_kernel_cuda_fp32_vec<<<N, dim3(128), 0, static_cast<cudaStream_t>(stream)>>>(
-                        input0->data(), input1->data(), output->data(), K, M);
+                    mat_mul_kernel_cuda_fp32_vec_router<<<gridDim, blockDim, 0, static_cast<cudaStream_t>(stream)>>>(
+                        input0->data(), input1->data(), output->data(), N, K, M);
                 }
             }
             else
             {
+                VLOG(DEBUG) << "Using mat_mul_kernel_cuda_fp32_vec_fine for small matrix multiplication.";
+                // 每个线程块处理output中的一个元素
                 dim3 blockDim(128);
-                dim3 gridDim(N, M);
+                dim3 gridDim(num_mats, N, M);
                 if (stream == nullptr)
                 {
-                    VLOG(DEBUG) << "Using mat_mul_kernel_cuda_fp32_vec_fine for small matrix multiplication. without stream.";
-                    mat_mul_kernel_cuda_fp32_vec_fine<<<gridDim, blockDim>>>(
-                        input0->data(), input1->data(), output->data(), K);
-                    VLOG(DEBUG) << "Finished mat_mul_kernel_cuda_fp32_vec_fine for small matrix multiplication. without stream.";
+                    LOG(WARNING) << "Using mat_mul_kernel_cuda_fp32_vec_fine for small matrix multiplication. without stream.";
+                    mat_mul_kernel_cuda_fp32_vec_fine_router<<<gridDim, blockDim>>>(
+                        input0->data(), input1->data(), output->data(), N, K, M);
                 }
                 else
                 {
-                    mat_mul_kernel_cuda_fp32_vec_fine<<<gridDim, blockDim, 0, static_cast<cudaStream_t>(stream)>>>(
-                        input0->data(), input1->data(), output->data(), K);
+                    mat_mul_kernel_cuda_fp32_vec_fine_router<<<gridDim, blockDim, 0, static_cast<cudaStream_t>(stream)>>>(
+                        input0->data(), input1->data(), output->data(), N, K, M);
                 }
             }
         }

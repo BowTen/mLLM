@@ -3,417 +3,368 @@
 #include <gtest/gtest.h>
 #include <vector>
 #include <cmath>
-#include <random>
-
-#include <cuda_runtime.h>
+#include <armadillo>
 
 using namespace mllm;
 using namespace mllm::base;
 
-class MatMulKernelTest : public ::testing::Test
+#define GLOG_USE_GLOG_EXPORT
+#include <glog/logging.h>
+
+class SmallMatMulTest : public ::testing::Test
 {
 protected:
+    std::vector<size_t> shape_a;
+    std::vector<size_t> shape_b;
+    std::vector<size_t> shape_o;
+    Tensor cpu_input0;
+    Tensor cpu_input1;
+    Tensor cpu_output;
+    Tensor cuda_input0;
+    Tensor cuda_input1;
+    Tensor cuda_output;
+
+    std::mt19937 rnd;
+    std::uniform_real_distribution<> urd;
+    SmallMatMulTest() : rnd(std::random_device{}()), urd(0.0, 1.0) {}
+
     void SetUp() override
     {
-        // Initialize test parameters
-        tolerance = 1e-5f;
+        google::InitGoogleLogging("SmallMatMulTest");
 
-        // Initialize random number generator for consistent tests
-        rng.seed(42);
-        dist = std::uniform_real_distribution<float>(-1.0f, 1.0f);
+        FLAGS_logtostderr = true;
+        // shape_a = {16, 8};
+        // shape_b = {8, 8};
+        // shape_o = {16, 8};
+        // shape_a = {4, 4};
+        // shape_b = {4, 2};
+        // shape_o = {4, 2};
+        shape_a = {128, 128};
+        shape_b = {128, 32};
+        shape_o = {128, 32};
+        cpu_input0 = Tensor(shape_a);
+        cpu_input1 = Tensor(shape_b);
+        cpu_output = Tensor(shape_o);
+        cuda_input0 = Tensor(shape_a);
+        cuda_input1 = Tensor(shape_b);
+        cuda_output = Tensor(shape_o);
+
+        size_t size0 = cpu_input0.size();
+        size_t size1 = cpu_input1.size();
+        for (size_t i = 0; i < size0; i++)
+        {
+            *cuda_input0[i] = *cpu_input0[i] = urd(rnd);
+        }
+        for (size_t i = 0; i < size1; i++)
+        {
+            *cuda_input1[i] = *cpu_input1[i] = urd(rnd);
+        }
+        cuda_input0.toDevice(Device::CUDA);
+        cuda_input1.toDevice(Device::CUDA);
+        cuda_output.toDevice(Device::CUDA);
     }
 
     void TearDown() override
     {
-        // Clean up if needed
+        google::ShutdownGoogleLogging();
     }
+};
+class LargeMatMulTest : public ::testing::Test
+{
+protected:
+    std::vector<size_t> shape_a;
+    std::vector<size_t> shape_b;
+    std::vector<size_t> shape_o;
+    Tensor cpu_input0;
+    Tensor cpu_input1;
+    Tensor cpu_output;
+    Tensor cuda_input0;
+    Tensor cuda_input1;
+    Tensor cuda_output;
 
-    // Helper function to fill tensor with random values
-    void fillTensorRandom(Tensor &tensor)
+    std::mt19937 rnd;
+    std::uniform_real_distribution<> urd;
+    LargeMatMulTest() : rnd(std::random_device{}()), urd(0.0, 1.0) {}
+
+    void SetUp() override
     {
-        float *data = tensor.data();
-        size_t size = tensor.size();
-        for (size_t i = 0; i < size; ++i)
+        google::InitGoogleLogging("MatMulTest");
+
+        FLAGS_logtostderr = true;
+        shape_a = {4096, 1024};
+        shape_b = {1024, 4096};
+        shape_o = {4096, 4096};
+
+        cpu_input0 = Tensor(shape_a);
+        cpu_input1 = Tensor(shape_b);
+        cpu_output = Tensor(shape_o);
+        cuda_input0 = Tensor(shape_a);
+        cuda_input1 = Tensor(shape_b);
+        cuda_output = Tensor(shape_o);
+        size_t size0 = cpu_input0.size();
+        size_t size1 = cpu_input1.size();
+        for (size_t i = 0; i < size0; i++)
         {
-            data[i] = dist(rng);
+            *cuda_input0[i] = *cpu_input0[i] = urd(rnd);
         }
+        for (size_t i = 0; i < size1; i++)
+        {
+            *cuda_input1[i] = *cpu_input1[i] = urd(rnd);
+        }
+
+        cuda_input0.toDevice(Device::CUDA);
+        cuda_input1.toDevice(Device::CUDA);
+        cuda_output.toDevice(Device::CUDA);
     }
 
-    // Helper function to fill tensor with specific values
-    void fillTensorSequential(Tensor &tensor, float start = 1.0f, float step = 1.0f)
+    void TearDown() override
     {
-        float *data = tensor.data();
-        size_t size = tensor.size();
-        for (size_t i = 0; i < size; ++i)
-        {
-            data[i] = start + static_cast<float>(i) * step;
-        }
+        google::ShutdownGoogleLogging();
     }
+};
+class SmallTensorMulTest : public ::testing::Test
+{
+protected:
+    std::vector<size_t> shape_a;
+    std::vector<size_t> shape_b;
+    std::vector<size_t> shape_o;
+    Tensor cpu_input0;
+    Tensor cpu_input1;
+    Tensor cpu_output;
+    Tensor cuda_input0;
+    Tensor cuda_input1;
+    Tensor cuda_output;
 
-    // Helper function to verify matrix multiplication manually
-    void verifyMatMul(const Tensor &input0, const Tensor &input1, const Tensor &output)
+    std::mt19937 rnd;
+    std::uniform_real_distribution<> urd;
+    SmallTensorMulTest() : rnd(std::random_device{}()), urd(0.0, 1.0) {}
+
+    void SetUp() override
     {
-        auto shape0 = input0.shape();
-        auto shape1 = input1.shape();
-        auto output_shape = output.shape();
+        google::InitGoogleLogging("SmallMatMulTest");
 
-        size_t M = shape0[0]; // rows of first matrix
-        size_t K = shape0[1]; // cols of first matrix / rows of second matrix
-        size_t N = shape1[1]; // cols of second matrix
+        FLAGS_logtostderr = true;
+        // shape_a = {16, 8};
+        // shape_b = {8, 8};
+        // shape_o = {16, 8};
+        // shape_a = {4, 4};
+        // shape_b = {4, 2};
+        // shape_o = {4, 2};
+        shape_a = {4, 2, 128, 128};
+        shape_b = {4, 2, 128, 32};
+        shape_o = {4, 2, 128, 32};
+        cpu_input0 = Tensor(shape_a);
+        cpu_input1 = Tensor(shape_b);
+        cpu_output = Tensor(shape_o);
+        cuda_input0 = Tensor(shape_a);
+        cuda_input1 = Tensor(shape_b);
+        cuda_output = Tensor(shape_o);
 
-        const float *data0 = const_cast<Tensor &>(input0).data();
-        const float *data1 = const_cast<Tensor &>(input1).data();
-        const float *output_data = const_cast<Tensor &>(output).data();
-
-        for (size_t i = 0; i < M; ++i)
+        size_t size0 = cpu_input0.size();
+        size_t size1 = cpu_input1.size();
+        for (size_t i = 0; i < size0; i++)
         {
-            for (size_t j = 0; j < N; ++j)
-            {
-                float expected = 0.0f;
-                for (size_t k = 0; k < K; ++k)
-                {
-                    expected += data0[i * K + k] * data1[k * N + j];
-                }
-                float actual = output_data[i * N + j];
-                EXPECT_NEAR(actual, expected, tolerance)
-                    << "Mismatch at position (" << i << ", " << j << "), expected: "
-                    << expected << ", actual: " << actual;
-            }
+            *cuda_input0[i] = *cpu_input0[i] = urd(rnd);
         }
+        for (size_t i = 0; i < size1; i++)
+        {
+            *cuda_input1[i] = *cpu_input1[i] = urd(rnd);
+        }
+        cuda_input0.toDevice(Device::CUDA);
+        cuda_input1.toDevice(Device::CUDA);
+        cuda_output.toDevice(Device::CUDA);
     }
 
-    float tolerance;
-    std::mt19937 rng;
-    std::uniform_real_distribution<float> dist;
+    void TearDown() override
+    {
+        google::ShutdownGoogleLogging();
+    }
+};
+class LargeTensorMulTest : public ::testing::Test
+{
+protected:
+    std::vector<size_t> shape_a;
+    std::vector<size_t> shape_b;
+    std::vector<size_t> shape_o;
+    Tensor cpu_input0;
+    Tensor cpu_input1;
+    Tensor cpu_output;
+    Tensor cuda_input0;
+    Tensor cuda_input1;
+    Tensor cuda_output;
+
+    std::mt19937 rnd;
+    std::uniform_real_distribution<> urd;
+    LargeTensorMulTest() : rnd(std::random_device{}()), urd(0.0, 1.0) {}
+
+    void SetUp() override
+    {
+        google::InitGoogleLogging("MatMulTest");
+
+        FLAGS_logtostderr = true;
+        shape_a = {4, 2, 4096, 1024};
+        shape_b = {4, 2, 1024, 4096};
+        shape_o = {4, 2, 4096, 4096};
+
+        cpu_input0 = Tensor(shape_a);
+        cpu_input1 = Tensor(shape_b);
+        cpu_output = Tensor(shape_o);
+        cuda_input0 = Tensor(shape_a);
+        cuda_input1 = Tensor(shape_b);
+        cuda_output = Tensor(shape_o);
+        size_t size0 = cpu_input0.size();
+        size_t size1 = cpu_input1.size();
+        for (size_t i = 0; i < size0; i++)
+        {
+            *cuda_input0[i] = *cpu_input0[i] = urd(rnd);
+        }
+        for (size_t i = 0; i < size1; i++)
+        {
+            *cuda_input1[i] = *cpu_input1[i] = urd(rnd);
+        }
+
+        cuda_input0.toDevice(Device::CUDA);
+        cuda_input1.toDevice(Device::CUDA);
+        cuda_output.toDevice(Device::CUDA);
+    }
+
+    void TearDown() override
+    {
+        google::ShutdownGoogleLogging();
+    }
 };
 
-TEST_F(MatMulKernelTest, CPUMatMulSquareMatrices)
+TEST_F(SmallMatMulTest, SmallMatMulCheck)
 {
-    auto allocator = HostAllocator::getInstance();
+    kernel::get_matmul_kernel(Device::CPU)(&cpu_input0, &cpu_input1, &cpu_output, nullptr);
+    kernel::get_matmul_kernel(Device::CUDA)(&cuda_input0, &cuda_input1, &cuda_output, nullptr);
 
-    // Test 4x4 * 4x4 matrix multiplication
-    std::vector<size_t> shape = {4, 4};
-    Tensor input0(shape, Device::CPU, allocator);
-    Tensor input1(shape, Device::CPU, allocator);
-    Tensor output(shape, Device::CPU, allocator);
-
-    // Fill with sequential values for easy verification
-    fillTensorSequential(input0, 1.0f, 1.0f);
-    fillTensorSequential(input1, 0.1f, 0.1f);
-
-    // Get kernel and execute
-    auto matmul_kernel = kernel::get_matmul_kernel(Device::CPU);
-    matmul_kernel(&input0, &input1, &output, nullptr);
-
-    // Verify results
-    verifyMatMul(input0, input1, output);
-}
-
-TEST_F(MatMulKernelTest, CPUMatMulRectangularMatrices)
-{
-    auto allocator = HostAllocator::getInstance();
-
-    // Test 3x5 * 5x2 matrix multiplication
-    std::vector<size_t> shape0 = {3, 5};
-    std::vector<size_t> shape1 = {5, 2};
-    std::vector<size_t> output_shape = {3, 2};
-
-    Tensor input0(shape0, Device::CPU, allocator);
-    Tensor input1(shape1, Device::CPU, allocator);
-    Tensor output(output_shape, Device::CPU, allocator);
-
-    // Fill with sequential values
-    fillTensorSequential(input0, 1.0f, 0.5f);
-    fillTensorSequential(input1, 2.0f, 0.2f);
-
-    // Get kernel and execute
-    auto matmul_kernel = kernel::get_matmul_kernel(Device::CPU);
-    matmul_kernel(&input0, &input1, &output, nullptr);
-
-    // Verify results
-    verifyMatMul(input0, input1, output);
-}
-
-TEST_F(MatMulKernelTest, CPUMatMulIdentityMatrix)
-{
-    auto allocator = HostAllocator::getInstance();
-
-    // Test matrix * identity matrix
-    std::vector<size_t> shape = {3, 3};
-    Tensor input0(shape, Device::CPU, allocator);
-    Tensor identity(shape, Device::CPU, allocator);
-    Tensor output(shape, Device::CPU, allocator);
-
-    // Fill input0 with random values
-    fillTensorRandom(input0);
-
-    // Create identity matrix
-    float *identity_data = identity.data();
-    for (size_t i = 0; i < 9; ++i)
-        identity_data[i] = 0.0f;
-    identity_data[0] = identity_data[4] = identity_data[8] = 1.0f; // diagonal elements
-
-    // Get kernel and execute
-    auto matmul_kernel = kernel::get_matmul_kernel(Device::CPU);
-    matmul_kernel(&input0, &identity, &output, nullptr);
-
-    // Result should be the same as input0
-    float *input0_data = input0.data();
-    float *output_data = output.data();
-    for (size_t i = 0; i < 9; ++i)
+    cuda_output.toDevice(Device::CPU);
+    size_t total_size = cpu_output.size();
+    for (size_t i = 0; i < total_size; i++)
     {
-        EXPECT_NEAR(output_data[i], input0_data[i], tolerance)
-            << "Mismatch at index " << i;
+        EXPECT_FLOAT_EQ(*cpu_output[i], *cuda_output[i]) << "at index: " << i;
+        break;
+    }
+}
+TEST_F(SmallMatMulTest, SmallTransposeMatMulCheck)
+{
+    cpu_input0.t();
+    cpu_input1.t();
+    cpu_output.t();
+    cuda_input0.t();
+    cuda_input1.t();
+    cuda_output.t();
+
+    kernel::get_matmul_kernel(Device::CPU)(&cpu_input1, &cpu_input0, &cpu_output, nullptr);
+    kernel::get_matmul_kernel(Device::CUDA)(&cuda_input1, &cuda_input0, &cuda_output, nullptr);
+
+    cuda_output.toDevice(Device::CPU);
+    size_t total_size = cpu_output.size();
+    for (size_t i = 0; i < total_size; i++)
+    {
+        EXPECT_FLOAT_EQ(*cpu_output[i], *cuda_output[i]) << "at index: " << i;
+        break;
     }
 }
 
-TEST_F(MatMulKernelTest, CPUMatMulZeroMatrix)
+TEST_F(LargeMatMulTest, LargeMatMulCheck)
 {
-    auto allocator = HostAllocator::getInstance();
+    kernel::get_matmul_kernel(Device::CPU)(&cpu_input0, &cpu_input1, &cpu_output, nullptr);
+    kernel::get_matmul_kernel(Device::CUDA)(&cuda_input0, &cuda_input1, &cuda_output, nullptr);
 
-    std::vector<size_t> shape = {2, 3};
-    std::vector<size_t> zero_shape = {3, 4};
-    std::vector<size_t> output_shape = {2, 4};
-
-    Tensor input0(shape, Device::CPU, allocator);
-    Tensor zero_matrix(zero_shape, Device::CPU, allocator);
-    Tensor output(output_shape, Device::CPU, allocator);
-
-    // Fill input0 with random values
-    fillTensorRandom(input0);
-
-    // Create zero matrix
-    float *zero_data = zero_matrix.data();
-    for (size_t i = 0; i < zero_matrix.size(); ++i)
+    cuda_output.toDevice(Device::CPU);
+    size_t total_size = cpu_output.size();
+    for (size_t i = 0; i < total_size; i++)
     {
-        zero_data[i] = 0.0f;
+        EXPECT_FLOAT_EQ(*cpu_output[i], *cuda_output[i]) << "at index: " << i;
+        break;
     }
+}
+TEST_F(LargeMatMulTest, LargeTransposeMatMulCheck)
+{
+    cpu_input0.t();
+    cpu_input1.t();
+    cpu_output.t();
+    cuda_input0.t();
+    cuda_input1.t();
+    cuda_output.t();
 
-    // Get kernel and execute
-    auto matmul_kernel = kernel::get_matmul_kernel(Device::CPU);
-    matmul_kernel(&input0, &zero_matrix, &output, nullptr);
+    kernel::get_matmul_kernel(Device::CPU)(&cpu_input1, &cpu_input0, &cpu_output, nullptr);
+    kernel::get_matmul_kernel(Device::CUDA)(&cuda_input1, &cuda_input0, &cuda_output, nullptr);
 
-    // Result should be all zeros
-    float *output_data = output.data();
-    for (size_t i = 0; i < output.size(); ++i)
+    cuda_output.toDevice(Device::CPU);
+    size_t total_size = cpu_output.size();
+    for (size_t i = 0; i < total_size; i++)
     {
-        EXPECT_NEAR(output_data[i], 0.0f, tolerance)
-            << "Mismatch at index " << i;
+        EXPECT_FLOAT_EQ(*cpu_output[i], *cuda_output[i]) << "at index: " << i;
+        break;
+    }
+}
+TEST_F(SmallTensorMulTest, SmallMatMulCheck)
+{
+    kernel::get_matmul_kernel(Device::CPU)(&cpu_input0, &cpu_input1, &cpu_output, nullptr);
+    kernel::get_matmul_kernel(Device::CUDA)(&cuda_input0, &cuda_input1, &cuda_output, nullptr);
+
+    cuda_output.toDevice(Device::CPU);
+    size_t total_size = cpu_output.size();
+    for (size_t i = 0; i < total_size; i++)
+    {
+        EXPECT_FLOAT_EQ(*cpu_output[i], *cuda_output[i]) << "at index: " << i;
+        break;
+    }
+}
+TEST_F(SmallTensorMulTest, SmallTransposeMatMulCheck)
+{
+    cpu_input0.t();
+    cpu_input1.t();
+    cpu_output.t();
+    cuda_input0.t();
+    cuda_input1.t();
+    cuda_output.t();
+
+    kernel::get_matmul_kernel(Device::CPU)(&cpu_input1, &cpu_input0, &cpu_output, nullptr);
+    kernel::get_matmul_kernel(Device::CUDA)(&cuda_input1, &cuda_input0, &cuda_output, nullptr);
+
+    cuda_output.toDevice(Device::CPU);
+    size_t total_size = cpu_output.size();
+    for (size_t i = 0; i < total_size; i++)
+    {
+        EXPECT_FLOAT_EQ(*cpu_output[i], *cuda_output[i]) << "at index: " << i;
+        break;
     }
 }
 
-TEST_F(MatMulKernelTest, CPUMatMulLargeMatrices)
+TEST_F(LargeTensorMulTest, LargeMatMulCheck)
 {
-    auto allocator = HostAllocator::getInstance();
+    kernel::get_matmul_kernel(Device::CPU)(&cpu_input0, &cpu_input1, &cpu_output, nullptr);
+    kernel::get_matmul_kernel(Device::CUDA)(&cuda_input0, &cuda_input1, &cuda_output, nullptr);
 
-    // Test larger matrices: 64x32 * 32x64
-    std::vector<size_t> shape0 = {64, 32};
-    std::vector<size_t> shape1 = {32, 64};
-    std::vector<size_t> output_shape = {64, 64};
-
-    Tensor input0(shape0, Device::CPU, allocator);
-    Tensor input1(shape1, Device::CPU, allocator);
-    Tensor output(output_shape, Device::CPU, allocator);
-
-    // Fill with small random values to avoid overflow
-    std::uniform_real_distribution<float> small_dist(-0.1f, 0.1f);
-    float *data0 = input0.data();
-    float *data1 = input1.data();
-    for (size_t i = 0; i < input0.size(); ++i)
+    cuda_output.toDevice(Device::CPU);
+    size_t total_size = cpu_output.size();
+    for (size_t i = 0; i < total_size; i++)
     {
-        data0[i] = small_dist(rng);
-    }
-    for (size_t i = 0; i < input1.size(); ++i)
-    {
-        data1[i] = small_dist(rng);
-    }
-
-    // Get kernel and execute
-    auto matmul_kernel = kernel::get_matmul_kernel(Device::CPU);
-    matmul_kernel(&input0, &input1, &output, nullptr);
-
-    // Verify a few sample positions manually
-    auto shape0_vec = input0.shape();
-    auto shape1_vec = input1.shape();
-    size_t K = shape0_vec[1];
-    size_t N = shape1_vec[1];
-
-    float *output_data = output.data();
-
-    // Check a few positions
-    std::vector<std::pair<size_t, size_t>> check_positions = {{0, 0}, {10, 20}, {30, 40}, {63, 63}};
-
-    for (auto pos : check_positions)
-    {
-        size_t i = pos.first;
-        size_t j = pos.second;
-        float expected = 0.0f;
-        for (size_t k = 0; k < K; ++k)
-        {
-            expected += data0[i * K + k] * data1[k * N + j];
-        }
-        float actual = output_data[i * N + j];
-        EXPECT_NEAR(actual, expected, tolerance)
-            << "Mismatch at position (" << i << ", " << j << ")";
+        EXPECT_FLOAT_EQ(*cpu_output[i], *cuda_output[i]) << "at index: " << i;
+        break;
     }
 }
-
-TEST_F(MatMulKernelTest, CPUMatMulSingleRowColumn)
+TEST_F(LargeTensorMulTest, LargeTransposeMatMulCheck)
 {
-    auto allocator = HostAllocator::getInstance();
+    cpu_input0.t();
+    cpu_input1.t();
+    cpu_output.t();
+    cuda_input0.t();
+    cuda_input1.t();
+    cuda_output.t();
 
-    // Test 1x5 * 5x1 matrix multiplication (results in 1x1)
-    std::vector<size_t> shape0 = {1, 5};
-    std::vector<size_t> shape1 = {5, 1};
-    std::vector<size_t> output_shape = {1, 1};
+    kernel::get_matmul_kernel(Device::CPU)(&cpu_input1, &cpu_input0, &cpu_output, nullptr);
+    kernel::get_matmul_kernel(Device::CUDA)(&cuda_input1, &cuda_input0, &cuda_output, nullptr);
 
-    Tensor input0(shape0, Device::CPU, allocator);
-    Tensor input1(shape1, Device::CPU, allocator);
-    Tensor output(output_shape, Device::CPU, allocator);
-
-    // Fill with known values
-    float *data0 = input0.data();
-    float *data1 = input1.data();
-    for (size_t i = 0; i < 5; ++i)
+    cuda_output.toDevice(Device::CPU);
+    size_t total_size = cpu_output.size();
+    for (size_t i = 0; i < total_size; i++)
     {
-        data0[i] = static_cast<float>(i + 1);        // [1, 2, 3, 4, 5]
-        data1[i] = 0.1f * static_cast<float>(i + 1); // [0.1, 0.2, 0.3, 0.4, 0.5]
+        EXPECT_FLOAT_EQ(*cpu_output[i], *cuda_output[i]) << "at index: " << i;
+        break;
     }
-
-    // Get kernel and execute
-    auto matmul_kernel = kernel::get_matmul_kernel(Device::CPU);
-    matmul_kernel(&input0, &input1, &output, nullptr);
-
-    // Expected result: 1*0.1 + 2*0.2 + 3*0.3 + 4*0.4 + 5*0.5 = 5.5
-    float expected = 1 * 0.1f + 2 * 0.2f + 3 * 0.3f + 4 * 0.4f + 5 * 0.5f;
-    float *output_data = output.data();
-    EXPECT_NEAR(output_data[0], expected, tolerance);
-}
-
-TEST_F(MatMulKernelTest, CPUMatMulVectorMultiplication)
-{
-    auto allocator = HostAllocator::getInstance();
-
-    // Test 5x1 * 1x3 matrix multiplication (outer product, results in 5x3)
-    std::vector<size_t> shape0 = {5, 1};
-    std::vector<size_t> shape1 = {1, 3};
-    std::vector<size_t> output_shape = {5, 3};
-
-    Tensor input0(shape0, Device::CPU, allocator);
-    Tensor input1(shape1, Device::CPU, allocator);
-    Tensor output(output_shape, Device::CPU, allocator);
-
-    // Fill with known values
-    float *data0 = input0.data();
-    float *data1 = input1.data();
-
-    // Vector [1, 2, 3, 4, 5]^T
-    for (size_t i = 0; i < 5; ++i)
-    {
-        data0[i] = static_cast<float>(i + 1);
-    }
-
-    // Vector [2, 3, 4]
-    data1[0] = 2.0f;
-    data1[1] = 3.0f;
-    data1[2] = 4.0f;
-
-    // Get kernel and execute
-    auto matmul_kernel = kernel::get_matmul_kernel(Device::CPU);
-    matmul_kernel(&input0, &input1, &output, nullptr);
-
-    // Verify outer product result
-    float *output_data = output.data();
-    for (size_t i = 0; i < 5; ++i)
-    {
-        for (size_t j = 0; j < 3; ++j)
-        {
-            float expected = data0[i] * data1[j];
-            float actual = output_data[i * 3 + j];
-            EXPECT_NEAR(actual, expected, tolerance)
-                << "Mismatch at position (" << i << ", " << j << ")";
-        }
-    }
-}
-
-TEST_F(MatMulKernelTest, CPUMatMulNonSquareToSquare)
-{
-    auto allocator = HostAllocator::getInstance();
-
-    // Test 2x6 * 6x2 matrix multiplication (results in 2x2)
-    std::vector<size_t> shape0 = {2, 6};
-    std::vector<size_t> shape1 = {6, 2};
-    std::vector<size_t> output_shape = {2, 2};
-
-    Tensor input0(shape0, Device::CPU, allocator);
-    Tensor input1(shape1, Device::CPU, allocator);
-    Tensor output(output_shape, Device::CPU, allocator);
-
-    // Fill with sequential values
-    fillTensorSequential(input0, 1.0f, 1.0f);
-    fillTensorSequential(input1, 0.1f, 0.1f);
-
-    // Get kernel and execute
-    auto matmul_kernel = kernel::get_matmul_kernel(Device::CPU);
-    matmul_kernel(&input0, &input1, &output, nullptr);
-
-    // Verify results
-    verifyMatMul(input0, input1, output);
-}
-
-TEST_F(MatMulKernelTest, CPUMatMulAssociativity)
-{
-    auto allocator = HostAllocator::getInstance();
-
-    // Test associativity property: (A * B) * C = A * (B * C)
-    // Use smaller matrices for easier computation
-    std::vector<size_t> shapeA = {2, 3};
-    std::vector<size_t> shapeB = {3, 2};
-    std::vector<size_t> shapeC = {2, 2};
-    std::vector<size_t> shapeAB = {2, 2};
-    std::vector<size_t> shapeBC = {3, 2};
-
-    Tensor A(shapeA, Device::CPU, allocator);
-    Tensor B(shapeB, Device::CPU, allocator);
-    Tensor C(shapeC, Device::CPU, allocator);
-    Tensor AB(shapeAB, Device::CPU, allocator);
-    Tensor BC(shapeBC, Device::CPU, allocator);
-    Tensor AB_C(shapeC, Device::CPU, allocator); // (A*B)*C
-    Tensor A_BC(shapeC, Device::CPU, allocator); // A*(B*C)
-
-    // Fill with small values to avoid numerical precision issues
-    fillTensorSequential(A, 0.1f, 0.1f);
-    fillTensorSequential(B, 0.2f, 0.1f);
-    fillTensorSequential(C, 0.3f, 0.1f);
-
-    // Get kernel
-    auto matmul_kernel = kernel::get_matmul_kernel(Device::CPU);
-
-    // Compute A * B
-    matmul_kernel(&A, &B, &AB, nullptr);
-
-    // Compute B * C
-    matmul_kernel(&B, &C, &BC, nullptr);
-
-    // Compute (A * B) * C
-    matmul_kernel(&AB, &C, &AB_C, nullptr);
-
-    // Compute A * (B * C)
-    matmul_kernel(&A, &BC, &A_BC, nullptr);
-
-    // Verify associativity: (A * B) * C = A * (B * C)
-    float *data1 = AB_C.data();
-    float *data2 = A_BC.data();
-    for (size_t i = 0; i < 4; ++i) // 2x2 = 4 elements
-    {
-        EXPECT_NEAR(data1[i], data2[i], tolerance * 10.0f) // Higher tolerance for accumulated errors
-            << "Associativity failed at index " << i
-            << ", (A*B)*C = " << data1[i] << ", A*(B*C) = " << data2[i];
-    }
-}
-
-int main(int argc, char **argv)
-{
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
 }
