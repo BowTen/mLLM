@@ -1,12 +1,150 @@
 #include "kernel/kernel.h"
 #include "base/tensor.h"
+#include "model/qwen3.h"
+#include "base/util.h"
 #include <gtest/gtest.h>
 #include <vector>
 #include <cmath>
 #include <random>
 
+#define GLOG_USE_GLOG_EXPORT
+#include <glog/logging.h>
+
+using namespace std;
 using namespace mllm;
 using namespace mllm::base;
+
+class Qwen3RMSNormKernelTest : public ::testing::Test
+{
+protected:
+    base::json config = base::load_json("/home/hznuojai/ai_infra/MiniLLM/resources/Qwen/Qwen3-0.6B/config.json");
+    op::RMSNorm norm = op::RMSNorm(config["hidden_size"], config["rms_norm_eps"]);
+    base::SafeTensors safetensors = base::SafeTensors("/home/hznuojai/ai_infra/MiniLLM/resources/Qwen/Qwen3-0.6B/model.safetensors");
+    Tensor cpu_input;
+    Tensor cpu_weight;
+    Tensor cpu_output;
+    Tensor cuda_input;
+    Tensor cuda_weight;
+    Tensor cuda_output;
+
+    size_t batch_size;
+    size_t seq_len;
+    size_t hidden_size;
+    std::vector<size_t> input_shape;
+    std::vector<size_t> weight_shape;
+    std::vector<size_t> output_shape;
+
+    std::mt19937 rnd = std::mt19937(std::random_device{}());
+    std::uniform_real_distribution<> urd = std::uniform_real_distribution<>(0.0, 1.0);
+
+    float check_eps = 1e-3;
+
+    void SetUp() override
+    {
+        google::InitGoogleLogging("EmbeddingKernelTest");
+        FLAGS_logtostderr = true;
+        VLOG(DEBUG) << "Setting up test environment";
+
+        norm.loadWeight("model.norm", safetensors);
+
+        batch_size = 4;
+        seq_len = 4;
+        hidden_size = config["hidden_size"];
+        input_shape = {batch_size, seq_len, hidden_size};
+        weight_shape = {1, hidden_size};
+        output_shape = {batch_size, seq_len, hidden_size};
+
+        LOG(INFO) << "Init Tensors";
+        cpu_input = Tensor(input_shape);
+        for (size_t i = 0; i < cpu_input.size(); i++)
+        {
+            *cpu_input[i] = urd(rnd);
+        }
+
+        cpu_weight = norm.getWeight();
+        cpu_output = Tensor(output_shape);
+        VLOG(DEBUG) << "input size: " << cpu_input.size()
+                    << ", weight size: " << cpu_weight.size()
+                    << ", output size: " << cpu_output.size();
+        cuda_input = cpu_input.clone();
+        cuda_input.toDevice(Device::CUDA);
+        cuda_weight = cpu_weight.clone();
+        cuda_weight.toDevice(Device::CUDA);
+        cuda_output = Tensor(output_shape, Device::CUDA);
+    }
+
+    void TearDown() override
+    {
+        // Clean up if needed
+        google::ShutdownGoogleLogging();
+    }
+};
+
+TEST_F(Qwen3RMSNormKernelTest, CPUvsCUDAQwen3)
+{
+    LOG(INFO) << "Running CPU vs CUDA test";
+    kernel::get_rmsnorm_kernel(Device::CUDA)(&cuda_input, &cuda_weight, &cuda_output, hidden_size, nullptr);
+    kernel::get_rmsnorm_kernel(Device::CPU)(&cpu_input, &cpu_weight, &cpu_output, hidden_size, nullptr);
+    cuda_input.toDevice(Device::CPU);
+    cuda_output.toDevice(Device::CPU);
+
+    auto cuda_shape = cuda_output.shape();
+    auto cpu_shape = cpu_output.shape();
+    cout << "cpu shape: ";
+    for (auto x : cpu_shape)
+    {
+        cout << x << " ";
+    }
+    cout << '\n';
+    cout << "cuda shape: ";
+    for (auto x : cuda_shape)
+    {
+        cout << x << " ";
+    }
+    cout << '\n';
+
+    int diff = 0;
+    for (size_t i = 0; i < batch_size; i++)
+    {
+        for (size_t j = 0; j < seq_len; j++)
+        {
+            for (size_t k = 0; k < hidden_size; k++)
+            {
+                diff += std::fabs(*(cpu_output[{i, j, k}]) - *(cuda_output[{i, j, k}])) > check_eps;
+            }
+        }
+    }
+    EXPECT_EQ(diff, 0);
+    for (size_t i = 0; i < batch_size; i++)
+    {
+        for (size_t j = 0; j < seq_len; j++)
+        {
+            cout << "batch: " << i << ", token: " << j << ":\n";
+            cout << "cpu input: ";
+            for (size_t k = 0; k < 5; k++)
+                cout << *cpu_input[{i, j, k}] << " ";
+            cout << "...\n";
+            cout << "cpu output: ";
+            for (size_t k = 0; k < 5; k++)
+                cout << *cpu_output[{i, j, k}] << " ";
+            cout << "...\n";
+
+            cout << "cuda input: ";
+            for (size_t k = 0; k < 5; k++)
+                cout << *cuda_input[{i, j, k}] << " ";
+            cout << "...\n";
+            cout << "cuda output: ";
+            for (size_t k = 0; k < 5; k++)
+                cout << *cuda_output[{i, j, k}] << " ";
+            cout << "...\n";
+
+            if (diff == 0)
+                break;
+        }
+        if (diff == 0)
+            break;
+    }
+}
 
 class RMSNormKernelTest : public ::testing::Test
 {

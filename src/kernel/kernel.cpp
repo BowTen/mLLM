@@ -35,7 +35,7 @@ namespace mllm
             case base::Device::CPU:
                 return rms_norm_kernel_cpu;
             case base::Device::CUDA:
-                return rms_norm_kernel_cuda_vec; // 向量化存取版本
+                return rms_norm_kernel_cuda;
             default:
                 throw std::runtime_error("Unsupported device");
             }

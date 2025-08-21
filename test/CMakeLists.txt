@@ -98,6 +98,7 @@ target_compile_options(qwen3_test PRIVATE ${GTEST_CFLAGS_OTHER})
 target_link_libraries(rms_norm_kernel_test 
     base  # Link to the base library from src
     kernel  # Link to the kernel library from src
+    model
     ${GTEST_LIBRARIES}
     ${GTEST_MAIN_LIBRARIES}
     Threads::Threads

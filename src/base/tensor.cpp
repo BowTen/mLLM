@@ -177,6 +177,10 @@ namespace mllm
             is_contiguous_ = true;
             if (shape_.size() >= 2)
                 num_mats_ = size() / (shape(-1) * shape(-2));
+            else if (shape_.size() == 1)
+                num_mats_ = 1;
+            else
+                num_mats_ = 0;
         }
 
         void Tensor::view(std::vector<size_t> shape)
@@ -269,6 +273,8 @@ namespace mllm
             {
                 throw std::out_of_range("Matrix index out of range in mat()");
             }
+            if (num_mats_ == 1)
+                return data();
             size_t offset = 0;
             for (int i = static_cast<int>(stride_.size()) - 3; i >= 0; i--)
             {
