@@ -1,12 +1,12 @@
 #include "kernel/kernel.h"
 #include "kernel/cpu/embedding_kernel.h"
 #include "kernel/cpu/rms_norm_kernel.h"
-#include "kernel/cpu/add_kernel.h"
+#include "kernel/cpu/mat_add_kernel.h"
 #include "kernel/cpu/mat_mul_kernel.h"
 #include "kernel/cpu/contiguous_kernel.h"
 #include "kernel/cuda/embedding_kernel.cuh"
 #include "kernel/cuda/rms_norm_kernel.cuh"
-#include "kernel/cuda/add_kernel.cuh"
+#include "kernel/cuda/mat_add_kernel.cuh"
 #include "kernel/cuda/mat_mul_kernel.cuh"
 #include "kernel/cuda/contiguous_kernel.cuh"
 #include <stdexcept>
@@ -41,14 +41,14 @@ namespace mllm
             }
         }
 
-        AddKernel get_add_kernel(base::Device device)
+        MatAddKernel get_mat_add_kernel(base::Device device)
         {
             switch (device)
             {
             case base::Device::CPU:
-                return add_kernel_cpu;
+                return mat_add_kernel_cpu;
             case base::Device::CUDA:
-                return add_kernel_cuda;
+                return mat_add_kernel_cuda;
             default:
                 throw std::runtime_error("Unsupported device");
             }

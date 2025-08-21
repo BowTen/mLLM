@@ -19,10 +19,10 @@ namespace mllm
                                       base::Tensor *output,
                                       float eps,
                                       void *stream);
-        typedef void (*AddKernel)(base::Tensor *input0,
-                                  base::Tensor *input1,
-                                  base::Tensor *output,
-                                  void *stream);
+        typedef void (*MatAddKernel)(base::Tensor *input0,
+                                     base::Tensor *input1,
+                                     base::Tensor *output,
+                                     void *stream);
         typedef void (*MatMulKernel)(base::Tensor *input0,
                                      base::Tensor *input1,
                                      base::Tensor *output,
@@ -32,7 +32,7 @@ namespace mllm
 
         EmbeddingKernel get_emb_kernel(base::Device device);
         RMSNormKernel get_rmsnorm_kernel(base::Device device);
-        AddKernel get_add_kernel(base::Device device);
+        MatAddKernel get_mat_add_kernel(base::Device device);
         MatMulKernel get_matmul_kernel(base::Device device);
         ContiguousKernel get_contiguous_kernel(base::Device device);
     }

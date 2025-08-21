@@ -46,6 +46,7 @@ namespace mllm
                 buffer_ = std::make_shared<VecBuffer>(allocator, expected_size * sizeof(float) * 2, expected_size * sizeof(float));
             else
                 buffer_ = std::make_shared<ArrBuffer>(allocator, expected_size * sizeof(float));
+            update();
         }
 
         Tensor::Tensor(void *data, const std::vector<size_t> &shape, Device device, bool mut)
@@ -72,6 +73,7 @@ namespace mllm
                 buffer_ = std::make_shared<VecBuffer>(allocator, data, expected_size * sizeof(float), expected_size * sizeof(float));
             else
                 buffer_ = std::make_shared<ArrBuffer>(allocator, data, expected_size * sizeof(float));
+            update();
         }
 
         size_t Tensor::size() const
@@ -117,6 +119,37 @@ namespace mllm
             VLOG(DEBUG) << "Tensor transferred successfully.";
         }
 
+        size_t Tensor::shape(int idx) const
+        {
+            if (idx < 0)
+            {
+                if (-idx > shape_.size())
+                    throw std::out_of_range("Index out of range in shape()");
+                return shape_[shape_.size() + idx];
+            }
+            else
+            {
+                if (idx >= shape_.size())
+                    throw std::out_of_range("Index out of range in shape()");
+                return shape_[idx];
+            }
+        }
+        size_t Tensor::stride(int idx) const
+        {
+            if (idx < 0)
+            {
+                if (-idx > stride_.size())
+                    throw std::out_of_range("Index out of range in stride()");
+                return stride_[stride_.size() + idx];
+            }
+            else
+            {
+                if (idx >= stride_.size())
+                    throw std::out_of_range("Index out of range in stride()");
+                return stride_[idx];
+            }
+        }
+
         Tensor Tensor::clone()
         {
             auto new_tensor = Tensor(shape_, buffer_->clone(), device_, mut_);
@@ -124,14 +157,16 @@ namespace mllm
             return new_tensor;
         }
 
-        void Tensor::check_contiguous()
+        void Tensor::update()
         {
+            if (shape_.empty())
+                return;
             if (stride_.back() != 1)
             {
                 is_contiguous_ = false;
                 return;
             }
-            for (int32_t i = stride_.size() - 2; i >= 0; --i)
+            for (int i = static_cast<int>(stride_.size()) - 2; i >= 0; --i)
             {
                 if (stride_[i] != stride_[i + 1] * shape_[i + 1])
                 {
@@ -140,6 +175,8 @@ namespace mllm
                 }
             }
             is_contiguous_ = true;
+            if (shape_.size() >= 2)
+                num_mats_ = size() / (shape(-1) * shape(-2));
         }
 
         void Tensor::view(std::vector<size_t> shape)
@@ -176,7 +213,7 @@ namespace mllm
                 return;
             kernel::get_contiguous_kernel(device_)(this, stream);
             stride_ = default_stride(shape_);
-            check_contiguous();
+            update();
             CHECK(is_contiguous_) << "Tensor faild to contiguous";
         }
         void Tensor::transpose(size_t i, size_t j)
@@ -187,7 +224,7 @@ namespace mllm
             }
             std::swap(shape_[i], shape_[j]);
             std::swap(stride_[i], stride_[j]);
-            check_contiguous();
+            update();
         }
         void Tensor::t()
         {
@@ -196,6 +233,49 @@ namespace mllm
                 throw std::invalid_argument("Invalid transpose dimensions.");
             }
             transpose(shape_.size() - 1, shape_.size() - 2);
+        }
+
+        float *Tensor::operator[](size_t idx)
+        {
+            size_t offset = 0;
+            for (int i = shape_.size() - 1; i >= 0; i--)
+            {
+                offset += (idx % shape_[i]) * stride_[i];
+                idx /= shape_[i];
+            }
+            return this->data() + offset;
+        }
+        float *Tensor::operator[](std::vector<size_t> idx)
+        {
+            if (idx.size() != shape_.size())
+            {
+                throw std::invalid_argument("Index size must match tensor shape size.");
+            }
+            size_t offset = 0;
+            for (size_t i = 0; i < idx.size(); ++i)
+            {
+                if (idx[i] >= shape_[i])
+                {
+                    throw std::out_of_range("Index out of range in operator[]");
+                }
+                offset += idx[i] * stride_[i];
+            }
+            return data() + offset;
+        }
+
+        float *Tensor::mat(size_t idx)
+        {
+            if (idx >= num_mats_)
+            {
+                throw std::out_of_range("Matrix index out of range in mat()");
+            }
+            size_t offset = 0;
+            for (int i = static_cast<int>(stride_.size()) - 3; i >= 0; i--)
+            {
+                offset += (idx % shape_[i]) * stride_[i];
+                idx /= shape_[i];
+            }
+            return data() + offset;
         }
     } // namespace base
 } // namespace mllm

@@ -24,8 +24,8 @@ add_library(kernel
     kernel/cuda/embedding_kernel.cu
     kernel/cpu/rms_norm_kernel.cpp
     kernel/cuda/rms_norm_kernel.cu
-    kernel/cpu/add_kernel.cpp
-    kernel/cuda/add_kernel.cu
+    kernel/cpu/mat_add_kernel.cpp
+    kernel/cuda/mat_add_kernel.cu
     kernel/cpu/mat_mul_kernel.cpp
     kernel/cuda/mat_mul_kernel.cu
     kernel/cpu/contiguous_kernel.cpp
