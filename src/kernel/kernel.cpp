@@ -22,7 +22,7 @@ namespace mllm
             case base::Device::CPU:
                 return emb_kernel_cpu;
             case base::Device::CUDA:
-                return emb_kernel_cuda_vec; // 向量化存取版本
+                return emb_kernel_cuda; // 向量化存取版本
             default:
                 throw std::runtime_error("Unsupported device");
             }

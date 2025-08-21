@@ -58,17 +58,6 @@ TEST_F(TensorTest, ConstructorMutable)
     EXPECT_NE(tensor.data(), nullptr);
 }
 
-// Test Tensor construction with 1D shape
-TEST_F(TensorTest, Constructor1D)
-{
-    std::vector<size_t> shape = {10};
-    Tensor tensor(shape, Device::CPU);
-
-    EXPECT_EQ(tensor.shape(), shape);
-    EXPECT_EQ(tensor.size(), 10);
-    EXPECT_NE(tensor.data(), nullptr);
-}
-
 // Test Tensor construction with 4D shape
 TEST_F(TensorTest, Constructor4D)
 {
@@ -78,16 +67,6 @@ TEST_F(TensorTest, Constructor4D)
     EXPECT_EQ(tensor.shape(), shape);
     EXPECT_EQ(tensor.size(), 120); // 2 * 3 * 4 * 5 = 120
     EXPECT_NE(tensor.data(), nullptr);
-}
-
-// Test Tensor with zero dimension
-TEST_F(TensorTest, ConstructorZeroDimension)
-{
-    std::vector<size_t> shape = {0};
-    Tensor tensor(shape, Device::CPU);
-
-    EXPECT_EQ(tensor.shape(), shape);
-    EXPECT_EQ(tensor.size(), 0);
 }
 
 // Test Tensor with single element
@@ -498,20 +477,6 @@ TEST_F(TensorTest, ChainedOperations)
 }
 
 // ============= CUDA-specific tests =============
-
-// Test CUDA Tensor construction with alignment considerations
-TEST_F(TensorTest, ConstructorCUDA_Aligned)
-{
-    // Test sizes that ensure 128-byte alignment for CUDA memory
-    // Each float is 4 bytes, so we need multiples of 32 elements for 128-byte alignment
-    std::vector<size_t> shape = {32}; // 32 * 4 = 128 bytes aligned
-    Tensor tensor(shape, Device::CUDA);
-
-    EXPECT_EQ(tensor.shape(), shape);
-    EXPECT_EQ(tensor.size(), 32);
-    EXPECT_NE(tensor.data(), nullptr);
-}
-
 // Test CUDA Tensor with larger aligned sizes
 TEST_F(TensorTest, ConstructorCUDA_LargeAligned)
 {

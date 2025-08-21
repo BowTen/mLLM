@@ -32,6 +32,8 @@ namespace mllm
             std::string decode(const std::vector<uint32_t> &ids) const;
 
             std::string decode(uint32_t id) const;
+
+            size_t vocab_size() const { return vocab.size(); }
         };
 
     } // namespace tokenizer

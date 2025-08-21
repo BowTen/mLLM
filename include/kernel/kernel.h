@@ -11,7 +11,6 @@ namespace mllm
         typedef void (*EmbeddingKernel)(base::Tensor *input,
                                         base::Tensor *weight,
                                         base::Tensor *output,
-                                        size_t vocab_size,
                                         size_t hidden_size,
                                         void *stream);
         typedef void (*RMSNormKernel)(base::Tensor *input,

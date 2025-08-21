@@ -30,20 +30,10 @@ namespace mllm
             void update();
 
         public:
-            Tensor() : shape_(),
-                       stride_(default_stride(shape_)),
-                       is_contiguous_(true),
-                       buffer_(nullptr),
-                       device_(Device::CPU) { update(); }
-            Tensor(const std::vector<size_t> &shape, Buffer::BufferPtr buffer, Device device = Device::CPU, bool mut = false)
-                : shape_(shape),
-                  stride_(default_stride(shape)),
-                  is_contiguous_(true),
-                  buffer_(buffer),
-                  device_(device),
-                  mut_(mut) { update(); }
+            Tensor();
+            Tensor(const std::vector<size_t> &shape, Buffer::BufferPtr buffer, Device device = Device::CPU, bool mut = false);
             Tensor(const std::vector<size_t> &shape, Device device = Device::CPU, bool mut = false);
-            Tensor(void *data, const std::vector<size_t> &shape, Device device = Device::CPU, bool mut = false);
+            Tensor(void *data, const std::vector<size_t> &shape, bool copy, Device device = Device::CPU, bool mut = false);
 
             void view(std::vector<size_t> shape);
             void reshape(std::vector<size_t> shape);

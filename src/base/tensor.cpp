@@ -25,12 +25,35 @@ namespace mllm
             }
             return stride;
         }
+        Tensor::Tensor() : shape_(),
+                           stride_(default_stride(shape_)),
+                           is_contiguous_(true),
+                           buffer_(nullptr),
+                           device_(Device::CPU)
+        {
+            update();
+        }
+        Tensor::Tensor(const std::vector<size_t> &shape, Buffer::BufferPtr buffer, Device device, bool mut)
+            : shape_(shape),
+              is_contiguous_(true),
+              buffer_(buffer),
+              device_(device),
+              mut_(mut)
+        {
+            if (shape_.size() == 1)
+                shape_.insert(shape_.begin(), 1);
+            stride_ = default_stride(shape_);
+            update();
+        }
 
         Tensor::Tensor(const std::vector<size_t> &shape, Device device, bool mut)
-            : shape_(shape), stride_(default_stride(shape)), is_contiguous_(true), device_(device), mut_(mut)
+            : shape_(shape), is_contiguous_(true), device_(device), mut_(mut)
         {
+            if (shape_.size() == 1)
+                shape_.insert(shape_.begin(), 1);
+            stride_ = default_stride(shape_);
             size_t expected_size = 1;
-            for (auto dim : shape)
+            for (auto dim : shape_)
             {
                 expected_size *= dim;
             }
@@ -49,15 +72,18 @@ namespace mllm
             update();
         }
 
-        Tensor::Tensor(void *data, const std::vector<size_t> &shape, Device device, bool mut)
-            : shape_(shape), stride_(default_stride(shape)), is_contiguous_(true), device_(device), mut_(mut)
+        Tensor::Tensor(void *data, const std::vector<size_t> &shape, bool copy, Device device, bool mut)
+            : shape_(shape), is_contiguous_(true), device_(device), mut_(mut)
         {
+            if (shape_.size() == 1)
+                shape_.insert(shape_.begin(), 1);
+            stride_ = default_stride(shape_);
             if (isDevicePointer(data) != (device == Device::CUDA))
             {
                 throw std::invalid_argument("Data pointer device type does not match Tensor device type.");
             }
             size_t expected_size = 1;
-            for (auto dim : shape)
+            for (auto dim : shape_)
             {
                 expected_size *= dim;
             }
@@ -70,9 +96,9 @@ namespace mllm
             else
                 throw std::invalid_argument("Unsupported device type.");
             if (mut)
-                buffer_ = std::make_shared<VecBuffer>(allocator, data, expected_size * sizeof(float), expected_size * sizeof(float));
+                buffer_ = std::make_shared<VecBuffer>(allocator, data, expected_size * sizeof(float), expected_size * sizeof(float), copy);
             else
-                buffer_ = std::make_shared<ArrBuffer>(allocator, data, expected_size * sizeof(float));
+                buffer_ = std::make_shared<ArrBuffer>(allocator, data, expected_size * sizeof(float), copy);
             update();
         }
 
@@ -124,7 +150,7 @@ namespace mllm
             if (idx < 0)
             {
                 if (-idx > shape_.size())
-                    throw std::out_of_range("Index out of range in shape()");
+                    return 1;
                 return shape_[shape_.size() + idx];
             }
             else
@@ -139,7 +165,7 @@ namespace mllm
             if (idx < 0)
             {
                 if (-idx > stride_.size())
-                    throw std::out_of_range("Index out of range in stride()");
+                    return size();
                 return stride_[stride_.size() + idx];
             }
             else

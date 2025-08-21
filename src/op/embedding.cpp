@@ -21,7 +21,7 @@ namespace mllm
             {
                 CHECK(stream_ != nullptr) << "CUDA stream must be set for CUDA device.";
             }
-            kernel::get_emb_kernel(device_)(&inputs[0], &weight_, &outputs[0], weight_.shape()[0], weight_.shape()[1], stream_ ? stream_ : nullptr);
+            kernel::get_emb_kernel(device_)(&inputs[0], &weight_, &outputs[0], weight_.shape(-1), stream_);
         }
     }
 }

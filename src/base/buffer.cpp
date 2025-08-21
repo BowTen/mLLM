@@ -50,9 +50,14 @@ namespace mllm
             : Buffer(alloc, size), size_(size)
         {
         }
-        ArrBuffer::ArrBuffer(Allocator *alloc, void *data, size_t size)
+        ArrBuffer::ArrBuffer(Allocator *alloc, void *data, size_t size, bool copy)
             : Buffer(alloc, data), size_(size)
         {
+            if (copy)
+            {
+                data_ = allocator->allocate(size);
+                allocator->memcpy(data_, data, size);
+            }
             if (!data_ && size > 0)
             {
                 LOG(ERROR) << "ArrBuffer initialized with null data pointer but size is greater than zero.";
@@ -79,11 +84,16 @@ namespace mllm
               capacity_(std::max(initial_capacity, initial_size))
         {
         }
-        VecBuffer::VecBuffer(Allocator *alloc, void *data, size_t initial_capacity, size_t initial_size)
+        VecBuffer::VecBuffer(Allocator *alloc, void *data, size_t initial_capacity, size_t initial_size, bool copy)
             : Buffer(alloc, data),
               size_(initial_size),
               capacity_(std::max(initial_capacity, initial_size))
         {
+            if (copy)
+            {
+                data_ = allocator->allocate(initial_size);
+                allocator->memcpy(data_, data, initial_size);
+            }
             if (!data_ && initial_size > 0)
             {
                 LOG(ERROR) << "VecBuffer initialized with null data pointer but size is greater than zero.";
