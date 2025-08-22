@@ -30,12 +30,17 @@ add_library(kernel
     kernel/cuda/mat_mul_kernel.cu
     kernel/cpu/contiguous_kernel.cpp
     kernel/cuda/contiguous_kernel.cu
+    kernel/cpu/rope_kernel.cpp
+    kernel/cuda/rope_kernel.cu
+    kernel/cpu/gen_rope_kernel.cpp
+    kernel/cuda/gen_rope_kernel.cu
 )
 add_library(model 
     model/qwen3.cpp
     model/qwen3_decode_layer.cpp
     model/qwen3_self_attn.cpp
     model/qwen3_mlp.cpp
+    model/qwen3_rotary_embedding.cpp
 )
 
 # Link libraries

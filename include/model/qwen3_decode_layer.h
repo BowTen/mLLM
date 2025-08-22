@@ -3,6 +3,7 @@
 
 #include "tokenizer/tokenizer.h"
 #include "base/safetensors.h"
+#include "base/common.h"
 #include "op/embedding.h"
 #include "op/rms_norm.h"
 #include "op/add.h"
@@ -18,7 +19,7 @@ namespace mllm
         using namespace tokenizer;
         using namespace op;
 
-        class Qwen3DecodeLayer : public Layer
+        class Qwen3DecodeLayer
         {
             size_t layer_index_;
             RMSNorm input_layernorm;
@@ -26,11 +27,11 @@ namespace mllm
             Qwen3SelfAttn self_attn;
             Qwen3MLP mlp;
             Add add_op;
+            std::string name_;
 
         public:
             Qwen3DecodeLayer(size_t layer_index, JsonConfig config, base::Device device = base::Device::CPU, cudaStream_t stream = nullptr);
-            void forward() override;
-            using Layer::forward;
+            void forward(Tensor *input, Tensor *output, base::PosEmb position_embeddings);
             void loadWeight(const std::string &name, base::SafeTensors &st);
         };
     }

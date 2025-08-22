@@ -4,11 +4,15 @@
 #include "kernel/cpu/mat_add_kernel.h"
 #include "kernel/cpu/mat_mul_kernel.h"
 #include "kernel/cpu/contiguous_kernel.h"
+#include "kernel/cpu/rope_kernel.h"
+#include "kernel/cpu/gen_rope_kernel.h"
 #include "kernel/cuda/embedding_kernel.cuh"
 #include "kernel/cuda/rms_norm_kernel.cuh"
 #include "kernel/cuda/mat_add_kernel.cuh"
 #include "kernel/cuda/mat_mul_kernel.cuh"
 #include "kernel/cuda/contiguous_kernel.cuh"
+#include "kernel/cuda/rope_kernel.cuh"
+#include "kernel/cuda/gen_rope_kernel.cuh"
 #include <stdexcept>
 
 namespace mllm
@@ -75,6 +79,32 @@ namespace mllm
                 return contiguous_kernel_cpu;
             case base::Device::CUDA:
                 return contiguous_kernel_cuda;
+            default:
+                throw std::runtime_error("Unsupported device");
+            }
+        }
+
+        RoPEKernel get_rope_kernel(base::Device device)
+        {
+            switch (device)
+            {
+            case base::Device::CPU:
+                return rope_kernel_cpu;
+            case base::Device::CUDA:
+                return rope_kernel_cuda;
+            default:
+                throw std::runtime_error("Unsupported device");
+            }
+        }
+
+        GenRoPEKernel get_gen_rope_kernel(base::Device device)
+        {
+            switch (device)
+            {
+            case base::Device::CPU:
+                return gen_rope_kernel_cpu;
+            case base::Device::CUDA:
+                return gen_rope_kernel_cuda;
             default:
                 throw std::runtime_error("Unsupported device");
             }

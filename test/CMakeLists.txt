@@ -21,6 +21,7 @@ add_executable(qwen3_test qwen3_test.cpp)
 add_executable(rms_norm_kernel_test rms_nrom_kernel_test.cpp)
 add_executable(mat_add_kernel_test mat_add_kernel_test.cpp)
 add_executable(mat_mul_kernel_test mat_mul_kernel_test.cpp)
+add_executable(rope_kernel_test rope_kernel_test.cpp)
 
 # Link libraries
 target_link_libraries(tokenizer_test 
@@ -135,6 +136,19 @@ target_link_libraries(mat_mul_kernel_test
 target_include_directories(mat_mul_kernel_test PRIVATE ${GTEST_INCLUDE_DIRS})
 target_compile_options(mat_mul_kernel_test PRIVATE ${GTEST_CFLAGS_OTHER})
 
+target_link_libraries(rope_kernel_test 
+    base  # Link to the base library from src
+    kernel  # Link to the kernel library from src
+    op
+    ${GTEST_LIBRARIES}
+    ${GTEST_MAIN_LIBRARIES}
+    Threads::Threads
+    armadillo
+    openblas
+)
+target_include_directories(rope_kernel_test PRIVATE ${GTEST_INCLUDE_DIRS})
+target_compile_options(rope_kernel_test PRIVATE ${GTEST_CFLAGS_OTHER})
+
 # Enable testing
 enable_testing()
 
@@ -149,3 +163,4 @@ add_test(NAME Qwen3Test COMMAND qwen3_test)
 add_test(NAME RMSNormKernelTest COMMAND rms_norm_kernel_test)
 add_test(NAME AddKernelTest COMMAND mat_add_kernel_test)
 add_test(NAME MatMulKernelTest COMMAND mat_mul_kernel_test)
+add_test(NAME RoPEKernelTest COMMAND rope_kernel_test)

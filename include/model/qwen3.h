@@ -6,6 +6,7 @@
 #include "op/embedding.h"
 #include "op/rms_norm.h"
 #include "qwen3_decode_layer.h"
+#include "qwen3_rotary_embedding.h"
 #include <cuda_runtime.h>
 
 namespace mllm
@@ -24,7 +25,9 @@ namespace mllm
             BPETokenizer tokenizer;
             Embedding embed_tokens;
             RMSNorm norm;
+            Qwen3RotaryEmbedding rotary_embedding;
             std::vector<Qwen3DecodeLayer> layers;
+            size_t pos_id;
 
             Qwen3(std::string model_path, base::Device device = base::Device::CPU);
 

@@ -38,7 +38,7 @@ namespace mllm
             void view(std::vector<size_t> shape);
             void reshape(std::vector<size_t> shape);
             void contiguous(cudaStream_t stream = nullptr);
-            void transpose(size_t i, size_t j);
+            void transpose(int i, int j);
             void t();
 
             float *operator[](size_t idx);
@@ -59,6 +59,8 @@ namespace mllm
             void toDevice(Device device);
             Tensor clone();
         };
+
+        using PosEmb = std::pair<Tensor *, Tensor *>; // cos sin
     } // namespace base
 } // namespace mllm
 

@@ -11,8 +11,7 @@ namespace mllm
     namespace model
     {
         Qwen3DecodeLayer::Qwen3DecodeLayer(size_t layer_index, JsonConfig config, base::Device device, cudaStream_t stream)
-            : Layer(1, 1, device, stream),
-              layer_index_(layer_index),
+            : layer_index_(layer_index),
               input_layernorm(config["hidden_size"], config["rms_norm_eps"]),
               post_attention_layernorm(config["hidden_size"], config["rms_norm_eps"]),
               self_attn(layer_index, config, device, stream),
@@ -21,21 +20,20 @@ namespace mllm
         {
         }
 
-        void Qwen3DecodeLayer::forward()
+        void Qwen3DecodeLayer::forward(Tensor *hidden_state, Tensor *output, base::PosEmb position_embeddings)
         {
             VLOG(TRACE) << "Forward pass for Qwen3DecodeLayer at index: " << layer_index_;
-            auto hidden_state = this->getInput(0);
-            auto residual = hidden_state.clone();
+            auto residual = hidden_state->clone();
 
-            input_layernorm.forward(hidden_state, hidden_state);
-            self_attn.forward(hidden_state, hidden_state);
-            add_op.forward(hidden_state, residual, hidden_state);
+            input_layernorm.forward(*hidden_state, *hidden_state);
+            self_attn.forward(hidden_state, hidden_state, position_embeddings);
+            add_op.forward(*hidden_state, residual, *hidden_state);
 
-            residual = hidden_state.clone();
+            residual = hidden_state->clone();
 
-            post_attention_layernorm.forward(hidden_state, hidden_state);
-            mlp.forward(hidden_state, hidden_state);
-            add_op.forward(hidden_state, residual, this->getOutput(0));
+            post_attention_layernorm.forward(*hidden_state, *hidden_state);
+            mlp.forward(*hidden_state, *hidden_state);
+            add_op.forward(*hidden_state, residual, *output);
         }
 
         void Qwen3DecodeLayer::loadWeight(const std::string &name, base::SafeTensors &st)

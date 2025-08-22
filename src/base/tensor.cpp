@@ -246,12 +246,16 @@ namespace mllm
             update();
             CHECK(is_contiguous_) << "Tensor faild to contiguous";
         }
-        void Tensor::transpose(size_t i, size_t j)
+        void Tensor::transpose(int i, int j)
         {
-            if (i >= shape_.size() || j >= shape_.size())
+            if (i >= shape_.size() || j >= shape_.size() || -i > shape_.size() || -j > shape_.size())
             {
                 throw std::invalid_argument("Invalid transpose dimensions.");
             }
+            if (i < 0)
+                i += shape_.size();
+            if (j < 0)
+                j += shape_.size();
             std::swap(shape_[i], shape_[j]);
             std::swap(stride_[i], stride_[j]);
             update();

@@ -2,6 +2,7 @@
 #include "base/util.h"
 #include "base/safetensors.h"
 #include "cuda_runtime.h"
+#include <utility>
 
 #define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
@@ -10,7 +11,6 @@ namespace mllm
 {
     namespace model
     {
-
         Qwen3::Qwen3(std::string model_path, base::Device device)
             : Layer(1, 1, device),
               config_(base::load_json(model_path + "/config.json")),
@@ -18,7 +18,9 @@ namespace mllm
               hidden_size(config_["hidden_size"]),
               tokenizer(BPETokenizer::from_file(model_path + "/tokenizer.json")),
               embed_tokens(vocab_size, hidden_size, device),
-              norm(hidden_size, config_["rms_norm_eps"], device)
+              norm(hidden_size, config_["rms_norm_eps"], device),
+              rotary_embedding(config_, device_, stream_),
+              pos_id(0)
         {
             VLOG(TRACE) << "Loading Qwen3 model from: " << model_path;
             // 初始化CUDA流
@@ -55,10 +57,18 @@ namespace mllm
             Tensor hidden_state({token_id.shape()[0], hidden_size}, device_);
             embed_tokens.forward(token_id, hidden_state);
 
+            auto rope_emb_shape = hidden_state.shape();
+            rope_emb_shape.back() = config_["head_dim"];
+            Tensor cos(rope_emb_shape, device_);
+            Tensor sin(rope_emb_shape, device_);
+            base::PosEmb pos_emb(&cos, &sin);
+            size_t seq_len = hidden_state.shape(-2);
+            rotary_embedding.forward(pos_id, pos_id + seq_len, pos_emb);
+
             // Forward pass through each decode layer
             for (auto &layer : layers)
             {
-                layer.forward(hidden_state, hidden_state);
+                layer.forward(&hidden_state, &hidden_state, pos_emb);
             }
 
             norm.forward(hidden_state, hidden_state);

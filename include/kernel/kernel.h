@@ -28,12 +28,25 @@ namespace mllm
                                      void *stream);
         typedef void (*ContiguousKernel)(base::Tensor *input,
                                          void *stream);
+        typedef void (*GenRoPEKernel)(base::Tensor *inv_freq,
+                                      uint32_t pos_start,
+                                      uint32_t pos_end,
+                                      base::Tensor *cos,
+                                      base::Tensor *sin,
+                                      void *stream);
+        typedef void (*RoPEKernel)(base::Tensor *input,
+                                   base::Tensor *cos,
+                                   base::Tensor *sin,
+                                   base::Tensor *output,
+                                   void *stream);
 
         EmbeddingKernel get_emb_kernel(base::Device device);
         RMSNormKernel get_rmsnorm_kernel(base::Device device);
         MatAddKernel get_mat_add_kernel(base::Device device);
         MatMulKernel get_matmul_kernel(base::Device device);
         ContiguousKernel get_contiguous_kernel(base::Device device);
+        RoPEKernel get_rope_kernel(base::Device device);
+        GenRoPEKernel get_gen_rope_kernel(base::Device device);
     }
 }
 

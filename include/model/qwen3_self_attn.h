@@ -15,7 +15,7 @@ namespace mllm
         using namespace tokenizer;
         using namespace op;
 
-        class Qwen3SelfAttn : public Layer
+        class Qwen3SelfAttn
         {
             size_t layer_index_;
             JsonConfig config_;
@@ -29,11 +29,13 @@ namespace mllm
             Linear o_proj;
             RMSNorm q_norm;
             RMSNorm k_norm;
+            base::Device device_;
+            cudaStream_t stream_;
+            std::string name_;
 
         public:
             Qwen3SelfAttn(size_t layer_index, JsonConfig config, base::Device device = base::Device::CPU, cudaStream_t stream = nullptr);
-            void forward() override;
-            using Layer::forward;
+            void forward(Tensor *hidden_state, Tensor *output, base::PosEmb position_embeddings);
             void loadWeight(const std::string &name, base::SafeTensors &st);
         };
     }
