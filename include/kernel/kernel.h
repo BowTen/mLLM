@@ -43,7 +43,7 @@ namespace mllm
         EmbeddingKernel get_emb_kernel(base::Device device);
         RMSNormKernel get_rmsnorm_kernel(base::Device device);
         MatAddKernel get_mat_add_kernel(base::Device device);
-        MatMulKernel get_matmul_kernel(base::Device device);
+        MatMulKernel get_mat_mul_kernel(base::Device device);
         ContiguousKernel get_contiguous_kernel(base::Device device);
         RoPEKernel get_rope_kernel(base::Device device);
         GenRoPEKernel get_gen_rope_kernel(base::Device device);

@@ -67,7 +67,6 @@ namespace mllm
 
             void insert_dim(int dim_int);
             void expand(int dim_int, size_t size);
-            void insert_expand(int dim_int, size_t size);
         };
 
         using PosEmb = std::pair<Tensor *, Tensor *>; // cos sin

@@ -426,12 +426,5 @@ namespace mllm
             stride_[dim] = 0;
             update();
         }
-
-        void Tensor::insert_expand(int dim_int, size_t size)
-        {
-            insert_dim(dim_int);
-            expand(dim_int, size);
-            contiguous();
-        }
     } // namespace base
 } // namespace mllm

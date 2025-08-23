@@ -11,6 +11,18 @@ namespace mllm
 {
     namespace model
     {
+        void Qwen3SelfAttn::repeat_kv(Tensor &k, Tensor &v)
+        {
+            auto target_shape = k.shape();
+            target_shape[target_shape.size() - 2] = num_attention_heads;
+            k.insert_dim(-2);
+            v.insert_dim(-2);
+            k.expand(-2, num_attention_heads / num_key_value_heads);
+            v.expand(-2, num_attention_heads / num_key_value_heads);
+            k.reshape(target_shape);
+            v.reshape(target_shape);
+        }
+
         Qwen3SelfAttn::Qwen3SelfAttn(size_t layer_index, JsonConfig config, base::Device device, cudaStream_t stream)
             : layer_index_(layer_index),
               config_(config),
@@ -25,7 +37,10 @@ namespace mllm
               q_norm(head_dim, config["rms_norm_eps"], device, stream),
               k_norm(head_dim, config["rms_norm_eps"], device, stream),
               k_cache({num_attention_heads, 0, head_dim}, device, true),
-              v_cache({num_attention_heads, 0, head_dim}, device, true)
+              v_cache({num_attention_heads, 0, head_dim}, device, true),
+              mat_mul(device_, stream_),
+              mat_sc_mul(device_, stream_),
+              scaling(std::vector<float>({static_cast<float>(std::pow(head_dim, -0.5f))}).data(), {1}, true, base::Device::CPU)
         {
         }
 
@@ -62,8 +77,16 @@ namespace mllm
             kernel::get_rope_kernel(device_)(&q_output, position_embeddings.first, position_embeddings.second, &q_output, stream_);
             kernel::get_rope_kernel(device_)(&k_output, position_embeddings.first, position_embeddings.second, &k_output, stream_);
 
+            repeat_kv(k_output, v_output);
+
             k_cache.cat(k_output, -2);
             v_cache.cat(v_output, -2);
+
+            Tensor attn_weights({k_cache.shape(-2), k_cache.shape(-2)}, device_);
+            k_cache.t();
+
+            mat_mul.forward(q_output, k_cache, attn_weights);
+            mat_sc_mul.forward(attn_weights, scaling, attn_weights);
 
             throw std::runtime_error("Forward pass not implemented for Qwen3SelfAttn");
         }

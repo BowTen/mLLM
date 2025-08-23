@@ -58,7 +58,7 @@ namespace mllm
             }
         }
 
-        MatMulKernel get_matmul_kernel(base::Device device)
+        MatMulKernel get_mat_mul_kernel(base::Device device)
         {
             switch (device)
             {

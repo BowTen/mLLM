@@ -16,6 +16,7 @@ add_library(op
     op/embedding.cpp
     op/rms_norm.cpp
     op/add.cpp
+    op/mat_mul.cpp
     op/linear.cpp
 )
 add_library(kernel

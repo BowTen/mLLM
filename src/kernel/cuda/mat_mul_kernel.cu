@@ -155,9 +155,48 @@ namespace mllm
             // output->toDevice(base::Device::CUDA);
         }
 
+        __global__ void mat_sc_mul_kernel_cuda(float *mat_data, float scalar, float *output_data, uint32_t N, uint32_t M)
+        {
+            uint32_t mat_id = blockIdx.x;
+            uint32_t row_id = blockIdx.y;
+
+            mat_data += mat_id * N * M + row_id * M;
+            output_data += mat_id * N * M + row_id * M;
+            float4 *mat_vec = reinterpret_cast<float4 *>(mat_data);
+            float4 *output_vec = reinterpret_cast<float4 *>(output_data);
+
+            uint32_t vec_size = M / 4;
+            uint32_t vec_end = vec_size * 4;
+            for (uint32_t i = threadIdx.x; i < vec_size; i += blockDim.x)
+            {
+                float4 mat_val = mat_vec[i];
+                output_vec[i] = make_float4(
+                    mat_val.x * scalar,
+                    mat_val.y * scalar,
+                    mat_val.z * scalar,
+                    mat_val.w * scalar);
+            }
+            for (uint32_t i = threadIdx.x + vec_end; i < M; i++)
+            {
+                output_data[i] = mat_data[i] * scalar;
+            }
+        }
+
         // TODO: 优化列数小的矩阵
         void mat_mul_kernel_cuda_vec(base::Tensor *input0, base::Tensor *input1, base::Tensor *output, void *stream)
         {
+            if (input1->size() == 1)
+            {
+                CHECK(input0->shape() == output->shape());
+                size_t N = input0->shape(-2);
+                size_t M = output->shape(-1);
+                size_t num_mats = input0->num_mats();
+
+                dim3 grid(num_mats, N);
+
+                return;
+            }
+
             CHECK(input0->num_mats() > 0);
             CHECK(input0->num_mats() == input1->num_mats());
             CHECK(input0->num_mats() == output->num_mats());

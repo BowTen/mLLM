@@ -14,8 +14,28 @@ namespace mllm
             mat_out = mat1 * mat0;
         }
 
+        void single_mat_sc_mul_kernel_cpu(float *mat_data, float scalar, float *mat_out_data,
+                                          uint32_t N, uint32_t M)
+        {
+            arma::fmat mat(mat_data, N, M, false, true);
+            arma::fmat mat_out(mat_out_data, N, M, false, true);
+
+            mat_out = mat * scalar;
+        }
+
         void mat_mul_kernel_cpu(base::Tensor *input0, base::Tensor *input1, base::Tensor *output, [[maybe_unused]] void *stream)
         {
+            if (input1->size() == 1)
+            {
+                CHECK(input0->shape() == output->shape());
+                size_t N = input0->shape(-2);
+                size_t M = output->shape(-1);
+                size_t num_mats = input0->num_mats();
+                for (size_t i = 0; i < num_mats; i++)
+                    single_mat_sc_mul_kernel_cpu(input0->mat(i), *input1->data(), output->mat(i), N, M);
+                return;
+            }
+
             CHECK(input0->num_mats() > 0);
             CHECK(input0->num_mats() == input1->num_mats());
             CHECK(input0->num_mats() == output->num_mats());
