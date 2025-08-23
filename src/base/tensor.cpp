@@ -13,6 +13,21 @@ namespace mllm
 {
     namespace base
     {
+
+        size_t Tensor::check_index(int idx) const
+        {
+            if (idx >= 0)
+            {
+                CHECK(static_cast<size_t>(idx) < shape_.size()) << "Index out of range, shape size: " << shape_.size() << ", idx: " << idx;
+                return idx;
+            }
+            else
+            {
+                CHECK(static_cast<size_t>(-idx) <= shape_.size()) << "Index out of range, shape size: " << shape_.size() << ", -idx: " << -idx;
+                return shape_.size() + idx;
+            }
+        }
+
         std::vector<size_t> Tensor::default_stride(const std::vector<size_t> &shape)
         {
             if (shape.empty())
@@ -353,6 +368,7 @@ namespace mllm
                 VLOG(DEBUG) << "directly pushing data to cat Tensors";
                 this->push(other.data(), other.size() * sizeof(float));
                 this->shape_[dim] += other.shape(dim);
+                update();
                 return;
             }
 
@@ -390,6 +406,32 @@ namespace mllm
                 src_b += stride_b;
             }
             shape_[dim] += other.shape(dim);
+            update();
+        }
+
+        void Tensor::insert_dim(int dim_int)
+        {
+            size_t dim = check_index(dim_int);
+            CHECK(dim < shape_.size()) << "Dimension out of range in insert_dim()";
+            shape_.insert(shape_.begin() + dim, 1);
+            stride_.insert(stride_.begin() + dim, 0);
+            stride_[dim] = stride_[dim + 1] * shape_[dim + 1];
+            update();
+        }
+        void Tensor::expand(int dim_int, size_t size)
+        {
+            size_t dim = check_index(dim_int);
+            CHECK(shape_[dim] == 1) << "Dimension must be 1 in expand()";
+            shape_[dim] = size;
+            stride_[dim] = 0;
+            update();
+        }
+
+        void Tensor::insert_expand(int dim_int, size_t size)
+        {
+            insert_dim(dim_int);
+            expand(dim_int, size);
+            contiguous();
         }
     } // namespace base
 } // namespace mllm

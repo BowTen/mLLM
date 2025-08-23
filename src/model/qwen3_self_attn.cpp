@@ -23,7 +23,9 @@ namespace mllm
               v_proj({hidden_size, num_key_value_heads * head_dim}, device, stream),
               o_proj({num_attention_heads * head_dim, hidden_size}, device, stream),
               q_norm(head_dim, config["rms_norm_eps"], device, stream),
-              k_norm(head_dim, config["rms_norm_eps"], device, stream)
+              k_norm(head_dim, config["rms_norm_eps"], device, stream),
+              k_cache({num_attention_heads, 0, head_dim}, device, true),
+              v_cache({num_attention_heads, 0, head_dim}, device, true)
         {
         }
 
@@ -34,9 +36,9 @@ namespace mllm
             std::vector<size_t> kv_shape(hidden_state->shape());
             q_shape.back() = num_attention_heads * head_dim;
             kv_shape.back() = num_key_value_heads * head_dim;
-            Tensor q_output(q_shape, device_, stream_);
-            Tensor k_output(kv_shape, device_, stream_);
-            Tensor v_output(kv_shape, device_, stream_);
+            Tensor q_output(q_shape, device_, false);
+            Tensor k_output(kv_shape, device_, true);
+            Tensor v_output(kv_shape, device_, true);
 
             q_proj.forward(*hidden_state, q_output);
             k_proj.forward(*hidden_state, k_output);
@@ -59,6 +61,9 @@ namespace mllm
 
             kernel::get_rope_kernel(device_)(&q_output, position_embeddings.first, position_embeddings.second, &q_output, stream_);
             kernel::get_rope_kernel(device_)(&k_output, position_embeddings.first, position_embeddings.second, &k_output, stream_);
+
+            k_cache.cat(k_output, -2);
+            v_cache.cat(v_output, -2);
 
             throw std::runtime_error("Forward pass not implemented for Qwen3SelfAttn");
         }

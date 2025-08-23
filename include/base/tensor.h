@@ -30,6 +30,8 @@ namespace mllm
             static std::vector<size_t> default_stride(const std::vector<size_t> &shape);
             void update();
 
+            size_t check_index(int idx) const;
+
         public:
             Tensor();
             Tensor(const std::vector<size_t> &shape, Buffer::BufferPtr buffer, Device device = Device::CPU, bool mut = false);
@@ -61,7 +63,11 @@ namespace mllm
             Tensor clone();
 
             void push(float *bytes, size_t num_bytes);
-            void cat(Tensor &other, int dim);
+            void cat(Tensor &other, int dim_int);
+
+            void insert_dim(int dim_int);
+            void expand(int dim_int, size_t size);
+            void insert_expand(int dim_int, size_t size);
         };
 
         using PosEmb = std::pair<Tensor *, Tensor *>; // cos sin

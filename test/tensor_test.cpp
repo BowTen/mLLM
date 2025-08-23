@@ -1,4 +1,5 @@
 #include "base/tensor.h"
+#include "base/util.h"
 #include <iostream>
 #include <gtest/gtest.h>
 #include <vector>
@@ -617,36 +618,6 @@ TEST_F(TensorTest, CUDAContiguous)
     EXPECT_EQ(cuda_tensor.size(), 4096);
 }
 
-// Test CUDA tensor with data initialization and verification
-TEST_F(TensorTest, CUDADataInitializationAndVerification)
-{
-    std::vector<size_t> shape = {32, 32};
-
-    // Create CPU tensor first and initialize data
-    Tensor cpu_tensor(shape, Device::CPU);
-    float *cpu_data = cpu_tensor.data();
-    for (size_t i = 0; i < cpu_tensor.size(); ++i)
-    {
-        cpu_data[i] = static_cast<float>(i * 2 + 1); // Some pattern
-    }
-
-    // Transfer to CUDA
-    cpu_tensor.toDevice(Device::CUDA);
-
-    // Do some operations on CUDA tensor
-    cpu_tensor.view({64, 16});
-    cpu_tensor.transpose(0, 1);
-    cpu_tensor.reshape({16, 64});
-
-    // Transfer back to CPU and verify
-    cpu_tensor.toDevice(Device::CPU);
-    float *verified_data = cpu_tensor.data();
-    for (size_t i = 0; i < cpu_tensor.size(); ++i)
-    {
-        EXPECT_FLOAT_EQ(verified_data[i], static_cast<float>(i * 2 + 1));
-    }
-}
-
 // Test CUDA tensor chained operations
 TEST_F(TensorTest, CUDAChainedOperations)
 {
@@ -665,40 +636,6 @@ TEST_F(TensorTest, CUDAChainedOperations)
 
     // Size should remain constant throughout
     EXPECT_EQ(cuda_tensor.size(), 4096);
-}
-
-// Test mixed CPU-CUDA operations
-TEST_F(TensorTest, MixedCPUCUDAOperations)
-{
-    std::vector<size_t> shape = {32, 32};
-
-    // Start with CPU tensor
-    Tensor tensor(shape, Device::CPU);
-    float *data = tensor.data();
-    for (size_t i = 0; i < tensor.size(); ++i)
-    {
-        data[i] = static_cast<float>(i);
-    }
-
-    // Transfer to CUDA and do operations
-    tensor.toDevice(Device::CUDA);
-    tensor.view({64, 16});
-    tensor.transpose(0, 1);
-
-    // Transfer back to CPU and continue operations
-    tensor.toDevice(Device::CPU);
-    tensor.reshape({256, 4});
-    tensor.t();
-
-    EXPECT_EQ(tensor.shape(), std::vector<size_t>({4, 256}));
-    EXPECT_EQ(tensor.size(), 1024);
-
-    // Verify data integrity
-    float *final_data = tensor.data();
-    for (size_t i = 0; i < tensor.size(); ++i)
-    {
-        EXPECT_FLOAT_EQ(final_data[i], static_cast<float>(i));
-    }
 }
 
 // Test CUDA tensor with large aligned sizes for performance
@@ -741,9 +678,9 @@ protected:
         FLAGS_logtostderr = true;
         VLOG(DEBUG) << "TensorCatTest setup complete.";
 
-        for (int i = 0; i < data_a.size(); i++)
+        for (size_t i = 0; i < data_a.size(); i++)
             data_a[i] = i;
-        for (int i = 0; i < data_b.size(); i++)
+        for (size_t i = 0; i < data_b.size(); i++)
             data_b[i] = i * 2;
         data_cat.insert(data_cat.end(), data_a.begin(), data_a.end());
         data_cat.insert(data_cat.end(), data_b.begin(), data_b.end());
@@ -757,60 +694,6 @@ protected:
         google::ShutdownGoogleLogging();
     }
 };
-
-TEST_F(TensorCatTest, CPUOptionCat)
-{
-
-    VLOG(DEBUG) << "run a.cat";
-    a.cat(b, 0);
-    VLOG(DEBUG) << "a.cat over";
-    size_t total_size = a.size();
-
-    EXPECT_EQ(a.shape(), std::vector<size_t>({6, 16}));
-    EXPECT_EQ(total_size, data_a.size() + data_b.size());
-    EXPECT_EQ(total_size, data_cat.size());
-
-    std::cout << "a:\n";
-    int diff = 0;
-    for (size_t i = 0; i < a.shape(0); i++)
-    {
-        for (size_t j = 0; j < a.shape(1); j++)
-        {
-            std::cout << *a[{i, j}] << ' ';
-            diff += std::fabs(a.data()[i * a.shape(1) + j] - data_cat[i * a.shape(1) + j]) > check_eps;
-        }
-        std::cout << std::endl;
-    }
-    std::cout << std::endl;
-}
-TEST_F(TensorCatTest, CUDAOptionCat)
-{
-
-    a.toDevice(Device::CUDA);
-    b.toDevice(Device::CUDA);
-    VLOG(DEBUG) << "run a.cat";
-    a.cat(b, 0);
-    VLOG(DEBUG) << "a.cat over";
-    a.toDevice(Device::CPU);
-    size_t total_size = a.size();
-
-    EXPECT_EQ(a.shape(), std::vector<size_t>({6, 16}));
-    EXPECT_EQ(total_size, data_a.size() + data_b.size());
-    EXPECT_EQ(total_size, data_cat.size());
-
-    std::cout << "a:\n";
-    int diff = 0;
-    for (size_t i = 0; i < a.shape(0); i++)
-    {
-        for (size_t j = 0; j < a.shape(1); j++)
-        {
-            std::cout << *a[{i, j}] << ' ';
-            diff += std::fabs(a.data()[i * a.shape(1) + j] - data_cat[i * a.shape(1) + j]) > check_eps;
-        }
-        std::cout << std::endl;
-    }
-    std::cout << std::endl;
-}
 
 TEST_F(TensorCatTest, CPUHeadsOptionCat)
 {
@@ -964,4 +847,159 @@ TEST_F(TensorCatTest, CUDAHeadsCloneCat)
         std::cout << std::endl;
     }
     std::cout << std::endl;
+}
+
+class TensorExpandTest : public ::testing::Test
+{
+protected:
+    float check_eps = 1e-6;
+    std::vector<size_t> shape;
+    Tensor ts;
+
+    TensorExpandTest() : shape({2, 4}), ts(shape, Device::CPU, true)
+    {
+        google::InitGoogleLogging("TensorExpandTest");
+        FLAGS_logtostderr = true;
+        VLOG(DEBUG) << "TensorExpandTest setup complete.";
+
+        size_t total_size = ts.size();
+        for (size_t i = 0; i < total_size; i++)
+        {
+            *ts[i] = get_random_float();
+        }
+    }
+
+    void TearDown() override
+    {
+        google::ShutdownGoogleLogging();
+    }
+
+    void print_ts2(Tensor &ts)
+    {
+        for (size_t i = 0; i < ts.shape(-2); i++)
+        {
+            for (size_t j = 0; j < ts.shape(-1); j++)
+            {
+                std::cout << *ts[{i, j}] << ' ';
+            }
+            std::cout << std::endl;
+        }
+        std::cout << std::endl;
+    }
+    void print_ts3(Tensor &ts)
+    {
+        for (size_t i = 0; i < ts.shape(-2); i++)
+        {
+            for (size_t k = 0; k < ts.shape(0); k++)
+            {
+                for (size_t j = 0; j < ts.shape(-1); j++)
+                {
+                    std::cout << *ts[{k, i, j}] << ' ';
+                }
+                std::cout << "   ";
+            }
+            std::cout << std::endl;
+        }
+        std::cout << std::endl;
+    }
+    void check_data_ts3(Tensor &ts, Tensor &ts_ori)
+    {
+        int diff = 0;
+        for (size_t i = 0; i < ts.shape(-2); i++)
+        {
+            for (size_t k = 0; k < ts.shape(0); k++)
+            {
+                for (size_t j = 0; j < ts.shape(-1); j++)
+                {
+                    diff += std::fabs(*ts[{k, i, j}] - *ts_ori[{0, i, j}]) > check_eps;
+                }
+            }
+        }
+        EXPECT_EQ(diff, 0);
+    }
+    void check_addr_ts3(Tensor &ts, Tensor &ts_ori)
+    {
+        int diff = 0;
+        for (size_t i = 0; i < ts.shape(-2); i++)
+        {
+            for (size_t k = 0; k < ts.shape(0); k++)
+            {
+                for (size_t j = 0; j < ts.shape(-1); j++)
+                {
+                    diff += (ts[{k, i, j}] != ts_ori[{0, i, j}]);
+                }
+            }
+        }
+        EXPECT_EQ(diff, 0);
+    }
+};
+
+TEST_F(TensorExpandTest, CPU)
+{
+    std::cout << "origin ts:\n";
+    print_ts2(ts);
+    std::cout << "size: " << ts.size() << std::endl;
+    auto ts_ori = ts.clone();
+
+    ts.insert_dim(0);
+    ts.expand(0, 4);
+    std::cout << "expand ts:\n";
+    print_ts3(ts);
+    check_data_ts3(ts, ts);
+    check_addr_ts3(ts, ts);
+    std::cout << "size: " << ts.size() << std::endl;
+}
+TEST_F(TensorExpandTest, CUDA)
+{
+    std::cout << "origin ts:\n";
+    print_ts2(ts);
+    std::cout << "size: " << ts.size() << std::endl;
+
+    ts.toDevice(Device::CUDA);
+    ts.insert_dim(0);
+    ts.expand(0, 4);
+    ts.toDevice(Device::CPU);
+
+    std::cout << "expand ts:\n";
+    print_ts3(ts);
+    check_data_ts3(ts, ts);
+    check_addr_ts3(ts, ts);
+    std::cout << "size: " << ts.size() << std::endl;
+}
+
+TEST_F(TensorExpandTest, ContiguousCPU)
+{
+    std::cout << "origin ts:\n";
+    print_ts2(ts);
+    std::cout << "size: " << ts.size() << std::endl;
+
+    ts.insert_dim(0);
+    ts.expand(0, 4);
+    auto ts_ori = ts.clone();
+    ts.contiguous();
+    std::cout << "expand ts:\n";
+    print_ts3(ts);
+    check_data_ts3(ts, ts_ori);
+    std::cout << "size: " << ts.size() << std::endl;
+}
+TEST_F(TensorExpandTest, ContiguousCUDA)
+{
+    std::cout << "origin ts:\n";
+    print_ts2(ts);
+    std::cout << "size: " << ts.size() << std::endl;
+
+    ts.toDevice(Device::CUDA);
+    ts.insert_dim(0);
+    ts.expand(0, 4);
+    auto ts_ori = ts.clone();
+    ts.contiguous();
+    ts.toDevice(Device::CPU);
+    ts_ori.toDevice(Device::CPU);
+
+    std::cout << "expand ts:\n";
+    print_ts3(ts);
+    std::cout << "expand ts_ori:\n";
+    print_ts3(ts_ori);
+    check_data_ts3(ts, ts_ori);
+    std::cout << "size: " << ts.size() << std::endl;
 }

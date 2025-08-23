@@ -8,7 +8,7 @@ namespace mllm
                                                     float *new_data,
                                                     const size_t *shape,
                                                     const size_t *stride,
-                                                    size_t dim,
+                                                    int dim,
                                                     size_t total_size,
                                                     void *stream)
         {
@@ -16,7 +16,7 @@ namespace mllm
             {
                 auto id = i;
                 size_t offset = 0;
-                for (size_t j = 0; j < dim; j++)
+                for (int j = dim - 1; j >= 0; j--)
                 {
                     offset += (id % shape[j]) * stride[j];
                     id /= shape[j];
@@ -29,14 +29,19 @@ namespace mllm
                                     void *stream)
         {
             auto buffer = input->buffer()->clone(true);
-            auto new_data = input->data();
-            auto old_data = static_cast<float *>(buffer->data());
-
-            size_t dim = input->shape().size();
-            size_t total_size = input->size();
 
             auto stride = input->stride();
             auto shape = input->shape();
+            size_t dim = input->shape().size();
+            size_t total_logic_size = std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<size_t>());
+            if (total_logic_size > input->size())
+            {
+                auto vec_buffer = std::dynamic_pointer_cast<base::VecBuffer>(input->buffer());
+                vec_buffer->resize(total_logic_size * sizeof(float));
+            }
+            auto new_data = input->data();
+            auto old_data = static_cast<float *>(buffer->data());
+
             base::ArrBuffer stride_cuda(base::CudaAllocator::getInstance(), stride.size() * sizeof(size_t));
             base::ArrBuffer shape_cuda(base::CudaAllocator::getInstance(), shape.size() * sizeof(size_t));
             cudaMemcpy(stride_cuda.data(), stride.data(), stride.size() * sizeof(size_t), cudaMemcpyHostToDevice);
@@ -49,7 +54,7 @@ namespace mllm
                                                                                                static_cast<size_t *>(shape_cuda.data()),
                                                                                                static_cast<size_t *>(stride_cuda.data()),
                                                                                                dim,
-                                                                                               total_size,
+                                                                                               total_logic_size,
                                                                                                stream);
             }
             else
@@ -59,10 +64,9 @@ namespace mllm
                                                          static_cast<size_t *>(shape_cuda.data()),
                                                          static_cast<size_t *>(stride_cuda.data()),
                                                          dim,
-                                                         total_size,
+                                                         total_logic_size,
                                                          stream);
             }
-            cudaStreamSynchronize(static_cast<cudaStream_t>(stream));
         }
     }
 }

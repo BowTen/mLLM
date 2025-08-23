@@ -34,5 +34,13 @@ namespace mllm
                 dst_fp32[i] = (dst_bf16[i] << 16);
             }
         }
+
+        std::mt19937 global_mt(std::random_device{}());
+        std::uniform_real_distribution<> global_urd(0.0, 1.0);
+
+        float get_random_float()
+        {
+            return global_urd(global_mt);
+        }
     }
 }
