@@ -18,6 +18,7 @@ add_library(op
     op/add.cpp
     op/mat_mul.cpp
     op/linear.cpp
+    op/softmax.cpp
 )
 add_library(kernel
     kernel/kernel.cpp
@@ -35,6 +36,8 @@ add_library(kernel
     kernel/cuda/rope_kernel.cu
     kernel/cpu/gen_rope_kernel.cpp
     kernel/cuda/gen_rope_kernel.cu
+    kernel/cpu/softmax_kernel.cpp
+    kernel/cuda/softmax_kernel.cu
 )
 add_library(model 
     model/qwen3.cpp

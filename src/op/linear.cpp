@@ -13,7 +13,7 @@ namespace mllm
         {
             CHECK(!inputs.empty());
             CHECK(!outputs.empty());
-            kernel::get_matmul_kernel(device_)(&inputs[0], &weight_, &outputs[0], stream_);
+            kernel::get_mat_mul_kernel(device_)(&inputs[0], &weight_, &outputs[0], stream_);
         }
     }
 }

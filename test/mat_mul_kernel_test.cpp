@@ -236,8 +236,8 @@ protected:
 
 TEST_F(SmallMatMulTest, SmallMatMulCheck)
 {
-    kernel::get_matmul_kernel(Device::CPU)(&cpu_input0, &cpu_input1, &cpu_output, nullptr);
-    kernel::get_matmul_kernel(Device::CUDA)(&cuda_input0, &cuda_input1, &cuda_output, nullptr);
+    kernel::get_mat_mul_kernel(Device::CPU)(&cpu_input0, &cpu_input1, &cpu_output, nullptr);
+    kernel::get_mat_mul_kernel(Device::CUDA)(&cuda_input0, &cuda_input1, &cuda_output, nullptr);
 
     cuda_output.toDevice(Device::CPU);
     size_t total_size = cpu_output.size();
@@ -256,8 +256,8 @@ TEST_F(SmallMatMulTest, SmallTransposeMatMulCheck)
     cuda_input1.t();
     cuda_output.t();
 
-    kernel::get_matmul_kernel(Device::CPU)(&cpu_input1, &cpu_input0, &cpu_output, nullptr);
-    kernel::get_matmul_kernel(Device::CUDA)(&cuda_input1, &cuda_input0, &cuda_output, nullptr);
+    kernel::get_mat_mul_kernel(Device::CPU)(&cpu_input1, &cpu_input0, &cpu_output, nullptr);
+    kernel::get_mat_mul_kernel(Device::CUDA)(&cuda_input1, &cuda_input0, &cuda_output, nullptr);
 
     cuda_output.toDevice(Device::CPU);
     size_t total_size = cpu_output.size();
@@ -270,8 +270,8 @@ TEST_F(SmallMatMulTest, SmallTransposeMatMulCheck)
 
 TEST_F(LargeMatMulTest, LargeMatMulCheck)
 {
-    kernel::get_matmul_kernel(Device::CPU)(&cpu_input0, &cpu_input1, &cpu_output, nullptr);
-    kernel::get_matmul_kernel(Device::CUDA)(&cuda_input0, &cuda_input1, &cuda_output, nullptr);
+    kernel::get_mat_mul_kernel(Device::CPU)(&cpu_input0, &cpu_input1, &cpu_output, nullptr);
+    kernel::get_mat_mul_kernel(Device::CUDA)(&cuda_input0, &cuda_input1, &cuda_output, nullptr);
 
     cuda_output.toDevice(Device::CPU);
     size_t total_size = cpu_output.size();
@@ -290,8 +290,8 @@ TEST_F(LargeMatMulTest, LargeTransposeMatMulCheck)
     cuda_input1.t();
     cuda_output.t();
 
-    kernel::get_matmul_kernel(Device::CPU)(&cpu_input1, &cpu_input0, &cpu_output, nullptr);
-    kernel::get_matmul_kernel(Device::CUDA)(&cuda_input1, &cuda_input0, &cuda_output, nullptr);
+    kernel::get_mat_mul_kernel(Device::CPU)(&cpu_input1, &cpu_input0, &cpu_output, nullptr);
+    kernel::get_mat_mul_kernel(Device::CUDA)(&cuda_input1, &cuda_input0, &cuda_output, nullptr);
 
     cuda_output.toDevice(Device::CPU);
     size_t total_size = cpu_output.size();
@@ -303,8 +303,8 @@ TEST_F(LargeMatMulTest, LargeTransposeMatMulCheck)
 }
 TEST_F(SmallTensorMulTest, SmallMatMulCheck)
 {
-    kernel::get_matmul_kernel(Device::CPU)(&cpu_input0, &cpu_input1, &cpu_output, nullptr);
-    kernel::get_matmul_kernel(Device::CUDA)(&cuda_input0, &cuda_input1, &cuda_output, nullptr);
+    kernel::get_mat_mul_kernel(Device::CPU)(&cpu_input0, &cpu_input1, &cpu_output, nullptr);
+    kernel::get_mat_mul_kernel(Device::CUDA)(&cuda_input0, &cuda_input1, &cuda_output, nullptr);
 
     cuda_output.toDevice(Device::CPU);
     size_t total_size = cpu_output.size();
@@ -323,8 +323,8 @@ TEST_F(SmallTensorMulTest, SmallTransposeMatMulCheck)
     cuda_input1.t();
     cuda_output.t();
 
-    kernel::get_matmul_kernel(Device::CPU)(&cpu_input1, &cpu_input0, &cpu_output, nullptr);
-    kernel::get_matmul_kernel(Device::CUDA)(&cuda_input1, &cuda_input0, &cuda_output, nullptr);
+    kernel::get_mat_mul_kernel(Device::CPU)(&cpu_input1, &cpu_input0, &cpu_output, nullptr);
+    kernel::get_mat_mul_kernel(Device::CUDA)(&cuda_input1, &cuda_input0, &cuda_output, nullptr);
 
     cuda_output.toDevice(Device::CPU);
     size_t total_size = cpu_output.size();
@@ -337,8 +337,8 @@ TEST_F(SmallTensorMulTest, SmallTransposeMatMulCheck)
 
 TEST_F(LargeTensorMulTest, LargeMatMulCheck)
 {
-    kernel::get_matmul_kernel(Device::CPU)(&cpu_input0, &cpu_input1, &cpu_output, nullptr);
-    kernel::get_matmul_kernel(Device::CUDA)(&cuda_input0, &cuda_input1, &cuda_output, nullptr);
+    kernel::get_mat_mul_kernel(Device::CPU)(&cpu_input0, &cpu_input1, &cpu_output, nullptr);
+    kernel::get_mat_mul_kernel(Device::CUDA)(&cuda_input0, &cuda_input1, &cuda_output, nullptr);
 
     cuda_output.toDevice(Device::CPU);
     size_t total_size = cpu_output.size();
@@ -357,8 +357,8 @@ TEST_F(LargeTensorMulTest, LargeTransposeMatMulCheck)
     cuda_input1.t();
     cuda_output.t();
 
-    kernel::get_matmul_kernel(Device::CPU)(&cpu_input1, &cpu_input0, &cpu_output, nullptr);
-    kernel::get_matmul_kernel(Device::CUDA)(&cuda_input1, &cuda_input0, &cuda_output, nullptr);
+    kernel::get_mat_mul_kernel(Device::CPU)(&cpu_input1, &cpu_input0, &cpu_output, nullptr);
+    kernel::get_mat_mul_kernel(Device::CUDA)(&cuda_input1, &cuda_input0, &cuda_output, nullptr);
 
     cuda_output.toDevice(Device::CPU);
     size_t total_size = cpu_output.size();

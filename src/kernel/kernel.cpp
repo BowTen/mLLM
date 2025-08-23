@@ -6,6 +6,7 @@
 #include "kernel/cpu/contiguous_kernel.h"
 #include "kernel/cpu/rope_kernel.h"
 #include "kernel/cpu/gen_rope_kernel.h"
+#include "kernel/cpu/softmax_kernel.h"
 #include "kernel/cuda/embedding_kernel.cuh"
 #include "kernel/cuda/rms_norm_kernel.cuh"
 #include "kernel/cuda/mat_add_kernel.cuh"
@@ -13,6 +14,7 @@
 #include "kernel/cuda/contiguous_kernel.cuh"
 #include "kernel/cuda/rope_kernel.cuh"
 #include "kernel/cuda/gen_rope_kernel.cuh"
+#include "kernel/cuda/softmax_kernel.cuh"
 #include <stdexcept>
 
 namespace mllm
@@ -109,5 +111,19 @@ namespace mllm
                 throw std::runtime_error("Unsupported device");
             }
         }
+
+        SoftmaxKernel get_softmax_kernel(base::Device device)
+        {
+            switch (device)
+            {
+            case base::Device::CPU:
+                return softmax_kernel_cpu;
+            case base::Device::CUDA:
+                return softmax_kernel_cuda;
+            default:
+                throw std::runtime_error("Unsupported device");
+            }
+        }
+
     }
 }
