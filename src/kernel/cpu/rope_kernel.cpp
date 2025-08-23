@@ -25,7 +25,7 @@ namespace mllm
                              base::Tensor *cos,
                              base::Tensor *sin,
                              base::Tensor *output,
-                             void *stream)
+                             [[maybe_unused]] void *stream)
         {
             CHECK(input->shape(-1) % 2 == 0) << "head dim must be even";
             CHECK(input->shape() == output->shape()) << "Input and output shapes must be the same.";

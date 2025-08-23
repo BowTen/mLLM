@@ -100,7 +100,7 @@ namespace mllm
             }
         }
 
-        void VecBuffer::concat(const void *bytes, size_t num_bytes)
+        void VecBuffer::push(const void *bytes, size_t num_bytes)
         {
             if (size_ + num_bytes > capacity_)
             {
@@ -123,6 +123,14 @@ namespace mllm
                 allocator->deallocate(data_);
                 data_ = new_data;
                 capacity_ = new_capacity;
+            }
+        }
+        void VecBuffer::resize(size_t new_size)
+        {
+            size_ = new_size;
+            if (size_ > capacity_)
+            {
+                this->reserve(size_);
             }
         }
 

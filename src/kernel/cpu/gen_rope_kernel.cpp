@@ -23,7 +23,7 @@ namespace mllm
                                  uint32_t pos_end,
                                  base::Tensor *cos,
                                  base::Tensor *sin,
-                                 [[may_unused]] void *stream)
+                                 [[maybe_unused]] void *stream)
         {
             CHECK(inv_freq->size() == cos->shape(-1));
             CHECK(cos->shape() == sin->shape());

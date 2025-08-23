@@ -719,3 +719,249 @@ TEST_F(TensorTest, CUDALargeAlignedTensor)
     cuda_tensor.transpose(0, 1);
     EXPECT_EQ(cuda_tensor.shape(), std::vector<size_t>({128, 512}));
 }
+
+class TensorCatTest : public ::testing::Test
+{
+protected:
+    float check_eps = 1e-6;
+    std::vector<size_t> shape_a;
+    std::vector<size_t> shape_b;
+    std::vector<float> data_a;
+    std::vector<float> data_b;
+    std::vector<float> data_cat;
+    Tensor a;
+    Tensor b;
+
+    TensorCatTest() : shape_a({4, 16}),
+                      shape_b({2, 16}),
+                      data_a(64),
+                      data_b(32)
+    {
+        google::InitGoogleLogging("TensorCatTest");
+        FLAGS_logtostderr = true;
+        VLOG(DEBUG) << "TensorCatTest setup complete.";
+
+        for (int i = 0; i < data_a.size(); i++)
+            data_a[i] = i;
+        for (int i = 0; i < data_b.size(); i++)
+            data_b[i] = i * 2;
+        data_cat.insert(data_cat.end(), data_a.begin(), data_a.end());
+        data_cat.insert(data_cat.end(), data_b.begin(), data_b.end());
+
+        a = Tensor(data_a.data(), shape_a, true, Device::CPU, true);
+        b = Tensor(data_b.data(), shape_b, true, Device::CPU);
+    }
+
+    void TearDown() override
+    {
+        google::ShutdownGoogleLogging();
+    }
+};
+
+TEST_F(TensorCatTest, CPUOptionCat)
+{
+
+    VLOG(DEBUG) << "run a.cat";
+    a.cat(b, 0);
+    VLOG(DEBUG) << "a.cat over";
+    size_t total_size = a.size();
+
+    EXPECT_EQ(a.shape(), std::vector<size_t>({6, 16}));
+    EXPECT_EQ(total_size, data_a.size() + data_b.size());
+    EXPECT_EQ(total_size, data_cat.size());
+
+    std::cout << "a:\n";
+    int diff = 0;
+    for (size_t i = 0; i < a.shape(0); i++)
+    {
+        for (size_t j = 0; j < a.shape(1); j++)
+        {
+            std::cout << *a[{i, j}] << ' ';
+            diff += std::fabs(a.data()[i * a.shape(1) + j] - data_cat[i * a.shape(1) + j]) > check_eps;
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+}
+TEST_F(TensorCatTest, CUDAOptionCat)
+{
+
+    a.toDevice(Device::CUDA);
+    b.toDevice(Device::CUDA);
+    VLOG(DEBUG) << "run a.cat";
+    a.cat(b, 0);
+    VLOG(DEBUG) << "a.cat over";
+    a.toDevice(Device::CPU);
+    size_t total_size = a.size();
+
+    EXPECT_EQ(a.shape(), std::vector<size_t>({6, 16}));
+    EXPECT_EQ(total_size, data_a.size() + data_b.size());
+    EXPECT_EQ(total_size, data_cat.size());
+
+    std::cout << "a:\n";
+    int diff = 0;
+    for (size_t i = 0; i < a.shape(0); i++)
+    {
+        for (size_t j = 0; j < a.shape(1); j++)
+        {
+            std::cout << *a[{i, j}] << ' ';
+            diff += std::fabs(a.data()[i * a.shape(1) + j] - data_cat[i * a.shape(1) + j]) > check_eps;
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+TEST_F(TensorCatTest, CPUHeadsOptionCat)
+{
+    std::vector<size_t> heads_a_shape({4, 8, 2});
+    std::vector<size_t> heads_b_shape({2, 8, 2});
+    a.view(heads_a_shape);
+    b.view(heads_b_shape);
+    a.transpose(0, 1); // 8 4 2
+    b.transpose(0, 1); // 8 2 2
+
+    VLOG(DEBUG) << "run a.cat";
+    a.cat(b, 1);
+    VLOG(DEBUG) << "a.cat over";
+    size_t total_size = a.size();
+
+    EXPECT_EQ(a.shape(), std::vector<size_t>({8, 6, 2}));
+    EXPECT_EQ(total_size, data_a.size() + data_b.size());
+    EXPECT_EQ(total_size, data_cat.size());
+
+    std::cout << "a:\n";
+    int diff = 0;
+    for (size_t j = 0; j < a.shape(1); j++)
+    {
+        for (size_t i = 0; i < a.shape(0); i++)
+        {
+            for (size_t k = 0; k < a.shape(2); k++)
+            {
+                std::cout << *a[{i, j, k}] << ' ';
+                diff += std::fabs(a.data()[i * a.shape(1) * a.shape(2) + j * a.shape(2) + k] -
+                                  data_cat[i * a.shape(1) * a.shape(2) + j * a.shape(2) + k]) > check_eps;
+            }
+            std::cout << "   ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+}
+TEST_F(TensorCatTest, CUDAHeadsOptionCat)
+{
+    a.toDevice(Device::CUDA);
+    b.toDevice(Device::CUDA);
+    std::vector<size_t> heads_a_shape({4, 8, 2});
+    std::vector<size_t> heads_b_shape({2, 8, 2});
+    a.view(heads_a_shape);
+    b.view(heads_b_shape);
+    a.transpose(0, 1);
+    b.transpose(0, 1);
+
+    VLOG(DEBUG) << "run a.cat";
+    a.cat(b, 1);
+    VLOG(DEBUG) << "a.cat over";
+    size_t total_size = a.size();
+
+    EXPECT_EQ(a.shape(), std::vector<size_t>({8, 6, 2}));
+    EXPECT_EQ(total_size, data_a.size() + data_b.size());
+    EXPECT_EQ(total_size, data_cat.size());
+
+    a.toDevice(Device::CPU);
+    std::cout << "a:\n";
+    int diff = 0;
+    for (size_t j = 0; j < a.shape(1); j++)
+    {
+        for (size_t i = 0; i < a.shape(0); i++)
+        {
+            for (size_t k = 0; k < a.shape(2); k++)
+            {
+                std::cout << *a[{i, j, k}] << ' ';
+                diff += std::fabs(a.data()[i * a.shape(1) * a.shape(2) + j * a.shape(2) + k] -
+                                  data_cat[i * a.shape(1) * a.shape(2) + j * a.shape(2) + k]) > check_eps;
+            }
+            std::cout << "   ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+TEST_F(TensorCatTest, CPUHeadsCloneCat)
+{
+    std::vector<size_t> heads_a_shape({4, 8, 2});
+    std::vector<size_t> heads_b_shape({2, 8, 2});
+    a.view(heads_a_shape);
+    b.view(heads_b_shape);
+    a.transpose(0, 1); // 8 4 2
+    b.transpose(0, 1); // 8 2 2
+    b.contiguous();
+
+    VLOG(DEBUG) << "run a.cat";
+    a.cat(b, 1);
+    VLOG(DEBUG) << "a.cat over";
+    size_t total_size = a.size();
+
+    EXPECT_EQ(a.shape(), std::vector<size_t>({8, 6, 2}));
+    EXPECT_EQ(total_size, data_a.size() + data_b.size());
+    EXPECT_EQ(total_size, data_cat.size());
+
+    std::cout << "a:\n";
+    int diff = 0;
+    for (size_t j = 0; j < a.shape(1); j++)
+    {
+        for (size_t i = 0; i < a.shape(0); i++)
+        {
+            for (size_t k = 0; k < a.shape(2); k++)
+            {
+                std::cout << *a[{i, j, k}] << ' ';
+                diff += std::fabs(a.data()[i * a.shape(1) * a.shape(2) + j * a.shape(2) + k] -
+                                  data_cat[i * a.shape(1) * a.shape(2) + j * a.shape(2) + k]) > check_eps;
+            }
+            std::cout << "   ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+}
+TEST_F(TensorCatTest, CUDAHeadsCloneCat)
+{
+    a.toDevice(Device::CUDA);
+    b.toDevice(Device::CUDA);
+    std::vector<size_t> heads_a_shape({4, 8, 2});
+    std::vector<size_t> heads_b_shape({2, 8, 2});
+    a.view(heads_a_shape);
+    b.view(heads_b_shape);
+    a.transpose(0, 1);
+    b.transpose(0, 1);
+    b.contiguous();
+
+    VLOG(DEBUG) << "run a.cat";
+    a.cat(b, 1);
+    VLOG(DEBUG) << "a.cat over";
+    size_t total_size = a.size();
+
+    EXPECT_EQ(a.shape(), std::vector<size_t>({8, 6, 2}));
+    EXPECT_EQ(total_size, data_a.size() + data_b.size());
+    EXPECT_EQ(total_size, data_cat.size());
+
+    a.toDevice(Device::CPU);
+    std::cout << "a:\n";
+    int diff = 0;
+    for (size_t j = 0; j < a.shape(1); j++)
+    {
+        for (size_t i = 0; i < a.shape(0); i++)
+        {
+            for (size_t k = 0; k < a.shape(2); k++)
+            {
+                std::cout << *a[{i, j, k}] << ' ';
+                diff += std::fabs(a.data()[i * a.shape(1) * a.shape(2) + j * a.shape(2) + k] -
+                                  data_cat[i * a.shape(1) * a.shape(2) + j * a.shape(2) + k]) > check_eps;
+            }
+            std::cout << "   ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+}

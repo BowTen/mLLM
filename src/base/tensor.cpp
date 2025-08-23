@@ -149,13 +149,13 @@ namespace mllm
         {
             if (idx < 0)
             {
-                if (-idx > shape_.size())
+                if (-idx > static_cast<int>(shape_.size()))
                     return 1;
                 return shape_[shape_.size() + idx];
             }
             else
             {
-                if (idx >= shape_.size())
+                if (idx >= static_cast<int>(shape_.size()))
                     throw std::out_of_range("Index out of range in shape()");
                 return shape_[idx];
             }
@@ -164,13 +164,13 @@ namespace mllm
         {
             if (idx < 0)
             {
-                if (-idx > stride_.size())
+                if (-idx > static_cast<int>(stride_.size()))
                     return size();
                 return stride_[stride_.size() + idx];
             }
             else
             {
-                if (idx >= stride_.size())
+                if (idx >= static_cast<int>(stride_.size()))
                     throw std::out_of_range("Index out of range in stride()");
                 return stride_[idx];
             }
@@ -248,9 +248,12 @@ namespace mllm
         }
         void Tensor::transpose(int i, int j)
         {
-            if (i >= shape_.size() || j >= shape_.size() || -i > shape_.size() || -j > shape_.size())
+            if (i >= static_cast<int>(shape_.size()) ||
+                j >= static_cast<int>(shape_.size()) ||
+                -i > static_cast<int>(shape_.size()) ||
+                -j > static_cast<int>(shape_.size()))
             {
-                throw std::invalid_argument("Invalid transpose dimensions.");
+                throw std::invalid_argument("Invalid transpose dimensions. shape dim: " + std::to_string(shape_.size()));
             }
             if (i < 0)
                 i += shape_.size();
@@ -290,7 +293,12 @@ namespace mllm
             {
                 if (idx[i] >= shape_[i])
                 {
-                    throw std::out_of_range("Index out of range in operator[]");
+                    throw std::out_of_range("Index out of range in operator[{}], dim: " +
+                                            std::to_string(i) +
+                                            ", idx: " +
+                                            std::to_string(idx[i]) +
+                                            ", shape: " +
+                                            std::to_string(shape_[i]));
                 }
                 offset += idx[i] * stride_[i];
             }
@@ -312,6 +320,76 @@ namespace mllm
                 idx /= shape_[i];
             }
             return data() + offset;
+        }
+
+        void Tensor::push(float *bytes, size_t num_bytes)
+        {
+            CHECK(mut_) << "Tensor must be mutable in push()";
+            CHECK(bytes != nullptr) << "Invalid data pointer in push()";
+            CHECK(buffer_ != nullptr) << "Tensor buffer is null in push()";
+
+            auto vec_buffer = std::dynamic_pointer_cast<VecBuffer>(buffer_);
+            CHECK(vec_buffer != nullptr) << "Tensor buffer is not a VecBuffer in push()";
+
+            vec_buffer->push(bytes, num_bytes);
+        }
+
+        void Tensor::cat(Tensor &other, int dim)
+        {
+            CHECK(mut_) << "Tensor must be mutable in cat()";
+            CHECK(dim < static_cast<int>(shape_.size()) && -dim <= static_cast<int>(shape_.size())) << "Dimension out of range in cat()";
+            CHECK(other.shape().size() == this->shape().size()) << "Other tensor must have the same number of dimensions.";
+            if (dim < 0)
+                dim += static_cast<int>(shape_.size());
+            auto other_shape = other.shape();
+            other_shape[dim] = this->shape_[dim];
+            CHECK(other_shape == this->shape_) << "Other tensor must have the same shape except for the concatenation dimension.";
+
+            std::vector<size_t> next_idx(shape_.size(), 0);
+            next_idx[dim] = this->shape_[dim] - 1;
+            float *next_ptr = this->operator[](next_idx) + stride_[dim];
+            if (next_ptr == this->data() + this->size() && other.stride() == this->stride())
+            {
+                VLOG(DEBUG) << "directly pushing data to cat Tensors";
+                this->push(other.data(), other.size() * sizeof(float));
+                this->shape_[dim] += other.shape(dim);
+                return;
+            }
+
+            LOG(WARNING) << "Falling back to cloning tensors for cat()";
+            auto cp = this->clone();
+            cp.contiguous();
+            other.contiguous();
+            buf_holder_ = cp.buffer();
+
+            auto vec_buffer = std::dynamic_pointer_cast<VecBuffer>(buffer_);
+            CHECK(vec_buffer != nullptr) << "Buffer is not a VecBuffer in cat()";
+
+            vec_buffer->resize((this->size() + other.size()) * sizeof(float));
+
+            size_t dim_size = std::accumulate(shape_.begin() + dim + 1, shape_.end(), 1, std::multiplies<size_t>());
+            size_t this_num_dims = this->size() / dim_size;
+            size_t other_num_dims = other.size() / dim_size;
+
+            auto allocator = this->buffer_->get_allocator();
+            float *st = this->data();
+            float *ed = st + this->size();
+            float *src_a = cp.data();
+            float *src_b = other.data();
+            size_t stride_a = dim_size * this_num_dims;
+            size_t stride_b = dim_size * other_num_dims;
+            size_t num_a_copy_bytes = stride_a * sizeof(float);
+            size_t num_b_copy_bytes = stride_b * sizeof(float);
+            while (st < ed)
+            {
+                allocator->memcpy(st, src_a, num_a_copy_bytes);
+                st += stride_a;
+                src_a += stride_a;
+                allocator->memcpy(st, src_b, num_b_copy_bytes);
+                st += stride_b;
+                src_b += stride_b;
+            }
+            shape_[dim] += other.shape(dim);
         }
     } // namespace base
 } // namespace mllm

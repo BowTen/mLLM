@@ -22,6 +22,7 @@ namespace mllm
             std::vector<size_t> stride_;
             bool is_contiguous_;
             Buffer::BufferPtr buffer_;
+            Buffer::BufferPtr buf_holder_;
             Device device_;
             bool mut_;
             size_t num_mats_ = 0;
@@ -58,6 +59,9 @@ namespace mllm
             bool empty() const { return buffer_ == nullptr; }
             void toDevice(Device device);
             Tensor clone();
+
+            void push(float *bytes, size_t num_bytes);
+            void cat(Tensor &other, int dim);
         };
 
         using PosEmb = std::pair<Tensor *, Tensor *>; // cos sin

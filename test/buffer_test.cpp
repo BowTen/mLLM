@@ -173,7 +173,7 @@ TEST_F(BufferExceptionTestCUDA, VecBufferGrowthPattern)
     for (int i = 0; i < 10; ++i)
     {
         std::string data = "data" + std::to_string(i) + " ";
-        buffer.concat(data.c_str(), data.length());
+        buffer.push(data.c_str(), data.length());
 
         size_t current_capacity = buffer.capacity();
         if (current_capacity != capacities.back())
@@ -303,7 +303,7 @@ TEST_F(VecBufferTest, ConcatWithinCapacity)
     mllm::base::VecBuffer buffer(allocator, initial_capacity, initial_size);
 
     std::string test_data = "Hello World";
-    buffer.concat(test_data.c_str(), test_data.length());
+    buffer.push(test_data.c_str(), test_data.length());
 
     EXPECT_EQ(buffer.size(), initial_size + test_data.length());
     EXPECT_EQ(buffer.capacity(), initial_capacity);
@@ -322,7 +322,7 @@ TEST_F(VecBufferTest, ConcatExceedsCapacity)
 
     std::string test_data = "This is a long string that exceeds initial capacity";
     size_t old_capacity = buffer.capacity();
-    buffer.concat(test_data.c_str(), test_data.length());
+    buffer.push(test_data.c_str(), test_data.length());
 
     EXPECT_EQ(buffer.size(), initial_size + test_data.length());
     EXPECT_GT(buffer.capacity(), old_capacity); // capacity应该增长
@@ -344,7 +344,7 @@ TEST_F(VecBufferTest, MultipleConcat)
 
     for (const auto &str : test_strings)
     {
-        buffer.concat(str.c_str(), str.length());
+        buffer.push(str.c_str(), str.length());
         expected_result += str;
     }
 
@@ -408,7 +408,7 @@ TEST_F(VecBufferTest, ZeroInitialSize)
 
     // 添加数据
     std::string test_data = "First data";
-    buffer.concat(test_data.c_str(), test_data.length());
+    buffer.push(test_data.c_str(), test_data.length());
 
     EXPECT_EQ(buffer.size(), test_data.length());
 
@@ -460,7 +460,7 @@ TEST_F(BufferExceptionTest, VecBufferGrowthPattern)
     for (int i = 0; i < 10; ++i)
     {
         std::string data = "data" + std::to_string(i) + " ";
-        buffer.concat(data.c_str(), data.length());
+        buffer.push(data.c_str(), data.length());
 
         size_t current_capacity = buffer.capacity();
         if (current_capacity != capacities.back())
@@ -499,7 +499,7 @@ TEST_F(BufferPerformanceTest, VecBufferManySmallConcats)
 
     for (size_t i = 0; i < num_operations; ++i)
     {
-        buffer.concat(small_data.c_str(), small_data.length());
+        buffer.push(small_data.c_str(), small_data.length());
     }
 
     EXPECT_EQ(buffer.size(), num_operations);
