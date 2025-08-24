@@ -7,25 +7,6 @@ namespace mllm
     {
         using base::Tensor;
 
-        void Layer::forward(base::Tensor &input)
-        {
-            setInput(0, input);
-            forward();
-        }
-        void Layer::forward(base::Tensor &input, base::Tensor &output)
-        {
-            setInput(0, input);
-            setOutput(0, output);
-            forward();
-        }
-        void Layer::forward(base::Tensor &input0, base::Tensor &input1, base::Tensor &output)
-        {
-            setInput(0, input0);
-            setInput(1, input1);
-            setOutput(0, output);
-            forward();
-        }
-
         void Layer::setInput(size_t index, const Tensor &tensor)
         {
             if (index >= inputs.size())

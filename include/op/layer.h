@@ -28,11 +28,6 @@ namespace mllm
         public:
             virtual ~Layer() = default;
 
-            virtual void forward() = 0;
-            virtual void forward(base::Tensor &input);
-            virtual void forward(base::Tensor &input, base::Tensor &output);
-            virtual void forward(base::Tensor &input0, base::Tensor &input1, base::Tensor &output);
-
             void setInput(size_t index, const Tensor &tensor);
             void setOutput(size_t index, const Tensor &tensor);
             Tensor &getInput(size_t index);

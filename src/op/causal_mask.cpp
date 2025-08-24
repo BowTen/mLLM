@@ -11,8 +11,9 @@ namespace mllm
         {
         }
 
-        void CausalMask::forward()
+        void CausalMask::forward(Tensor &input)
         {
+            setInput(0, input);
             kernel::get_causal_mask_kernel(device_)(&inputs[0], stream_);
         }
     }

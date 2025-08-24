@@ -17,13 +17,24 @@ namespace mllm
               intermediate_size(config["intermediate_size"]),
               gate_proj({hidden_size, intermediate_size}, device, stream),
               up_proj({hidden_size, intermediate_size}, device, stream),
-              down_proj({intermediate_size, hidden_size}, device, stream)
+              down_proj({intermediate_size, hidden_size}, device, stream),
+              silu(device, stream),
+              mat_mul(device, stream)
         {
         }
 
         void Qwen3MLP::forward(Tensor *hidden_state, Tensor *output)
         {
             VLOG(TRACE) << "Forward pass for Qwen3MLP at index: " << layer_index_;
+
+            up_state = hidden_state->clone();
+            up_proj.forward(up_state, up_state);
+            gate_proj.forward(*hidden_state, *hidden_state);
+            silu.forward(*hidden_state);
+
+            mat_mul.forward(*hidden_state, up_state, *hidden_state);
+
+            down_proj.forward(*hidden_state, *output);
         }
 
         void Qwen3MLP::loadWeight(const std::string &name, base::SafeTensors &st)

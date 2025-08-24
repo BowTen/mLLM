@@ -13,9 +13,7 @@ namespace mllm
             Add(base::Device device = base::Device::CPU, cudaStream_t stream = nullptr)
                 : Layer(2, 1, device, stream) {}
 
-            void forward() override;
-            using Layer::forward;
-            void add(const Tensor &input0, const Tensor &input1, Tensor &output);
+            void forward(const Tensor &input0, const Tensor &input1, Tensor &output);
         };
     }
 }

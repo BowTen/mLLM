@@ -23,9 +23,7 @@ base::Tensor forward_to_embedding(mllm::model::Qwen3 *qwen3, std::string text)
     std::vector<size_t> out_shape = {tokens.size(), hidden_size};
     base::Tensor output(out_shape, qwen3->device());
 
-    qwen3->get_embed_tokens()->setInput(0, input);
-    qwen3->get_embed_tokens()->setOutput(0, output);
-    qwen3->get_embed_tokens()->forward();
+    qwen3->get_embed_tokens()->forward(input, output);
 
     return output;
 }
@@ -47,14 +45,10 @@ base::Tensor forward_to_norm(mllm::model::Qwen3 *qwen3, std::string text)
     std::vector<size_t> out_shape = {tokens.size(), hidden_size};
     base::Tensor output(out_shape, qwen3->device());
 
-    qwen3->get_embed_tokens()->setInput(0, input);
-    qwen3->get_embed_tokens()->setOutput(0, output);
-    qwen3->get_embed_tokens()->forward();
+    qwen3->get_embed_tokens()->forward(input, output);
 
     base::Tensor norm_output(out_shape, qwen3->device());
-    qwen3->get_norm()->setInput(0, output);
-    qwen3->get_norm()->setOutput(0, norm_output);
-    qwen3->get_norm()->forward();
+    qwen3->get_norm()->forward(output, norm_output);
 
     return norm_output;
 }

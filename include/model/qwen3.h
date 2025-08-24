@@ -37,7 +37,7 @@ namespace mllm
                 return Qwen3(model_path, device);
             }
 
-            void forward() override;
+            void forward();
 
             JsonConfig config() const { return config_; }
             BPETokenizer *get_tokenizer() { return &tokenizer; }

@@ -11,8 +11,7 @@ namespace mllm
         {
         public:
             Embedding(size_t vocab_size, size_t hidden_size, base::Device device = base::Device::CPU, cudaStream_t stream = nullptr);
-            void forward() override;
-            using WLayer::forward; // Bring base class forward functions into scope
+            void forward(Tensor &input, Tensor &output);
         };
     }
 }

@@ -11,8 +11,9 @@ namespace mllm
         {
         }
 
-        void SiLU::forward()
+        void SiLU::forward(Tensor &input)
         {
+            setInput(0, input);
             kernel::get_silu_kernel(device_)(&inputs[0], stream_);
         }
     }

@@ -10,14 +10,10 @@ namespace mllm
         {
         }
 
-        void RMSNorm::forward()
+        void RMSNorm::forward(Tensor &input, Tensor &output)
         {
-            CHECK(!inputs.empty());
-            CHECK(!outputs.empty());
-            if (device_ == base::Device::CUDA)
-            {
-                CHECK(stream_ != nullptr) << "CUDA stream must be set for CUDA device.";
-            }
+            setInput(0, input);
+            setOutput(0, output);
             kernel::get_rmsnorm_kernel(device_)(&inputs[0], &weight_, &outputs[0], eps_, stream_ ? stream_ : nullptr);
         }
     }

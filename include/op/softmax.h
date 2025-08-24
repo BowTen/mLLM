@@ -11,8 +11,7 @@ namespace mllm
         {
         public:
             Softmax(base::Device device = base::Device::CPU, cudaStream_t stream = nullptr);
-            void forward() override;
-            using Layer::forward;
+            void forward(Tensor &input, Tensor &output);
         };
     }
 }

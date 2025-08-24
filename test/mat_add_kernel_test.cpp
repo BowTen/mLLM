@@ -48,7 +48,7 @@ TEST_F(MatAddTest, CPUAddSmall)
 
     // 执行加法操作
     op::Add add_op(Device::CPU);
-    add_op.add(input0, input1, output);
+    add_op.forward(input0, input1, output);
 
     VLOG(TRACE) << "CPU ADD Small Result:";
     // 验证输出结果
@@ -79,7 +79,7 @@ TEST_F(MatAddTest, CPUTransposeAddSmall)
 
     // 执行加法操作
     op::Add add_op(Device::CPU);
-    add_op.add(input0, input1, output);
+    add_op.forward(input0, input1, output);
 
     VLOG(TRACE) << "CPU ADD Small Result:";
     // 验证输出结果
@@ -110,7 +110,7 @@ TEST_F(MatAddTest, CUDAAddSmall)
     output.toDevice(Device::CUDA);
     // 执行加法操作
     op::Add add_op(Device::CUDA);
-    add_op.add(input0, input1, output);
+    add_op.forward(input0, input1, output);
     input0.toDevice(Device::CPU);
     input1.toDevice(Device::CPU);
     output.toDevice(Device::CPU);
@@ -146,7 +146,7 @@ TEST_F(MatAddTest, CUDATransposeAddSmall)
     output.t();
     // 执行加法操作
     op::Add add_op(Device::CUDA);
-    add_op.add(input0, input1, output);
+    add_op.forward(input0, input1, output);
     input0.toDevice(Device::CPU);
     input1.toDevice(Device::CPU);
     output.toDevice(Device::CPU);
@@ -180,7 +180,7 @@ TEST_F(MatAddTest, CUDAAddLarge)
     output.toDevice(Device::CUDA);
     // 执行加法操作
     op::Add add_op(Device::CUDA);
-    add_op.add(input0, input1, output);
+    add_op.forward(input0, input1, output);
     input0.toDevice(Device::CPU);
     input1.toDevice(Device::CPU);
     output.toDevice(Device::CPU);
@@ -216,7 +216,7 @@ TEST_F(MatAddTest, CUDATransposeAddLarge)
     output.t();
     // 执行加法操作
     op::Add add_op(Device::CUDA);
-    add_op.add(input0, input1, output);
+    add_op.forward(input0, input1, output);
     input0.toDevice(Device::CPU);
     input1.toDevice(Device::CPU);
     output.toDevice(Device::CPU);
@@ -245,7 +245,7 @@ TEST_F(MatAddTest, CPUAddLarge)
 
     // 执行加法操作
     op::Add add_op(Device::CPU);
-    add_op.add(input0, input1, output);
+    add_op.forward(input0, input1, output);
 
     // 验证输出结果
     for (size_t i = 0; i < total_size; ++i)
@@ -275,7 +275,7 @@ TEST_F(MatAddTest, CPUTransposeAddLarge)
 
     // 执行加法操作
     op::Add add_op(Device::CPU);
-    add_op.add(input0, input1, output);
+    add_op.forward(input0, input1, output);
 
     // 验证输出结果
     for (size_t i = 0; i < total_size; ++i)

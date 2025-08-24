@@ -11,8 +11,10 @@ namespace mllm
         {
         }
 
-        void Softmax::forward()
+        void Softmax::forward(Tensor &input, Tensor &output)
         {
+            setInput(0, input);
+            setOutput(0, output);
             kernel::get_softmax_kernel(device_)(&inputs[0], &outputs[0], stream_);
         }
     }

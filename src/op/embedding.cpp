@@ -13,10 +13,10 @@ namespace mllm
         {
         }
 
-        void Embedding::forward()
+        void Embedding::forward(Tensor &input, Tensor &output)
         {
-            CHECK(!inputs.empty());
-            CHECK(!outputs.empty());
+            setInput(0, input);
+            setOutput(0, output);
             if (device_ == base::Device::CUDA)
             {
                 CHECK(stream_ != nullptr) << "CUDA stream must be set for CUDA device.";

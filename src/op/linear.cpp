@@ -9,10 +9,10 @@ namespace mllm
             : WLayer(1, 1, shape, device, stream)
         {
         }
-        void Linear::forward()
+        void Linear::forward(Tensor &input, Tensor &output)
         {
-            CHECK(!inputs.empty());
-            CHECK(!outputs.empty());
+            setInput(0, input);
+            setOutput(0, output);
             kernel::get_mat_mul_kernel(device_)(&inputs[0], &weight_, &outputs[0], stream_);
         }
     }
