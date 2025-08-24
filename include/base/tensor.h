@@ -37,6 +37,7 @@ namespace mllm
             Tensor(const std::vector<size_t> &shape, Buffer::BufferPtr buffer, Device device = Device::CPU, bool mut = false);
             Tensor(const std::vector<size_t> &shape, Device device = Device::CPU, bool mut = false);
             Tensor(void *data, const std::vector<size_t> &shape, bool copy, Device device = Device::CPU, bool mut = false);
+            static Tensor from_float(float value, Device device = Device::CPU, bool mut = false);
 
             void view(std::vector<size_t> shape);
             void reshape(std::vector<size_t> shape);
@@ -46,7 +47,11 @@ namespace mllm
 
             float *operator[](size_t idx);
             float *operator[](std::vector<size_t> idx);
-            size_t num_mats() const { return num_mats_; }
+            size_t num_mats()
+            {
+                update();
+                return num_mats_;
+            }
             float *mat(size_t idx);
 
             const std::vector<size_t> &shape() const { return shape_; }

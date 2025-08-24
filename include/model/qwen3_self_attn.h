@@ -21,6 +21,8 @@ namespace mllm
         class Qwen3SelfAttn
         {
             size_t layer_index_;
+            base::Device device_;
+            cudaStream_t stream_;
             JsonConfig config_;
             size_t hidden_size;
             size_t head_dim;
@@ -37,8 +39,6 @@ namespace mllm
             MatMul mat_mul_attn_output;
             CausalMask causal_mask;
             Softmax softmax;
-            base::Device device_;
-            cudaStream_t stream_;
             std::string name_;
 
             Tensor q_output;

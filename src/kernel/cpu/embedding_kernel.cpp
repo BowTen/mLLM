@@ -30,7 +30,7 @@ namespace mllm
                             size_t hidden_size,
                             [[maybe_unused]] void *stream)
         {
-            VLOG(DEBUG) << "input[0]: " << (uint32_t)(input->data())[0];
+            VLOG(DEBUG) << "input[0]: " << reinterpret_cast<uint32_t *>(input->data())[0];
             CHECK(input->shape(-2) == output->shape(-2));
             float *weight_data = weight->data();
 

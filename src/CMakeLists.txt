@@ -17,6 +17,7 @@ add_library(op
     op/rms_norm.cpp
     op/add.cpp
     op/mat_mul.cpp
+    op/ele_mul.cpp
     op/linear.cpp
     op/softmax.cpp
     op/causal_mask.cpp
@@ -32,6 +33,8 @@ add_library(kernel
     kernel/cuda/mat_add_kernel.cu
     kernel/cpu/mat_mul_kernel.cpp
     kernel/cuda/mat_mul_kernel.cu
+    kernel/cpu/ele_mul_kernel.cpp
+    kernel/cuda/ele_mul_kernel.cu
     kernel/cpu/contiguous_kernel.cpp
     kernel/cuda/contiguous_kernel.cu
     kernel/cpu/rope_kernel.cpp
@@ -44,6 +47,8 @@ add_library(kernel
     kernel/cuda/causal_mask_kernel.cu
     kernel/cpu/silu_kernel.cpp
     kernel/cuda/silu_kernel.cu
+    kernel/cpu/last_hidden_state_kernel.cpp
+    kernel/cuda/last_hidden_state_kernel.cu
 )
 add_library(model 
     model/qwen3.cpp

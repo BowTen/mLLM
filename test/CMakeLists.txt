@@ -100,6 +100,12 @@ target_link_libraries(qwen3_test
 target_include_directories(qwen3_test PRIVATE ${GTEST_INCLUDE_DIRS})
 target_compile_options(qwen3_test PRIVATE ${GTEST_CFLAGS_OTHER})
 
+# Add debug symbols and disable optimization for debugging
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(qwen3_test PRIVATE -g -O0)
+    target_compile_definitions(qwen3_test PRIVATE DEBUG)
+endif()
+
 target_link_libraries(rms_norm_kernel_test 
     base  # Link to the base library from src
     kernel  # Link to the kernel library from src

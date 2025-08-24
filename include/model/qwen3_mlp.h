@@ -6,7 +6,7 @@
 #include "op/rms_norm.h"
 #include "op/linear.h"
 #include "op/silu.h"
-#include "op/mat_mul.h"
+#include "op/ele_mul.h"
 #include <cuda_runtime.h>
 
 namespace mllm
@@ -20,6 +20,7 @@ namespace mllm
         class Qwen3MLP
         {
             size_t layer_index_;
+            base::Device device_;
             JsonConfig config_;
             size_t hidden_size;
             size_t intermediate_size;
@@ -27,9 +28,10 @@ namespace mllm
             Linear up_proj;
             Linear down_proj;
             SiLU silu;
-            MatMul mat_mul;
+            EleMul ele_mul;
             std::string name_;
 
+            Tensor gate_state;
             Tensor up_state;
 
         public:

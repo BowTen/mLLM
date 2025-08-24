@@ -5,6 +5,9 @@
 #include "base/safetensors.h"
 #include "op/embedding.h"
 #include "op/rms_norm.h"
+#include "op/mat_mul.h"
+#include "op/linear.h"
+#include "op/softmax.h"
 #include "qwen3_decode_layer.h"
 #include "qwen3_rotary_embedding.h"
 #include <cuda_runtime.h>
@@ -24,20 +27,31 @@ namespace mllm
             size_t hidden_size;
             BPETokenizer tokenizer;
             Embedding embed_tokens;
-            RMSNorm norm;
             Qwen3RotaryEmbedding rotary_embedding;
             std::vector<Qwen3DecodeLayer> layers;
-            size_t pos_id;
+            RMSNorm norm;
+            MatMul temp_scal;
+            Linear lm_head;
+            Softmax softmax;
 
-            Qwen3(std::string model_path, base::Device device = base::Device::CPU);
+            size_t pos_id;
+            Tensor hidden_state;
+            Tensor cos;
+            Tensor sin;
+            Tensor temperature_scaling;
+            Tensor final_probability;
+
+            Qwen3(std::string model_path, base::Device device, float temperature);
+
+            cudaStream_t init_cuda_stream(base::Device device);
 
         public:
-            static Qwen3 from_pretrained(const std::string &model_path, base::Device device = base::Device::CPU)
+            static Qwen3 from_pretrained(const std::string &model_path, base::Device device = base::Device::CPU, float temperature = 1.0f)
             {
-                return Qwen3(model_path, device);
+                return Qwen3(model_path, device, temperature);
             }
 
-            void forward();
+            void forward(Tensor &token_ids, Tensor &next_token_id);
 
             JsonConfig config() const { return config_; }
             BPETokenizer *get_tokenizer() { return &tokenizer; }

@@ -79,11 +79,16 @@ namespace mllm
             else if (device == Device::CUDA)
                 allocator = CudaAllocator::getInstance();
             else
-                throw std::invalid_argument("Unsupported device type.");
+                throw std::invalid_argument("Tensor::Tensor(const std::vector<size_t> &shape, Device device, bool mut): Unsupported device type.");
             if (mut)
+            {
                 buffer_ = std::make_shared<VecBuffer>(allocator, expected_size * sizeof(float) * 2, expected_size * sizeof(float));
+            }
             else
+            {
+                CHECK(expected_size > 0) << "Non-Mutable Tensor size must be greater than 0";
                 buffer_ = std::make_shared<ArrBuffer>(allocator, expected_size * sizeof(float));
+            }
             update();
         }
 
@@ -109,12 +114,16 @@ namespace mllm
             else if (device == Device::CUDA)
                 allocator = CudaAllocator::getInstance();
             else
-                throw std::invalid_argument("Unsupported device type.");
+                throw std::invalid_argument("Tensor::Tensor(void *data... ):Unsupported device type.");
             if (mut)
                 buffer_ = std::make_shared<VecBuffer>(allocator, data, expected_size * sizeof(float), expected_size * sizeof(float), copy);
             else
                 buffer_ = std::make_shared<ArrBuffer>(allocator, data, expected_size * sizeof(float), copy);
             update();
+        }
+        Tensor Tensor::from_float(float value, Device device, bool mut)
+        {
+            return Tensor(std::vector<float>({value}).data(), {1}, true, device, mut);
         }
 
         size_t Tensor::size() const
@@ -148,7 +157,7 @@ namespace mllm
             else if (device == Device::CUDA)
                 new_allocator = CudaAllocator::getInstance();
             else
-                throw std::invalid_argument("Unsupported device type.");
+                throw std::invalid_argument("Tensor::toDevice: Unsupported device type.");
             Buffer::BufferPtr new_buffer;
             if (mut_)
                 new_buffer = std::make_shared<VecBuffer>(new_allocator, buffer_->size() * 2, buffer_->size());
@@ -200,6 +209,12 @@ namespace mllm
 
         void Tensor::update()
         {
+            if (shape_.size() >= 2)
+                num_mats_ = std::accumulate(shape_.begin(), shape_.end() - 2, 1, std::multiplies<size_t>());
+            else if (shape_.size() == 1)
+                num_mats_ = 1;
+            else
+                num_mats_ = 0;
             if (shape_.empty())
                 return;
             if (stride_.back() != 1)
@@ -216,12 +231,6 @@ namespace mllm
                 }
             }
             is_contiguous_ = true;
-            if (shape_.size() >= 2)
-                num_mats_ = size() / (shape(-1) * shape(-2));
-            else if (shape_.size() == 1)
-                num_mats_ = 1;
-            else
-                num_mats_ = 0;
         }
 
         void Tensor::view(std::vector<size_t> shape)
@@ -231,10 +240,11 @@ namespace mllm
                 throw std::runtime_error("Tensor must be contiguous to use view.");
             }
             size_t new_size = 1;
-            for (auto s : shape)
-            {
-                new_size *= s;
-            }
+            size_t dim = shape_.size();
+            for (size_t i = 0; i < dim; i++)
+                if (stride_[i] > 0)
+                    new_size *= shape_[i];
+
             if (new_size != this->size())
             {
                 throw std::invalid_argument("New shape size must match the original size.");
@@ -306,15 +316,12 @@ namespace mllm
             size_t offset = 0;
             for (size_t i = 0; i < idx.size(); ++i)
             {
-                if (idx[i] >= shape_[i])
-                {
-                    throw std::out_of_range("Index out of range in operator[{}], dim: " +
-                                            std::to_string(i) +
-                                            ", idx: " +
-                                            std::to_string(idx[i]) +
-                                            ", shape: " +
-                                            std::to_string(shape_[i]));
-                }
+                CHECK(idx[i] >= shape_[i]) << "Index out of range in operator[{}], dim: " +
+                                                  std::to_string(i) +
+                                                  ", idx: " +
+                                                  std::to_string(idx[i]) +
+                                                  ", shape: " +
+                                                  std::to_string(shape_[i]);
                 offset += idx[i] * stride_[i];
             }
             return data() + offset;

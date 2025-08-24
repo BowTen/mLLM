@@ -12,6 +12,7 @@ namespace mllm
     {
         Qwen3MLP::Qwen3MLP(size_t layer_index, JsonConfig config, base::Device device, cudaStream_t stream)
             : layer_index_(layer_index),
+              device_(device),
               config_(config),
               hidden_size(config["hidden_size"]),
               intermediate_size(config["intermediate_size"]),
@@ -19,7 +20,7 @@ namespace mllm
               up_proj({hidden_size, intermediate_size}, device, stream),
               down_proj({intermediate_size, hidden_size}, device, stream),
               silu(device, stream),
-              mat_mul(device, stream)
+              ele_mul(device, stream)
         {
         }
 
@@ -27,14 +28,21 @@ namespace mllm
         {
             VLOG(TRACE) << "Forward pass for Qwen3MLP at index: " << layer_index_;
 
-            up_state = hidden_state->clone();
-            up_proj.forward(up_state, up_state);
-            gate_proj.forward(*hidden_state, *hidden_state);
-            silu.forward(*hidden_state);
+            auto intermediate_shape = hidden_state->shape();
+            intermediate_shape.back() = intermediate_size;
+            if (gate_state.shape() != intermediate_shape)
+            {
+                gate_state = Tensor(intermediate_shape, device_);
+                up_state = Tensor(intermediate_shape, device_);
+            }
 
-            mat_mul.forward(*hidden_state, up_state, *hidden_state);
+            up_proj.forward(*hidden_state, up_state);
+            gate_proj.forward(*hidden_state, gate_state);
+            silu.forward(gate_state);
 
-            down_proj.forward(*hidden_state, *output);
+            ele_mul.forward(gate_state, up_state, gate_state);
+
+            down_proj.forward(gate_state, *output);
         }
 
         void Qwen3MLP::loadWeight(const std::string &name, base::SafeTensors &st)

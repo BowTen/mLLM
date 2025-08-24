@@ -32,7 +32,6 @@ namespace mllm
                     id /= shape[j];
                 }
                 new_data[i] = old_data[offset];
-                VLOG(TRACE) << "new_data." << i << " = old_data." << offset;
             }
         }
     }

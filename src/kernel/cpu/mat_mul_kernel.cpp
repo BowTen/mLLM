@@ -40,11 +40,14 @@ namespace mllm
             }
 
             CHECK(input0->num_mats() > 0);
-            CHECK(input0->num_mats() == input1->num_mats());
-            CHECK(input0->num_mats() == output->num_mats());
-            CHECK(input0->shape(-1) == input1->shape(-2));
-            CHECK(input0->shape(-2) == output->shape(-2));
-            CHECK(input1->shape(-1) == output->shape(-1));
+            CHECK_EQ(input0->num_mats(), input1->num_mats());
+            CHECK_EQ(input0->num_mats(), output->num_mats());
+            CHECK_EQ(input0->shape(-1), input1->shape(-2));
+            CHECK_EQ(input0->shape(-2), output->shape(-2));
+            CHECK_EQ(input1->shape(-1), output->shape(-1));
+            input0->contiguous();
+            input1->contiguous();
+            output->contiguous();
             uint32_t num_mats = input0->num_mats();
             uint32_t N = input0->shape(-2);
             uint32_t K = input0->shape(-1);

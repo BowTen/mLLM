@@ -14,7 +14,7 @@ namespace mllm
         void Qwen3SelfAttn::repeat_kv(Tensor &k, Tensor &v)
         {
             auto target_shape = k.shape();
-            target_shape[target_shape.size() - 2] = num_attention_heads;
+            target_shape[target_shape.size() - 3] = num_attention_heads;
             k.insert_dim(-2);
             v.insert_dim(-2);
             k.expand(-2, num_attention_heads / num_key_value_heads);
@@ -25,6 +25,8 @@ namespace mllm
 
         Qwen3SelfAttn::Qwen3SelfAttn(size_t layer_index, JsonConfig config, base::Device device, cudaStream_t stream)
             : layer_index_(layer_index),
+              device_(device),
+              stream_(stream),
               config_(config),
               hidden_size(config["hidden_size"]),
               head_dim(config["head_dim"]),
@@ -36,8 +38,8 @@ namespace mllm
               o_proj({num_attention_heads * head_dim, hidden_size}, device, stream),
               q_norm(head_dim, config["rms_norm_eps"], device, stream),
               k_norm(head_dim, config["rms_norm_eps"], device, stream),
-              k_cache({num_attention_heads, 0, head_dim}, device, true),
-              v_cache({num_attention_heads, 0, head_dim}, device, true),
+              k_cache(),
+              v_cache(),
               mat_mul(device_, stream_),
               mat_sc_mul(device_, stream_),
               mat_mul_attn_output(device_, stream_),
@@ -45,6 +47,7 @@ namespace mllm
               softmax(device_, stream_),
               scaling(std::vector<float>({static_cast<float>(std::pow(head_dim, -0.5f))}).data(), {1}, true, base::Device::CPU)
         {
+            VLOG(TRACE) << "Constructor: Qwen3SelfAttn with layer index: " << layer_index_;
         }
 
         void Qwen3SelfAttn::forward(Tensor *hidden_state, Tensor *output, base::PosEmb position_embeddings)
@@ -54,9 +57,9 @@ namespace mllm
             std::vector<size_t> kv_shape(hidden_state->shape());
             q_shape.back() = num_attention_heads * head_dim;
             kv_shape.back() = num_key_value_heads * head_dim;
-            q_output = Tensor(q_shape, device_);
-            k_output = Tensor(kv_shape, device_);
-            v_output = Tensor(kv_shape, device_);
+            q_output = Tensor(q_shape, device_, false);
+            k_output = Tensor(kv_shape, device_, true); // reapeat_kv需要扩展Tensor
+            v_output = Tensor(kv_shape, device_, true); // reapeat_kv需要扩展Tensor
 
             q_proj.forward(*hidden_state, q_output);
             k_proj.forward(*hidden_state, k_output);
@@ -81,11 +84,22 @@ namespace mllm
             kernel::get_rope_kernel(device_)(&k_output, position_embeddings.first, position_embeddings.second, &k_output, stream_);
 
             repeat_kv(k_output, v_output);
+            CHECK(k_output.shape() == v_output.shape());
+            CHECK_EQ(k_output.num_mats(), v_output.num_mats());
 
-            k_cache.cat(k_output, -2);
-            v_cache.cat(v_output, -2);
+            if (k_cache.empty())
+            {
+                VLOG(DEBUG) << "Creating new KV cache tensors in layer " << layer_index_;
+                k_cache = k_output;
+                v_cache = v_output;
+            }
+            else
+            {
+                k_cache.cat(k_output, -2);
+                v_cache.cat(v_output, -2);
+            }
 
-            Tensor attn_weights({k_cache.shape(-2), k_cache.shape(-2)}, device_);
+            Tensor attn_weights({num_attention_heads, k_cache.shape(-2), k_cache.shape(-2)}, device_);
             k_cache.t();
 
             mat_mul.forward(q_output, k_cache, attn_weights);

@@ -26,6 +26,10 @@ namespace mllm
                                      base::Tensor *input1,
                                      base::Tensor *output,
                                      void *stream);
+        typedef void (*EleMulKernel)(base::Tensor *input0,
+                                     base::Tensor *input1,
+                                     base::Tensor *output,
+                                     void *stream);
         typedef void (*ContiguousKernel)(base::Tensor *input,
                                          void *stream);
         typedef void (*GenRoPEKernel)(base::Tensor *inv_freq,
@@ -46,17 +50,23 @@ namespace mllm
                                          void *stream);
         typedef void (*SiLUKernel)(base::Tensor *input,
                                    void *stream);
+        typedef void (*LastHiddenStateKernel)(base::Tensor *input,
+                                              void *stream);
 
         EmbeddingKernel get_emb_kernel(base::Device device);
         RMSNormKernel get_rmsnorm_kernel(base::Device device);
         MatAddKernel get_mat_add_kernel(base::Device device);
         MatMulKernel get_mat_mul_kernel(base::Device device);
+        EleMulKernel get_ele_mul_kernel(base::Device device);
         ContiguousKernel get_contiguous_kernel(base::Device device);
         RoPEKernel get_rope_kernel(base::Device device);
         GenRoPEKernel get_gen_rope_kernel(base::Device device);
         SoftmaxKernel get_softmax_kernel(base::Device device);
         CausalMaskKernel get_causal_mask_kernel(base::Device device);
         SiLUKernel get_silu_kernel(base::Device device);
+        LastHiddenStateKernel get_last_hidden_state_kernel(base::Device device);
+
+        void random_sampling_cpu(base::Tensor *probability, base::Tensor *token, base::Device device);
     }
 }
 

@@ -15,12 +15,7 @@ namespace mllm
         Buffer::Buffer(Allocator *alloc, size_t size)
             : allocator(alloc)
         {
-            if (size == 0)
-            {
-                VLOG(DEBUG) << "allocating zero size buffer, data pointer will be null.";
-                data_ = nullptr;
-                return;
-            }
+            CHECK(size > 0) << "Buffer size must be greater than zero.";
             data_ = allocator->allocate(size);
             if (!data_)
             {
