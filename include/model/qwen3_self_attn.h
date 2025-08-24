@@ -54,6 +54,8 @@ namespace mllm
             Qwen3SelfAttn(size_t layer_index, JsonConfig config, base::Device device = base::Device::CPU, cudaStream_t stream = nullptr);
             void forward(Tensor *hidden_state, Tensor *output, base::PosEmb position_embeddings);
             void loadWeight(const std::string &name, base::SafeTensors &st);
+
+            std::vector<WLayer *> weighted_layers();
         };
     }
 }

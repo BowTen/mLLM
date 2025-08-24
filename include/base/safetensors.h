@@ -22,6 +22,7 @@ namespace mllm
             ~SafeTensors();
 
             json get_header() const;
+            std::vector<size_t> get_weight_shape(std::string weight_name) const;
             void *get_weight(std::string weight_name) const;
         };
 

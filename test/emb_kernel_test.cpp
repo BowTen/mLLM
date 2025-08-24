@@ -159,7 +159,7 @@ protected:
         FLAGS_logtostderr = true;
         VLOG(DEBUG) << "Setting up test environment";
 
-        embedding.loadWeight("model.embed_tokens", safetensors);
+        embedding.loadWeight("model.embed_tokens", safetensors, false);
 
         vocab_size = tokenizer.vocab_size();
         batch_size = 4;

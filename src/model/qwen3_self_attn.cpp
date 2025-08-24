@@ -123,13 +123,25 @@ namespace mllm
         {
             VLOG(TRACE) << "Loading weights for Qwen3SelfAttn: " << name;
             name_ = name;
-            q_proj.loadWeight(name_ + ".q_proj", st);
-            k_proj.loadWeight(name_ + ".k_proj", st);
-            v_proj.loadWeight(name_ + ".v_proj", st);
-            o_proj.loadWeight(name_ + ".o_proj", st);
-            q_norm.loadWeight(name_ + ".q_norm", st);
-            k_norm.loadWeight(name_ + ".k_norm", st);
+            q_proj.loadWeight(name_ + ".q_proj", st, true);
+            k_proj.loadWeight(name_ + ".k_proj", st, true);
+            v_proj.loadWeight(name_ + ".v_proj", st, true);
+            o_proj.loadWeight(name_ + ".o_proj", st, true);
+            q_norm.loadWeight(name_ + ".q_norm", st, false);
+            k_norm.loadWeight(name_ + ".k_norm", st, false);
             VLOG(TRACE) << "Successfully loaded weights for Qwen3SelfAttn: " << name_;
         }
+        std::vector<WLayer *> Qwen3SelfAttn::weighted_layers()
+        {
+            std::vector<WLayer *> wlayers;
+            wlayers.push_back(&q_proj);
+            wlayers.push_back(&k_proj);
+            wlayers.push_back(&v_proj);
+            wlayers.push_back(&o_proj);
+            wlayers.push_back(&q_norm);
+            wlayers.push_back(&k_norm);
+            return wlayers;
+        }
+
     } // namespace model
 } // namespace mllm

@@ -42,9 +42,20 @@ namespace mllm
             return outputs.at(index);
         }
 
-        void WLayer::loadWeight(const std::string &name, base::SafeTensors &st)
+        void WLayer::loadWeight(const std::string &name, base::SafeTensors &st, bool transpose)
         {
             name_ = name;
+            if (transpose)
+            {
+                std::vector<size_t> weight_shape = st.get_weight_shape(name_ + ".weight");
+                auto this_shape = weight_.shape();
+                CHECK(this_shape.size() >= 2);
+                std::swap(this_shape[this_shape.size() - 2], this_shape[this_shape.size() - 1]);
+                CHECK(this_shape == weight_shape) << "Weight shape mismatch for " << name;
+                VLOG(DEBUG) << "transpose " << name << " to load the inverse weight";
+                weight_.view(this_shape);
+            }
+
             auto weight_data = weight_.data();
             size_t weight_size = weight_.size();
             if (device_ == base::Device::CPU)
@@ -60,6 +71,11 @@ namespace mllm
                 base::ArrBuffer buffer(base::HostAllocator::getInstance(), weight_size * sizeof(float));
                 base::load_bf16_to_f32(st.get_weight(name_ + ".weight"), buffer.data(), weight_size);
                 cudaMemcpy(weight_data, buffer.data(), weight_size * sizeof(float), cudaMemcpyHostToDevice);
+            }
+            if (transpose)
+            {
+                weight_.t();
+                weight_.contiguous(stream_);
             }
             VLOG(TRACE) << "Successfully loaded " << name << " weights";
         }

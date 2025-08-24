@@ -45,7 +45,7 @@ protected:
         FLAGS_logtostderr = true;
         VLOG(DEBUG) << "Setting up test environment";
 
-        norm.loadWeight("model.norm", safetensors);
+        norm.loadWeight("model.norm", safetensors, false);
 
         batch_size = 4;
         seq_len = 4;

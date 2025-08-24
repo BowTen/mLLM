@@ -40,11 +40,24 @@ namespace mllm
         {
             VLOG(TRACE) << "Loading weights for Qwen3DecodeLayer: " << name;
             name_ = name;
-            input_layernorm.loadWeight(name_ + ".input_layernorm", st);
-            post_attention_layernorm.loadWeight(name_ + ".post_attention_layernorm", st);
+            input_layernorm.loadWeight(name_ + ".input_layernorm", st, false);
+            post_attention_layernorm.loadWeight(name_ + ".post_attention_layernorm", st, false);
             self_attn.loadWeight(name_ + ".self_attn", st);
             mlp.loadWeight(name_ + ".mlp", st);
             VLOG(TRACE) << "Successfully loaded weights for Qwen3DecodeLayer: " << name_;
         }
+
+        std::vector<WLayer *> Qwen3DecodeLayer::weighted_layers()
+        {
+            std::vector<WLayer *> wlayers;
+            wlayers.push_back(&input_layernorm);
+            wlayers.push_back(&post_attention_layernorm);
+            auto attn_wlayer = self_attn.weighted_layers();
+            wlayers.insert(wlayers.end(), attn_wlayer.begin(), attn_wlayer.end());
+            auto mlp_wlayer = mlp.weighted_layers();
+            wlayers.insert(wlayers.end(), mlp_wlayer.begin(), mlp_wlayer.end());
+            return wlayers;
+        }
+
     } // namespace model
 } // namespace mllm

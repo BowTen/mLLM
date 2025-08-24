@@ -316,12 +316,12 @@ namespace mllm
             size_t offset = 0;
             for (size_t i = 0; i < idx.size(); ++i)
             {
-                CHECK(idx[i] >= shape_[i]) << "Index out of range in operator[{}], dim: " +
-                                                  std::to_string(i) +
-                                                  ", idx: " +
-                                                  std::to_string(idx[i]) +
-                                                  ", shape: " +
-                                                  std::to_string(shape_[i]);
+                CHECK(idx[i] < shape_[i]) << "Index out of range in operator[{}], dim: " +
+                                                 std::to_string(i) +
+                                                 ", idx: " +
+                                                 std::to_string(idx[i]) +
+                                                 ", shape: " +
+                                                 std::to_string(shape_[i]);
                 offset += idx[i] * stride_[i];
             }
             return data() + offset;

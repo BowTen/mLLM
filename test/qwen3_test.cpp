@@ -29,7 +29,7 @@ class Qwen3Test : public ::testing::Test
 protected:
     Qwen3 model;
 
-    Qwen3Test() : model(Qwen3::from_pretrained("/home/hznuojai/ai_infra/MiniLLM/resources/Qwen/Qwen3-0.6B", base::Device::CPU, 0.1f))
+    Qwen3Test() : model(Qwen3::from_pretrained("/home/hznuojai/ai_infra/MiniLLM/resources/Qwen/Qwen3-0.6B", base::Device::CPU, 5.0f))
     {
         VLOG(DEBUG) << "Set up Qwen3Test";
     }
@@ -44,7 +44,7 @@ TEST_F(Qwen3Test, Demo)
 {
     LOG(INFO) << "Run Demo";
     auto tokenizer = model.get_tokenizer();
-    string input_text = "你";
+    string input_text = "The weather is really ";
     auto ids = tokenizer->encode(input_text);
     cout << input_text << " -> ";
     for (auto id : ids)
@@ -61,5 +61,8 @@ TEST_F(Qwen3Test, Demo)
     model.forward(ids_tensor, next_id);
     LOG(INFO) << "Model forward completed.";
 
-    cout << "next id: " << *reinterpret_cast<uint32_t *>(next_id[0]) << endl;
+    size_t next_id_value = *reinterpret_cast<uint32_t *>(next_id[0]);
+    cout << "next id: " << next_id_value << endl;
+
+    cout << "decode token: " << tokenizer->decode(next_id_value) << endl;
 }

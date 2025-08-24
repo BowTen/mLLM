@@ -54,7 +54,7 @@ namespace mllm
             const Tensor &weight() const { return weight_; }
             void setWeight(const Tensor &weight) { weight_ = weight; }
             Tensor &getWeight() { return weight_; }
-            void loadWeight(const std::string &name, base::SafeTensors &st);
+            void loadWeight(const std::string &name, base::SafeTensors &st, bool transpose);
         };
 
     }

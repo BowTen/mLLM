@@ -45,9 +45,9 @@ namespace mllm
             VLOG(TRACE) << "Success to load safetensors";
             auto header = st.get_header();
 
-            embed_tokens.loadWeight("model.embed_tokens", st);
-            norm.loadWeight("model.norm", st);
-            lm_head.loadWeight("lm_head", st);
+            embed_tokens.loadWeight("model.embed_tokens", st, false);
+            norm.loadWeight("model.norm", st, false);
+            lm_head.loadWeight("lm_head", st, true);
 
             VLOG(TRACE) << "Loading layers";
             for (size_t i = 0; i < config_["num_hidden_layers"]; ++i)
@@ -56,6 +56,29 @@ namespace mllm
                 layers.back().loadWeight("model.layers." + std::to_string(i), st);
             }
             VLOG(TRACE) << "Successfully loaded all weights";
+        }
+
+        void Qwen3::print_top_tokens(Tensor &probabilities, size_t top_k = 5)
+        {
+            size_t vocab_size = probabilities.shape(-1);
+            std::vector<std::pair<size_t, float>> token_probs;
+            float *data = probabilities.data();
+            for (size_t i = 0; i < vocab_size; ++i)
+            {
+                token_probs.emplace_back(i, data[i]);
+            }
+            std::partial_sort(token_probs.begin(), token_probs.begin() + top_k, token_probs.end(),
+                              [](const auto &a, const auto &b)
+                              { return a.second > b.second; });
+
+            std::cout << "Top " << top_k << " tokens:\n";
+            for (size_t i = 0; i < top_k; ++i)
+            {
+                std::string token_str = this->tokenizer.decode(token_probs[i].first);
+                std::cout << "Token ID: " << token_probs[i].first
+                          << ", token_str: " << token_str
+                          << ", Probability: " << token_probs[i].second << "\n";
+            }
         }
 
         void Qwen3::forward(Tensor &token_ids, Tensor &next_token_id)
@@ -89,7 +112,24 @@ namespace mllm
             lm_head.forward(hidden_state, final_probability);
             softmax.forward(final_probability, final_probability);
 
+            print_top_tokens(final_probability, 10);
             kernel::random_sampling_cpu(&final_probability, &getOutput(0), device_);
+            print_top_tokens(final_probability, 10);
         }
+
+        std::vector<WLayer *> Qwen3::weighted_layers()
+        {
+            std::vector<WLayer *> wlayers;
+            wlayers.push_back(&embed_tokens);
+            for (auto &layer : layers)
+            {
+                auto layer_wlayers = layer.weighted_layers();
+                wlayers.insert(wlayers.end(), layer_wlayers.begin(), layer_wlayers.end());
+            }
+            wlayers.push_back(&norm);
+            wlayers.push_back(&lm_head);
+            return wlayers;
+        }
+
     } // namespace model
 } // namespace mllm

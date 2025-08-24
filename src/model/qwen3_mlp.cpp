@@ -49,10 +49,19 @@ namespace mllm
         {
             VLOG(TRACE) << "Loading weights for Qwen3MLP: " << name;
             name_ = name;
-            gate_proj.loadWeight(name_ + ".gate_proj", st);
-            up_proj.loadWeight(name_ + ".up_proj", st);
-            down_proj.loadWeight(name_ + ".down_proj", st);
+            gate_proj.loadWeight(name_ + ".gate_proj", st, true);
+            up_proj.loadWeight(name_ + ".up_proj", st, true);
+            down_proj.loadWeight(name_ + ".down_proj", st, true);
             VLOG(TRACE) << "Successfully loaded weights for Qwen3MLP: " << name_;
+        }
+
+        std::vector<WLayer *> Qwen3MLP::weighted_layers()
+        {
+            std::vector<WLayer *> wlayers;
+            wlayers.push_back(&gate_proj);
+            wlayers.push_back(&up_proj);
+            wlayers.push_back(&down_proj);
+            return wlayers;
         }
     } // namespace model
 } // namespace mllm

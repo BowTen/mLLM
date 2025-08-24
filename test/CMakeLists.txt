@@ -25,6 +25,7 @@ add_executable(rope_kernel_test rope_kernel_test.cpp)
 add_executable(softmax_kernel_test softmax_kernel_test.cpp)
 add_executable(causal_mask_kernel_test causal_mask_kernel_test.cpp)
 add_executable(silu_kernel_test silu_kernel_test.cpp)
+add_executable(print_layer_weight print_layer_weight.cpp)
 
 # Link libraries
 target_link_libraries(tokenizer_test 
@@ -198,6 +199,20 @@ target_link_libraries(silu_kernel_test
 target_include_directories(silu_kernel_test PRIVATE ${GTEST_INCLUDE_DIRS})
 target_compile_options(silu_kernel_test PRIVATE ${GTEST_CFLAGS_OTHER})
 
+target_link_libraries(print_layer_weight 
+    base  # Link to the base library from src
+    kernel  # Link to the kernel library from src
+    op
+    model
+    ${GTEST_LIBRARIES}
+    ${GTEST_MAIN_LIBRARIES}
+    Threads::Threads
+    armadillo
+    openblas
+)
+target_include_directories(print_layer_weight PRIVATE ${GTEST_INCLUDE_DIRS})
+target_compile_options(print_layer_weight PRIVATE ${GTEST_CFLAGS_OTHER})
+
 # Enable testing
 enable_testing()
 
@@ -216,3 +231,4 @@ add_test(NAME RoPEKernelTest COMMAND rope_kernel_test)
 add_test(NAME SoftmaxKernelTest COMMAND softmax_kernel_test)
 add_test(NAME CausalMaskKernelTest COMMAND causal_mask_kernel_test)
 add_test(NAME SiLUKernelTest COMMAND silu_kernel_test)
+add_test(NAME PrintLayerWeight COMMAND print_layer_weight)

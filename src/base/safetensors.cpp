@@ -112,5 +112,20 @@ namespace mllm
             uint64_t start_offset = offsets[0];
             return reinterpret_cast<char *>(weight) + start_offset;
         }
+
+        std::vector<size_t> SafeTensors::get_weight_shape(std::string weight_name) const
+        {
+            CHECK(weight != nullptr);
+
+            CHECK(header.find(weight_name) != header.end()) << "Weight name not found in header: " << weight_name;
+
+            const auto &weight_info = header[weight_name];
+            CHECK(weight_info.find("shape") != weight_info.end());
+
+            const auto &shape = weight_info["shape"];
+
+            return shape;
+        }
+
     }
 }

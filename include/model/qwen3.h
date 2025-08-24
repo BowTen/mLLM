@@ -44,6 +44,7 @@ namespace mllm
             Qwen3(std::string model_path, base::Device device, float temperature);
 
             cudaStream_t init_cuda_stream(base::Device device);
+            void print_top_tokens(Tensor &probabilities, size_t top_k);
 
         public:
             static Qwen3 from_pretrained(const std::string &model_path, base::Device device = base::Device::CPU, float temperature = 1.0f)
@@ -59,6 +60,8 @@ namespace mllm
             RMSNorm *get_norm() { return &norm; }
             base::Device device() const { return device_; }
             cudaStream_t stream() const { return stream_; }
+
+            std::vector<WLayer *> weighted_layers();
         };
     }
 }
