@@ -40,6 +40,9 @@ namespace mllm
               v_cache({num_attention_heads, 0, head_dim}, device, true),
               mat_mul(device_, stream_),
               mat_sc_mul(device_, stream_),
+              mat_mul_attn_output(device_, stream_),
+              causal_mask(device_, stream_),
+              softmax(device_, stream_),
               scaling(std::vector<float>({static_cast<float>(std::pow(head_dim, -0.5f))}).data(), {1}, true, base::Device::CPU)
         {
         }
@@ -51,9 +54,9 @@ namespace mllm
             std::vector<size_t> kv_shape(hidden_state->shape());
             q_shape.back() = num_attention_heads * head_dim;
             kv_shape.back() = num_key_value_heads * head_dim;
-            Tensor q_output(q_shape, device_, false);
-            Tensor k_output(kv_shape, device_, true);
-            Tensor v_output(kv_shape, device_, true);
+            q_output = Tensor(q_shape, device_);
+            k_output = Tensor(kv_shape, device_);
+            v_output = Tensor(kv_shape, device_);
 
             q_proj.forward(*hidden_state, q_output);
             k_proj.forward(*hidden_state, k_output);
@@ -87,8 +90,19 @@ namespace mllm
 
             mat_mul.forward(q_output, k_cache, attn_weights);
             mat_sc_mul.forward(attn_weights, scaling, attn_weights);
+            causal_mask.forward(attn_weights);
+            softmax.forward(attn_weights, attn_weights);
 
-            throw std::runtime_error("Forward pass not implemented for Qwen3SelfAttn");
+            Tensor attn_output(q_output);
+            mat_mul_attn_output.forward(attn_weights, v_cache, attn_output);
+
+            attn_output.transpose(-3, -2);
+            auto attn_out_shape = attn_output.shape();
+            attn_out_shape.pop_back();
+            attn_out_shape.back() *= head_dim;
+            attn_output.reshape(attn_out_shape);
+
+            o_proj.forward(attn_output, *output);
         }
 
         void Qwen3SelfAttn::loadWeight(const std::string &name, base::SafeTensors &st)

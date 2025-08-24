@@ -8,6 +8,7 @@
 #include "kernel/cpu/gen_rope_kernel.h"
 #include "kernel/cpu/softmax_kernel.h"
 #include "kernel/cpu/causal_mask_kernel.h"
+#include "kernel/cpu/silu_kernel.h"
 #include "kernel/cuda/embedding_kernel.cuh"
 #include "kernel/cuda/rms_norm_kernel.cuh"
 #include "kernel/cuda/mat_add_kernel.cuh"
@@ -17,6 +18,7 @@
 #include "kernel/cuda/gen_rope_kernel.cuh"
 #include "kernel/cuda/softmax_kernel.cuh"
 #include "kernel/cuda/causal_mask_kernel.cuh"
+#include "kernel/cuda/silu_kernel.cuh"
 #include <stdexcept>
 
 namespace mllm
@@ -135,6 +137,18 @@ namespace mllm
                 return causal_mask_kernel_cpu;
             case base::Device::CUDA:
                 return causal_mask_kernel_cuda;
+            default:
+                throw std::runtime_error("Unsupported device");
+            }
+        }
+        SiLUKernel get_silu_kernel(base::Device device)
+        {
+            switch (device)
+            {
+            case base::Device::CPU:
+                return silu_kernel_cpu;
+            case base::Device::CUDA:
+                return silu_kernel_cuda;
             default:
                 throw std::runtime_error("Unsupported device");
             }

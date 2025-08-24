@@ -32,7 +32,7 @@ namespace mllm
             residual = hidden_state->clone();
 
             post_attention_layernorm.forward(*hidden_state, *hidden_state);
-            mlp.forward(*hidden_state, *hidden_state);
+            mlp.forward(hidden_state, hidden_state);
             add_op.forward(*hidden_state, residual, *output);
         }
 

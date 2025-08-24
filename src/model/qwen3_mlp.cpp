@@ -11,8 +11,7 @@ namespace mllm
     namespace model
     {
         Qwen3MLP::Qwen3MLP(size_t layer_index, JsonConfig config, base::Device device, cudaStream_t stream)
-            : Layer(1, 1, device, stream),
-              layer_index_(layer_index),
+            : layer_index_(layer_index),
               config_(config),
               hidden_size(config["hidden_size"]),
               intermediate_size(config["intermediate_size"]),
@@ -22,13 +21,9 @@ namespace mllm
         {
         }
 
-        void Qwen3MLP::forward()
+        void Qwen3MLP::forward(Tensor *hidden_state, Tensor *output)
         {
-            // Forward pass logic for Qwen3DecodeLayer
-            // This should be implemented based on the specific requirements of the layer
             VLOG(TRACE) << "Forward pass for Qwen3MLP at index: " << layer_index_;
-            throw std::runtime_error("Forward pass not implemented for Qwen3MLP");
-            // Example: Use inputs and outputs tensors to perform computations
         }
 
         void Qwen3MLP::loadWeight(const std::string &name, base::SafeTensors &st)

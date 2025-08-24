@@ -6,6 +6,8 @@
 #include "op/rms_norm.h"
 #include "op/linear.h"
 #include "op/mat_mul.h"
+#include "op/causal_mask.h"
+#include "op/softmax.h"
 #include <cuda_runtime.h>
 
 namespace mllm
@@ -32,9 +34,16 @@ namespace mllm
             RMSNorm k_norm;
             MatMul mat_mul;
             MatMul mat_sc_mul;
+            MatMul mat_mul_attn_output;
+            CausalMask causal_mask;
+            Softmax softmax;
             base::Device device_;
             cudaStream_t stream_;
             std::string name_;
+
+            Tensor q_output;
+            Tensor k_output;
+            Tensor v_output;
             Tensor k_cache;
             Tensor v_cache;
             Tensor scaling;

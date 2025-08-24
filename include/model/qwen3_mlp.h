@@ -15,7 +15,7 @@ namespace mllm
         using namespace tokenizer;
         using namespace op;
 
-        class Qwen3MLP : public Layer
+        class Qwen3MLP
         {
             size_t layer_index_;
             JsonConfig config_;
@@ -24,11 +24,11 @@ namespace mllm
             Linear gate_proj;
             Linear up_proj;
             Linear down_proj;
+            std::string name_;
 
         public:
             Qwen3MLP(size_t layer_index, JsonConfig config, base::Device device = base::Device::CPU, cudaStream_t stream = nullptr);
-            void forward() override;
-            using Layer::forward;
+            void forward(Tensor *hidden_state, Tensor *output);
             void loadWeight(const std::string &name, base::SafeTensors &st);
         };
     }

@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 #include <vector>
 #include "kernel/kernel.h"
+#include "op/softmax.h"
 #include "op/causal_mask.h"
 
 #define GLOG_USE_GLOG_EXPORT
@@ -19,6 +20,8 @@ protected:
     vector<size_t> shape;
     vector<float> data;
     Tensor a;
+    op::Softmax softmax_cpu;
+    op::Softmax softmax_cuda;
     op::CausalMask causal_mask_cpu;
     op::CausalMask causal_mask_cuda;
 
@@ -33,6 +36,8 @@ protected:
                              1.0, 6.0, 7.0, 4.0,
                              5.0, 2.0, 3.0, 8.0}),
                        a(data.data(), shape, true, Device::CPU),
+                       softmax_cpu(Device::CPU),
+                       softmax_cuda(Device::CUDA),
                        causal_mask_cpu(Device::CPU),
                        causal_mask_cuda(Device::CUDA)
     {
@@ -67,8 +72,9 @@ TEST_F(CausalMaskTest, CPU)
 
     VLOG(DEBUG) << "Running causal_mask kernel on CPU...";
     causal_mask_cpu.forward(a);
+    softmax_cpu.forward(a, a);
 
-    cout << "causal_mask(a):\n";
+    cout << "softmax(causal_mask(a)):\n";
     pt_ts3(a);
 }
 
@@ -80,9 +86,10 @@ TEST_F(CausalMaskTest, CUDA)
     VLOG(DEBUG) << "Running causal_mask kernel on CUDA...";
     a.toDevice(Device::CUDA);
     causal_mask_cuda.forward(a);
+    softmax_cuda.forward(a, a);
     a.toDevice(Device::CPU);
 
-    cout << "causal_mask(a):\n";
+    cout << "softmax(causal_mask(a)):\n";
     pt_ts3(a);
 }
 

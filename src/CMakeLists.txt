@@ -20,6 +20,7 @@ add_library(op
     op/linear.cpp
     op/softmax.cpp
     op/causal_mask.cpp
+    op/silu.cpp
 )
 add_library(kernel
     kernel/kernel.cpp
@@ -41,6 +42,8 @@ add_library(kernel
     kernel/cuda/softmax_kernel.cu
     kernel/cpu/causal_mask_kernel.cpp
     kernel/cuda/causal_mask_kernel.cu
+    kernel/cpu/silu_kernel.cpp
+    kernel/cuda/silu_kernel.cu
 )
 add_library(model 
     model/qwen3.cpp

@@ -44,6 +44,8 @@ namespace mllm
                                       void *stream);
         typedef void (*CausalMaskKernel)(base::Tensor *input,
                                          void *stream);
+        typedef void (*SiLUKernel)(base::Tensor *input,
+                                   void *stream);
 
         EmbeddingKernel get_emb_kernel(base::Device device);
         RMSNormKernel get_rmsnorm_kernel(base::Device device);
@@ -54,6 +56,7 @@ namespace mllm
         GenRoPEKernel get_gen_rope_kernel(base::Device device);
         SoftmaxKernel get_softmax_kernel(base::Device device);
         CausalMaskKernel get_causal_mask_kernel(base::Device device);
+        SiLUKernel get_silu_kernel(base::Device device);
     }
 }
 
