@@ -17,6 +17,8 @@ namespace mllm
         };
 
         bool isDevicePointer(void *ptr);
+
+#define FLOAT_INF 1e9
     } // namespace base
 } // namespace mllm
 

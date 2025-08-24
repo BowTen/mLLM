@@ -42,6 +42,8 @@ namespace mllm
         typedef void (*SoftmaxKernel)(base::Tensor *input,
                                       base::Tensor *output,
                                       void *stream);
+        typedef void (*CausalMaskKernel)(base::Tensor *input,
+                                         void *stream);
 
         EmbeddingKernel get_emb_kernel(base::Device device);
         RMSNormKernel get_rmsnorm_kernel(base::Device device);
@@ -51,6 +53,7 @@ namespace mllm
         RoPEKernel get_rope_kernel(base::Device device);
         GenRoPEKernel get_gen_rope_kernel(base::Device device);
         SoftmaxKernel get_softmax_kernel(base::Device device);
+        CausalMaskKernel get_causal_mask_kernel(base::Device device);
     }
 }
 

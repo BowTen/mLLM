@@ -23,6 +23,7 @@ add_executable(mat_add_kernel_test mat_add_kernel_test.cpp)
 add_executable(mat_mul_kernel_test mat_mul_kernel_test.cpp)
 add_executable(rope_kernel_test rope_kernel_test.cpp)
 add_executable(softmax_kernel_test softmax_kernel_test.cpp)
+add_executable(causal_mask_kernel_test causal_mask_kernel_test.cpp)
 
 # Link libraries
 target_link_libraries(tokenizer_test 
@@ -147,9 +148,10 @@ target_link_libraries(rope_kernel_test
     armadillo
     openblas
 )
+target_include_directories(rope_kernel_test PRIVATE ${GTEST_INCLUDE_DIRS})
+target_compile_options(rope_kernel_test PRIVATE ${GTEST_CFLAGS_OTHER})
 
-target_include_directories(softmax_kernel_test PRIVATE ${GTEST_INCLUDE_DIRS})
-target_compile_options(softmax_kernel_test PRIVATE ${GTEST_CFLAGS_OTHER})
+
 target_link_libraries(softmax_kernel_test 
     base  # Link to the base library from src
     kernel  # Link to the kernel library from src
@@ -162,6 +164,19 @@ target_link_libraries(softmax_kernel_test
 )
 target_include_directories(softmax_kernel_test PRIVATE ${GTEST_INCLUDE_DIRS})
 target_compile_options(softmax_kernel_test PRIVATE ${GTEST_CFLAGS_OTHER})
+
+target_link_libraries(causal_mask_kernel_test 
+    base  # Link to the base library from src
+    kernel  # Link to the kernel library from src
+    op
+    ${GTEST_LIBRARIES}
+    ${GTEST_MAIN_LIBRARIES}
+    Threads::Threads
+    armadillo
+    openblas
+)
+target_include_directories(causal_mask_kernel_test PRIVATE ${GTEST_INCLUDE_DIRS})
+target_compile_options(causal_mask_kernel_test PRIVATE ${GTEST_CFLAGS_OTHER})
 
 # Enable testing
 enable_testing()
@@ -179,3 +194,4 @@ add_test(NAME AddKernelTest COMMAND mat_add_kernel_test)
 add_test(NAME MatMulKernelTest COMMAND mat_mul_kernel_test)
 add_test(NAME RoPEKernelTest COMMAND rope_kernel_test)
 add_test(NAME SoftmaxKernelTest COMMAND softmax_kernel_test)
+add_test(NAME CausalMaskKernelTest COMMAND causal_mask_kernel_test)
