@@ -19,11 +19,14 @@ def hook_fn(name):
     def hook(module, input, output):
         if isinstance(output, tuple):
             # 对于attention层，通常返回(hidden_states, attention_weights)
-            layer_outputs[name] = output[0].detach().cpu().numpy()
+            tensor_data = output[0].detach().cpu().contiguous().numpy()
+            layer_outputs[name] = tensor_data
             if len(output) > 1 and output[1] is not None:
-                attention_outputs[name] = output[1].detach().cpu().numpy()
+                attention_data = output[1].detach().cpu().contiguous().numpy()
+                attention_outputs[name] = attention_data
         else:
-            layer_outputs[name] = output.detach().cpu().numpy()
+            tensor_data = output.detach().cpu().contiguous().numpy()
+            layer_outputs[name] = tensor_data
         print(f"Layer {name}: shape {layer_outputs[name].shape}")
     return hook
 
@@ -59,14 +62,21 @@ os.makedirs(debug_dir, exist_ok=True)
 
 print(f"\n=== Saving layer outputs to {debug_dir} ===")
 for name, output in layer_outputs.items():
-    if any(key in name for key in ['embed', 'layers.0', 'layers.1', 'norm']):
+    if any(key in name for key in ['embed', 'layers.', 'norm']):
+        # 确保数据是连续的
+        if not output.flags['C_CONTIGUOUS']:
+            output = np.ascontiguousarray(output)
         filename = f"{debug_dir}/{name.replace('.', '_')}.npy"
         np.save(filename, output)
         print(f"Saved {name}: {output.shape} -> {filename}")
+        print(f"  Memory layout: C_CONTIGUOUS={output.flags['C_CONTIGUOUS']}, F_CONTIGUOUS={output.flags['F_CONTIGUOUS']}")
 
 # 也保存输入tokens和最终logits
-np.save(f"{debug_dir}/input_ids.npy", inputs['input_ids'].cpu().numpy())
-np.save(f"{debug_dir}/final_logits.npy", outputs.logits.cpu().numpy())
+input_ids_continuous = inputs['input_ids'].detach().cpu().contiguous().numpy()
+final_logits_continuous = outputs.logits.detach().cpu().contiguous().numpy()
+
+np.save(f"{debug_dir}/input_ids.npy", input_ids_continuous)
+np.save(f"{debug_dir}/final_logits.npy", final_logits_continuous)
 
 # 打印一些关键信息用于对比
 print(f"\n=== Key Information for C++ Comparison ===")

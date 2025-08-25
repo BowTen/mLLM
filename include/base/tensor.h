@@ -56,7 +56,7 @@ namespace mllm
             float *operator[](std::vector<size_t> idx);
             size_t num_mats()
             {
-                update();
+                // update();
                 return num_mats_;
             }
             float *mat(size_t idx);

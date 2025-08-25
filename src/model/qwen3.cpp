@@ -136,5 +136,13 @@ namespace mllm
             return wlayers;
         }
 
+        void Qwen3::register_hooks(WLayer::Hook hook)
+        {
+            auto layers = weighted_layers();
+            for (auto layer : layers)
+            {
+                layer->registerHook(hook);
+            }
+        }
     } // namespace model
 } // namespace mllm

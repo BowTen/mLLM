@@ -67,6 +67,7 @@ namespace mllm
             cudaStream_t stream() const { return stream_; }
 
             std::vector<WLayer *> weighted_layers();
+            void register_hooks(WLayer::Hook hook);
         };
     }
 }

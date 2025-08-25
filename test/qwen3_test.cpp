@@ -51,17 +51,21 @@ TEST_F(Qwen3Test, Demo)
         cout << id << ", ";
     cout << endl;
 
-    Tensor ids_tensor = Tensor::from_vector(ids, {ids.size(), 1}, Device::CPU, false);
+    Tensor input_id = Tensor::from_vector(ids, {ids.size(), 1}, Device::CPU, false);
     Tensor next_id({1, 1}, Device::CPU, false);
 
-    LOG(INFO) << "Model forward...";
-    model.forward(ids_tensor, next_id);
-    LOG(INFO) << "Model forward completed.";
+    for (int i = 0; i < 10; i++)
+    {
+        LOG(INFO) << "Model forward round " << i << "...";
+        model.forward(input_id, next_id);
+        LOG(INFO) << "Model forward completed.";
 
-    size_t next_id_value = *reinterpret_cast<uint32_t *>(next_id[0]);
-    cout << "next id: " << next_id_value << endl;
+        size_t next_id_value = *reinterpret_cast<uint32_t *>(next_id[0]);
+        cout << "next id: " << next_id_value << endl;
+        cout << "decode token: " << tokenizer->decode(next_id_value) << endl;
 
-    cout << "decode token: " << tokenizer->decode(next_id_value) << endl;
+        input_id = next_id.clone();
+    }
 }
 // CPU Result:
 // Top 10 tokens:
@@ -103,8 +107,8 @@ TEST_F(Qwen3Test, Demo)
 //         cout << id << ", ";
 //     cout << endl;
 
-//     Tensor ids_tensor = Tensor::from_vector(ids, {ids.size(),1}, Device::CUDA, false);
-//     Tensor next_id({1,1}, Device::CUDA, false);
+//     Tensor ids_tensor = Tensor::from_vector(ids, {ids.size(), 1}, Device::CUDA, false);
+//     Tensor next_id({1, 1}, Device::CUDA, false);
 
 //     LOG(INFO) << "Model forward...";
 //     model.forward(ids_tensor, next_id);

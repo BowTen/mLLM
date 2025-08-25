@@ -49,8 +49,11 @@ namespace mllm
             return instance;
         }
 
+#define BYTE_ALIGN 16
         void *CudaAllocator::allocate(size_t size)
         {
+            CHECK(size > 0) << "Cannot allocate zero bytes";
+            size = ((size + BYTE_ALIGN - 1) / BYTE_ALIGN) * BYTE_ALIGN;
             void *ptr;
             auto err = cudaMalloc(&ptr, size);
             if (err != cudaSuccess)

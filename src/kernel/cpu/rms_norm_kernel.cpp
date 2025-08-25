@@ -31,6 +31,7 @@ namespace mllm
         {
             CHECK(input->shape() == output->shape());
             CHECK(input->num_mats() > 0);
+            CHECK(weight->shape(-1) == input->shape(-1));
             input->contiguous();
             weight->contiguous();
             output->contiguous();

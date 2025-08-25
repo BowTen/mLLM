@@ -248,6 +248,7 @@ namespace mllm
             }
             shape_ = shape;
             stride_ = Tensor::default_stride(shape_);
+            update();
         }
 
         void Tensor::reshape(std::vector<size_t> shape)

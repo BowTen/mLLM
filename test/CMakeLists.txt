@@ -7,6 +7,21 @@ pkg_check_modules(GTEST REQUIRED gtest)
 pkg_check_modules(GTEST_MAIN REQUIRED gtest_main)
 find_package(Threads REQUIRED)
 
+# Find cnpy library
+find_library(CNPY_LIBRARY NAMES cnpy PATHS /usr/local/lib)
+find_path(CNPY_INCLUDE_DIR cnpy.h PATHS /usr/local/include)
+
+if(NOT CNPY_LIBRARY)
+    message(FATAL_ERROR "cnpy library not found")
+endif()
+
+if(NOT CNPY_INCLUDE_DIR)
+    message(FATAL_ERROR "cnpy headers not found")
+endif()
+
+message(STATUS "Found cnpy library: ${CNPY_LIBRARY}")
+message(STATUS "Found cnpy headers: ${CNPY_INCLUDE_DIR}")
+
 # Include directories
 include_directories(${CMAKE_SOURCE_DIR}/src)
 
@@ -27,6 +42,7 @@ add_executable(causal_mask_kernel_test causal_mask_kernel_test.cpp)
 add_executable(silu_kernel_test silu_kernel_test.cpp)
 add_executable(print_layer_weight print_layer_weight.cpp)
 add_executable(qwen3_cpu_cuda_check qwen3_cpu_cuda_check.cpp)
+add_executable(qwen3_hook_check qwen3_hook_check.cpp)
 
 # Link libraries
 target_link_libraries(tokenizer_test 
@@ -240,6 +256,28 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(qwen3_cpu_cuda_check PRIVATE DEBUG)
 endif()
 
+target_link_libraries(qwen3_hook_check 
+    base  # Link to the base library from src
+    kernel  # Link to the kernel library from src
+    op
+    model
+    ${CNPY_LIBRARY}
+    z
+    ${GTEST_LIBRARIES}
+    ${GTEST_MAIN_LIBRARIES}
+    Threads::Threads
+    armadillo
+    openblas
+)
+target_include_directories(qwen3_hook_check PRIVATE ${GTEST_INCLUDE_DIRS} ${CNPY_INCLUDE_DIR})
+target_compile_options(qwen3_hook_check PRIVATE ${GTEST_CFLAGS_OTHER})
+
+# Add debug symbols and disable optimization for debugging
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(qwen3_hook_check PRIVATE -g -O0)
+    target_compile_definitions(qwen3_hook_check PRIVATE DEBUG)
+endif()
+
 # Enable testing
 enable_testing()
 
@@ -260,3 +298,4 @@ add_test(NAME CausalMaskKernelTest COMMAND causal_mask_kernel_test)
 add_test(NAME SiLUKernelTest COMMAND silu_kernel_test)
 add_test(NAME PrintLayerWeight COMMAND print_layer_weight)
 add_test(NAME Qwen3CpuCudaCheck COMMAND qwen3_cpu_cuda_check)
+add_test(NAME Qwen3HookCheck COMMAND qwen3_hook_check)

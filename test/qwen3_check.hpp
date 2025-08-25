@@ -202,7 +202,7 @@ public:
 
         // Return next token (using CPU model result)
         Tensor next_token = Tensor({1}, Device::CPU);
-        kernel::random_sampling_cpu(&model_cpu.final_probability, &next_token, model_cpu.device_);
+        kernel::get_random_sampling_kernel(Device::CPU)(&model_cpu.final_probability, &next_token, nullptr);
 
         return *next_token[0];
     }

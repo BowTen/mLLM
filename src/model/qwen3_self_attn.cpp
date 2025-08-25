@@ -76,12 +76,11 @@ namespace mllm
             q_output.view(q_shape);
             k_output.view(kv_shape);
             v_output.view(kv_shape);
+            q_norm.forward(q_output, q_output);
+            k_norm.forward(k_output, k_output);
             q_output.transpose(-3, -2);
             k_output.transpose(-3, -2);
             v_output.transpose(-3, -2);
-
-            q_norm.forward(q_output, q_output);
-            k_norm.forward(k_output, k_output);
 
             kernel::get_rope_kernel(device_)(&q_output, position_embeddings.first, position_embeddings.second, &q_output, stream_);
             kernel::get_rope_kernel(device_)(&k_output, position_embeddings.first, position_embeddings.second, &k_output, stream_);
@@ -103,9 +102,10 @@ namespace mllm
             }
 
             Tensor attn_weights({num_attention_heads, k_cache.shape(-2), k_cache.shape(-2)}, device_);
-            k_cache.t();
 
+            k_cache.t();
             mat_mul.forward(q_output, k_cache, attn_weights);
+            k_cache.t();
             mat_sc_mul.forward(attn_weights, scaling, attn_weights);
             causal_mask.forward(attn_weights);
             softmax.forward(attn_weights, attn_weights);
