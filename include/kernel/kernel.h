@@ -52,6 +52,9 @@ namespace mllm
                                    void *stream);
         typedef void (*LastHiddenStateKernel)(base::Tensor *input,
                                               void *stream);
+        typedef void (*RandomSamplingKernel)(base::Tensor *probability,
+                                             base::Tensor *output,
+                                             void *stream);
 
         EmbeddingKernel get_emb_kernel(base::Device device);
         RMSNormKernel get_rmsnorm_kernel(base::Device device);
@@ -65,8 +68,7 @@ namespace mllm
         CausalMaskKernel get_causal_mask_kernel(base::Device device);
         SiLUKernel get_silu_kernel(base::Device device);
         LastHiddenStateKernel get_last_hidden_state_kernel(base::Device device);
-
-        void random_sampling_cpu(base::Tensor *probability, base::Tensor *token, base::Device device);
+        RandomSamplingKernel get_random_sampling_kernel(base::Device device);
     }
 }
 

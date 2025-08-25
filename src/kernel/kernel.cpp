@@ -11,6 +11,7 @@
 #include "kernel/cpu/causal_mask_kernel.h"
 #include "kernel/cpu/silu_kernel.h"
 #include "kernel/cpu/last_hidden_state_kernel.h"
+#include "kernel/cpu/random_sampling_kernel.h"
 #include "kernel/cuda/embedding_kernel.cuh"
 #include "kernel/cuda/rms_norm_kernel.cuh"
 #include "kernel/cuda/mat_add_kernel.cuh"
@@ -23,6 +24,7 @@
 #include "kernel/cuda/causal_mask_kernel.cuh"
 #include "kernel/cuda/silu_kernel.cuh"
 #include "kernel/cuda/last_hidden_state_kernel.cuh"
+#include "kernel/cuda/random_sampling_kernel.cuh"
 #include <stdexcept>
 #include "base/util.h"
 
@@ -185,30 +187,17 @@ namespace mllm
             }
         }
 
-        void random_sampling_cpu(base::Tensor *probability, base::Tensor *token, base::Device device)
+        RandomSamplingKernel get_random_sampling_kernel(base::Device device)
         {
-            LOG(WARNING) << "random_sampling_cpu, it's just for development, TODO: Implement cuda operators";
-            probability->toDevice(base::Device::CPU);
-            token->toDevice(base::Device::CPU);
-            float rand_num = base::get_random_float();
-
-            float eps = 1e-6;
-            size_t vocab_size = probability->shape(-1);
-            float *prob_data = probability->data();
-            VLOG(DEBUG) << "Random sampling with rand float: " << rand_num;
-            for (uint32_t i = 0; i < vocab_size; i++)
+            switch (device)
             {
-                rand_num -= prob_data[i];
-                if (rand_num < eps)
-                {
-                    reinterpret_cast<uint32_t *>(token->data())[0] = i;
-                    break;
-                }
+            case base::Device::CPU:
+                return random_sampling_kernel_cpu;
+            case base::Device::CUDA:
+                return random_sampling_kernel_cuda;
+            default:
+                throw std::runtime_error("Unsupported device");
             }
-            CHECK_LT(rand_num, eps);
-
-            probability->toDevice(device);
-            token->toDevice(device);
         }
     }
 }

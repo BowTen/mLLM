@@ -146,7 +146,7 @@ namespace mllm
                 LOG(WARNING) << "Tensor buffer is empty, cannot transfer device.";
                 return this;
             }
-            VLOG(DEBUG) << "Transferring tensor from device " << (device_ == Device::CPU ? "CPU" : "CUDA") << " to " << (device == Device::CPU ? "CPU" : "CUDA");
+            VLOG(4) << "Transferring tensor from device " << (device_ == Device::CPU ? "CPU" : "CUDA") << " to " << (device == Device::CPU ? "CPU" : "CUDA");
 
             Allocator *new_allocator = nullptr;
             if (device == Device::CPU)
@@ -163,7 +163,6 @@ namespace mllm
             cudaMemcpy(new_buffer->data(), buffer_->data(), buffer_->size(), device == Device::CPU ? cudaMemcpyDeviceToHost : cudaMemcpyHostToDevice);
             buffer_ = new_buffer;
             device_ = device;
-            VLOG(TRACE) << "Tensor transferred successfully.";
             return this;
         }
 

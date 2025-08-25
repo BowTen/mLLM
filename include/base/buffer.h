@@ -10,6 +10,7 @@ namespace mllm
     {
         class Allocator;
 
+        // TODO: 目前Tensor::toDevice方法会直接重构一个新的buffer，这会导致与其他共享Tensor的数据不一致，可以直接修改buffer数据来解决
         class Buffer
         {
         protected:

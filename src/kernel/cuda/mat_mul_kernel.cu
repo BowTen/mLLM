@@ -232,7 +232,6 @@ namespace mllm
             constexpr uint32_t MAX_BLOCK = 4096;
             if (num_mats * N * M > MAX_BLOCK)
             {
-                VLOG(DEBUG) << "Using mat_mul_kernel_cuda_fp32_vec for large matrix multiplication.";
                 // 每个线程块处理output中的一行
                 dim3 blockDim(128);
                 dim3 gridDim(num_mats, N);
@@ -250,7 +249,6 @@ namespace mllm
             }
             else
             {
-                VLOG(DEBUG) << "Using mat_mul_kernel_cuda_fp32_vec_fine for small matrix multiplication.";
                 // 每个线程块处理output中的一个元素
                 dim3 blockDim(128);
                 dim3 gridDim(num_mats, N, M);

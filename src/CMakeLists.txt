@@ -49,6 +49,8 @@ add_library(kernel
     kernel/cuda/silu_kernel.cu
     kernel/cpu/last_hidden_state_kernel.cpp
     kernel/cuda/last_hidden_state_kernel.cu
+    kernel/cpu/random_sampling_kernel.cpp
+    kernel/cuda/random_sampling_kernel.cu
 )
 add_library(model 
     model/qwen3.cpp

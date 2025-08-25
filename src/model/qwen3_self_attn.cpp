@@ -17,8 +17,8 @@ namespace mllm
             target_shape[target_shape.size() - 3] = num_attention_heads;
             k.insert_dim(-2);
             v.insert_dim(-2);
-            k.expand(-2, num_attention_heads / num_key_value_heads);
-            v.expand(-2, num_attention_heads / num_key_value_heads);
+            k.expand(-3, num_attention_heads / num_key_value_heads);
+            v.expand(-3, num_attention_heads / num_key_value_heads);
             k.reshape(target_shape);
             v.reshape(target_shape);
         }
@@ -52,14 +52,17 @@ namespace mllm
 
         void Qwen3SelfAttn::forward(Tensor *hidden_state, Tensor *output, base::PosEmb position_embeddings)
         {
-            VLOG(TRACE) << "Forward pass for Qwen3SelfAttn at index: " << layer_index_;
+            VLOG(DEBUG) << "Forward pass for Qwen3SelfAttn at index: " << layer_index_;
             std::vector<size_t> q_shape(hidden_state->shape());
             std::vector<size_t> kv_shape(hidden_state->shape());
             q_shape.back() = num_attention_heads * head_dim;
             kv_shape.back() = num_key_value_heads * head_dim;
-            q_output = Tensor(q_shape, device_, false);
-            k_output = Tensor(kv_shape, device_, true); // reapeat_kv需要扩展Tensor
-            v_output = Tensor(kv_shape, device_, true); // reapeat_kv需要扩展Tensor
+            if (q_output.shape() != q_shape)
+            {
+                q_output = Tensor(q_shape, device_, false);
+                k_output = Tensor(kv_shape, device_, true); // reapeat_kv需要扩展Tensor
+                v_output = Tensor(kv_shape, device_, true); // reapeat_kv需要扩展Tensor
+            }
 
             q_proj.forward(*hidden_state, q_output);
             k_proj.forward(*hidden_state, k_output);
@@ -121,7 +124,6 @@ namespace mllm
 
         void Qwen3SelfAttn::loadWeight(const std::string &name, base::SafeTensors &st)
         {
-            VLOG(TRACE) << "Loading weights for Qwen3SelfAttn: " << name;
             name_ = name;
             q_proj.loadWeight(name_ + ".q_proj", st, true);
             k_proj.loadWeight(name_ + ".k_proj", st, true);
@@ -129,7 +131,6 @@ namespace mllm
             o_proj.loadWeight(name_ + ".o_proj", st, true);
             q_norm.loadWeight(name_ + ".q_norm", st, false);
             k_norm.loadWeight(name_ + ".k_norm", st, false);
-            VLOG(TRACE) << "Successfully loaded weights for Qwen3SelfAttn: " << name_;
         }
         std::vector<WLayer *> Qwen3SelfAttn::weighted_layers()
         {

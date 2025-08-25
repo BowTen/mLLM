@@ -47,12 +47,10 @@ namespace mllm
 
         void Qwen3MLP::loadWeight(const std::string &name, base::SafeTensors &st)
         {
-            VLOG(TRACE) << "Loading weights for Qwen3MLP: " << name;
             name_ = name;
             gate_proj.loadWeight(name_ + ".gate_proj", st, true);
             up_proj.loadWeight(name_ + ".up_proj", st, true);
             down_proj.loadWeight(name_ + ".down_proj", st, true);
-            VLOG(TRACE) << "Successfully loaded weights for Qwen3MLP: " << name_;
         }
 
         std::vector<WLayer *> Qwen3MLP::weighted_layers()

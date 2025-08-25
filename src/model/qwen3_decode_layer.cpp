@@ -23,28 +23,29 @@ namespace mllm
         void Qwen3DecodeLayer::forward(Tensor *hidden_state, Tensor *output, base::PosEmb position_embeddings)
         {
             VLOG(TRACE) << "Forward pass for Qwen3DecodeLayer at index: " << layer_index_;
-            auto residual = hidden_state->clone();
+
+            // TODO: 可优化，如果已有空间则直接拷贝数据
+            attn_residual = hidden_state->clone();
 
             input_layernorm.forward(*hidden_state, *hidden_state);
             self_attn.forward(hidden_state, hidden_state, position_embeddings);
-            add_op.forward(*hidden_state, residual, *hidden_state);
+            add_op.forward(*hidden_state, attn_residual, *hidden_state);
 
-            residual = hidden_state->clone();
+            // TODO: 可优化，如果已有空间则直接拷贝数据
+            mlp_residual = hidden_state->clone();
 
             post_attention_layernorm.forward(*hidden_state, *hidden_state);
             mlp.forward(hidden_state, hidden_state);
-            add_op.forward(*hidden_state, residual, *output);
+            add_op.forward(*hidden_state, mlp_residual, *output);
         }
 
         void Qwen3DecodeLayer::loadWeight(const std::string &name, base::SafeTensors &st)
         {
-            VLOG(TRACE) << "Loading weights for Qwen3DecodeLayer: " << name;
             name_ = name;
             input_layernorm.loadWeight(name_ + ".input_layernorm", st, false);
             post_attention_layernorm.loadWeight(name_ + ".post_attention_layernorm", st, false);
             self_attn.loadWeight(name_ + ".self_attn", st);
             mlp.loadWeight(name_ + ".mlp", st);
-            VLOG(TRACE) << "Successfully loaded weights for Qwen3DecodeLayer: " << name_;
         }
 
         std::vector<WLayer *> Qwen3DecodeLayer::weighted_layers()

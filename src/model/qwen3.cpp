@@ -85,15 +85,20 @@ namespace mllm
         {
             setInput(0, token_ids);
             setOutput(0, next_token_id);
-            VLOG(TRACE) << "Forward pass through Qwen3 model";
+            VLOG(DEBUG) << "Forward pass through Qwen3 model";
 
-            hidden_state = Tensor({token_ids.shape(0), hidden_size}, device_);
+            std::vector<size_t> hidden_shape({token_ids.shape(-2), hidden_size});
+            if (hidden_state.shape() != hidden_shape)
+                hidden_state = Tensor(hidden_shape, device_);
             embed_tokens.forward(token_ids, hidden_state);
 
             auto rope_emb_shape = hidden_state.shape();
             rope_emb_shape.back() = config_["head_dim"];
-            cos = Tensor(rope_emb_shape, device_);
-            sin = Tensor(rope_emb_shape, device_);
+            if (cos.shape() != rope_emb_shape)
+            {
+                cos = Tensor(rope_emb_shape, device_);
+                sin = Tensor(rope_emb_shape, device_);
+            }
             base::PosEmb pos_emb(&cos, &sin);
             size_t seq_len = hidden_state.shape(-2);
             rotary_embedding.forward(pos_id, pos_id + seq_len, pos_emb);
@@ -112,9 +117,7 @@ namespace mllm
             lm_head.forward(hidden_state, final_probability);
             softmax.forward(final_probability, final_probability);
 
-            final_probability.toDevice(base::Device::CPU);
-            print_top_tokens_cpu(final_probability, 10);
-            kernel::random_sampling_cpu(&final_probability, &getOutput(0), device_);
+            kernel::get_random_sampling_kernel(device_)(&final_probability, &next_token_id, stream_);
             final_probability.toDevice(base::Device::CPU);
             print_top_tokens_cpu(final_probability, 10);
         }

@@ -30,6 +30,9 @@ namespace mllm
             Add add_op;
             std::string name_;
 
+            base::Tensor attn_residual;
+            base::Tensor mlp_residual;
+
         public:
             Qwen3DecodeLayer(size_t layer_index, JsonConfig config, base::Device device, cudaStream_t stream);
             void forward(Tensor *input, Tensor *output, base::PosEmb position_embeddings);

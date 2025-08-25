@@ -77,7 +77,6 @@ namespace mllm
                 weight_.t();
                 weight_.contiguous(stream_);
             }
-            VLOG(TRACE) << "Successfully loaded " << name << " weights";
         }
     }
 }

@@ -35,7 +35,7 @@ namespace mllm
             }
         }
 
-        std::mt19937 global_mt(std::random_device{}());
+        std::mt19937 global_mt(time(0));
         std::uniform_real_distribution<> global_urd(0.0, 1.0);
 
         float get_random_float()
