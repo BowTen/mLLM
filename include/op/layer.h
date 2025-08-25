@@ -32,6 +32,8 @@ namespace mllm
             void setOutput(size_t index, const Tensor &tensor);
             Tensor &getInput(size_t index);
             Tensor &getOutput(size_t index);
+            size_t inputSize() const { return inputs.size(); }
+            size_t outputSize() const { return outputs.size(); }
             void setName(const std::string &name) { name_ = name; }
             const std::string &name() const { return name_; }
             void setStream(cudaStream_t stream) { stream_ = stream; }
@@ -40,21 +42,30 @@ namespace mllm
 
         class WLayer : public Layer
         {
+        public:
+            using Hook = std::function<void(WLayer *layer)>;
+
         protected:
             Tensor weight_;
+            Hook hook_;
 
             WLayer(size_t input_count,
                    size_t output_count,
                    const std::vector<size_t> &shape,
                    base::Device device,
                    cudaStream_t stream) : Layer(input_count, output_count, device, stream),
-                                          weight_(Tensor(shape, device)) {}
+                                          weight_(Tensor(shape, device)),
+                                          hook_(nullptr)
+            {
+            }
 
         public:
             const Tensor &weight() const { return weight_; }
             void setWeight(const Tensor &weight) { weight_ = weight; }
             Tensor &getWeight() { return weight_; }
             void loadWeight(const std::string &name, base::SafeTensors &st, bool transpose);
+
+            void registerHook(Hook hook) { hook_ = hook; }
         };
 
     }

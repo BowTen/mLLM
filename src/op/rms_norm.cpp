@@ -15,6 +15,9 @@ namespace mllm
             setInput(0, input);
             setOutput(0, output);
             kernel::get_rmsnorm_kernel(device_)(&inputs[0], &weight_, &outputs[0], eps_, stream_ ? stream_ : nullptr);
+
+            if (hook_)
+                hook_(this);
         }
     }
 }

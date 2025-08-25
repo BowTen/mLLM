@@ -14,6 +14,9 @@ namespace mllm
             setInput(0, input);
             setOutput(0, output);
             kernel::get_mat_mul_kernel(device_)(&inputs[0], &weight_, &outputs[0], stream_);
+
+            if (hook_)
+                hook_(this);
         }
     }
 }
