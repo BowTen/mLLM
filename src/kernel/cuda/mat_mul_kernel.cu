@@ -155,10 +155,11 @@ namespace mllm
             // output->toDevice(base::Device::CUDA);
         }
 
-        __global__ void mat_sc_mul_kernel_cuda(float *mat_data, float scalar, float *output_data, uint32_t N, uint32_t M)
+        __global__ void mat_sc_mul_kernel_cuda(float *mat_data, float *scalar_data, float *output_data, uint32_t N, uint32_t M)
         {
             uint32_t mat_id = blockIdx.x;
             uint32_t row_id = blockIdx.y;
+            float scalar = *scalar_data;
 
             mat_data += mat_id * N * M + row_id * M;
             output_data += mat_id * N * M + row_id * M;
@@ -196,6 +197,19 @@ namespace mllm
                 size_t num_mats = input0->num_mats();
 
                 dim3 grid(num_mats, N);
+                if (stream)
+                {
+                    mat_sc_mul_kernel_cuda<<<grid, 128, 0, static_cast<cudaStream_t>(stream)>>>(input0->data(),
+                                                                                                input1->operator[](0),
+                                                                                                output->data(), N, M);
+                }
+                else
+                {
+                    LOG(WARNING) << "Using mat_sc_mul_kernel_cuda with default stream.";
+                    mat_sc_mul_kernel_cuda<<<grid, 128>>>(input0->data(),
+                                                          input1->operator[](0),
+                                                          output->data(), N, M);
+                }
 
                 return;
             }

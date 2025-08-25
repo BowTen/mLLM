@@ -20,6 +20,7 @@ namespace mllm
 
         class Qwen3SelfAttn
         {
+        private:
             size_t layer_index_;
             base::Device device_;
             cudaStream_t stream_;

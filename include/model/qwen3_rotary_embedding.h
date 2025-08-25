@@ -10,6 +10,7 @@ namespace mllm
 
         class Qwen3RotaryEmbedding
         {
+        private:
             base::Device device_;
             cudaStream_t stream_;
             size_t head_dim;

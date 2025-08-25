@@ -71,7 +71,7 @@ namespace mllm
             size_t size() const;
             float *data();
             bool empty() const { return buffer_ == nullptr; }
-            void toDevice(Device device);
+            Tensor *toDevice(Device device);
             Tensor clone();
 
             void push(float *bytes, size_t num_bytes);

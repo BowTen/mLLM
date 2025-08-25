@@ -58,7 +58,7 @@ namespace mllm
             VLOG(TRACE) << "Successfully loaded all weights";
         }
 
-        void Qwen3::print_top_tokens(Tensor &probabilities, size_t top_k = 5)
+        void Qwen3::print_top_tokens_cpu(Tensor &probabilities, size_t top_k = 5)
         {
             size_t vocab_size = probabilities.shape(-1);
             std::vector<std::pair<size_t, float>> token_probs;
@@ -112,9 +112,11 @@ namespace mllm
             lm_head.forward(hidden_state, final_probability);
             softmax.forward(final_probability, final_probability);
 
-            print_top_tokens(final_probability, 10);
+            final_probability.toDevice(base::Device::CPU);
+            print_top_tokens_cpu(final_probability, 10);
             kernel::random_sampling_cpu(&final_probability, &getOutput(0), device_);
-            print_top_tokens(final_probability, 10);
+            final_probability.toDevice(base::Device::CPU);
+            print_top_tokens_cpu(final_probability, 10);
         }
 
         std::vector<WLayer *> Qwen3::weighted_layers()

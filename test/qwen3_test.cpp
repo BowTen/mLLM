@@ -119,3 +119,16 @@ TEST_F(Qwen3TestCuda, Demo)
 
     cout << "decode token: " << tokenizer->decode(next_id_value) << endl;
 }
+
+// Cuda Result:
+// Top 10 tokens:
+// Token ID: 1023, token_str: lock, Probability: 2.75266e-05
+// Token ID: 5600, token_str: dom, Probability: 2.73517e-05
+// Token ID: 344, token_str: iv, Probability: 2.73507e-05
+// Token ID: 6591, token_str: ini, Probability: 2.71343e-05
+// Token ID: 4648, token_str: has, Probability: 2.70143e-05
+// Token ID: 1466, token_str: ah, Probability: 2.68362e-05
+// Token ID: 24794, token_str: ammed, Probability: 2.6619e-05
+// Token ID: 1524, token_str: iver, Probability: 2.63909e-05
+// Token ID: 484, token_str: ind, Probability: 2.63757e-05
+// Token ID: 49746, token_str: mess, Probability: 2.6339e-05

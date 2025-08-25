@@ -19,6 +19,7 @@ namespace mllm
 
         class Qwen3MLP
         {
+        private:
             size_t layer_index_;
             base::Device device_;
             JsonConfig config_;

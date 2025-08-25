@@ -137,14 +137,14 @@ namespace mllm
             return static_cast<float *>(buffer_->data());
         }
 
-        void Tensor::toDevice(Device device)
+        Tensor *Tensor::toDevice(Device device)
         {
             if (device_ == device)
-                return;
+                return this;
             if (!buffer_)
             {
                 LOG(WARNING) << "Tensor buffer is empty, cannot transfer device.";
-                return;
+                return this;
             }
             VLOG(DEBUG) << "Transferring tensor from device " << (device_ == Device::CPU ? "CPU" : "CUDA") << " to " << (device == Device::CPU ? "CPU" : "CUDA");
 
@@ -164,6 +164,7 @@ namespace mllm
             buffer_ = new_buffer;
             device_ = device;
             VLOG(TRACE) << "Tensor transferred successfully.";
+            return this;
         }
 
         size_t Tensor::shape(int idx) const

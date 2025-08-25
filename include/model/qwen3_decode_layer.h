@@ -21,6 +21,7 @@ namespace mllm
 
         class Qwen3DecodeLayer
         {
+        private:
             size_t layer_index_;
             RMSNorm input_layernorm;
             RMSNorm post_attention_layernorm;

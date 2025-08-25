@@ -45,7 +45,7 @@ namespace mllm
               mat_mul_attn_output(device_, stream_),
               causal_mask(device_, stream_),
               softmax(device_, stream_),
-              scaling(std::vector<float>({static_cast<float>(std::pow(head_dim, -0.5f))}).data(), {1}, true, base::Device::CPU)
+              scaling(Tensor::from_float(static_cast<float>(std::pow(head_dim, -0.5f)), device))
         {
             VLOG(TRACE) << "Constructor: Qwen3SelfAttn with layer index: " << layer_index_;
         }

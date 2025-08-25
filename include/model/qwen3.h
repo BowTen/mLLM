@@ -22,6 +22,7 @@ namespace mllm
 
         class Qwen3 : public op::Layer
         {
+        private:
             JsonConfig config_;
             size_t vocab_size;
             size_t hidden_size;
@@ -44,7 +45,7 @@ namespace mllm
             Qwen3(std::string model_path, base::Device device, float temperature);
 
             cudaStream_t init_cuda_stream(base::Device device);
-            void print_top_tokens(Tensor &probabilities, size_t top_k);
+            void print_top_tokens_cpu(Tensor &probabilities, size_t top_k);
 
         public:
             static Qwen3 from_pretrained(const std::string &model_path, base::Device device, float temperature = 1.0f)
@@ -57,7 +58,11 @@ namespace mllm
             JsonConfig config() const { return config_; }
             BPETokenizer *get_tokenizer() { return &tokenizer; }
             Embedding *get_embed_tokens() { return &embed_tokens; }
+            Qwen3RotaryEmbedding *get_rotary_embedding() { return &rotary_embedding; }
+            std::vector<Qwen3DecodeLayer> *get_layers() { return &layers; }
             RMSNorm *get_norm() { return &norm; }
+            MatMul *get_temp_scal() { return &temp_scal; }
+            Linear *get_lm_head() { return &lm_head; }
             base::Device device() const { return device_; }
             cudaStream_t stream() const { return stream_; }
 

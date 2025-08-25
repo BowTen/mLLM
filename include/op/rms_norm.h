@@ -9,6 +9,7 @@ namespace mllm
     {
         class RMSNorm : public WLayer
         {
+        private:
             float eps_;
 
         public:

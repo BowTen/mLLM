@@ -26,6 +26,7 @@ add_executable(softmax_kernel_test softmax_kernel_test.cpp)
 add_executable(causal_mask_kernel_test causal_mask_kernel_test.cpp)
 add_executable(silu_kernel_test silu_kernel_test.cpp)
 add_executable(print_layer_weight print_layer_weight.cpp)
+add_executable(qwen3_cpu_cuda_check qwen3_cpu_cuda_check.cpp)
 
 # Link libraries
 target_link_libraries(tokenizer_test 
@@ -219,6 +220,26 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(print_layer_weight PRIVATE DEBUG)
 endif()
 
+target_link_libraries(qwen3_cpu_cuda_check 
+    base  # Link to the base library from src
+    kernel  # Link to the kernel library from src
+    op
+    model
+    ${GTEST_LIBRARIES}
+    ${GTEST_MAIN_LIBRARIES}
+    Threads::Threads
+    armadillo
+    openblas
+)
+target_include_directories(qwen3_cpu_cuda_check PRIVATE ${GTEST_INCLUDE_DIRS})
+target_compile_options(qwen3_cpu_cuda_check PRIVATE ${GTEST_CFLAGS_OTHER})
+
+# Add debug symbols and disable optimization for debugging
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(qwen3_cpu_cuda_check PRIVATE -g -O0)
+    target_compile_definitions(qwen3_cpu_cuda_check PRIVATE DEBUG)
+endif()
+
 # Enable testing
 enable_testing()
 
@@ -238,3 +259,4 @@ add_test(NAME SoftmaxKernelTest COMMAND softmax_kernel_test)
 add_test(NAME CausalMaskKernelTest COMMAND causal_mask_kernel_test)
 add_test(NAME SiLUKernelTest COMMAND silu_kernel_test)
 add_test(NAME PrintLayerWeight COMMAND print_layer_weight)
+add_test(NAME Qwen3CpuCudaCheck COMMAND qwen3_cpu_cuda_check)
