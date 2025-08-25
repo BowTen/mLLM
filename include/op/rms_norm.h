@@ -12,7 +12,7 @@ namespace mllm
             float eps_;
 
         public:
-            RMSNorm(size_t hidden_size, float eps, base::Device device = base::Device::CPU, cudaStream_t stream = nullptr);
+            RMSNorm(size_t hidden_size, float eps, base::Device device, cudaStream_t stream);
             void forward(Tensor &input, Tensor &output);
         };
     }

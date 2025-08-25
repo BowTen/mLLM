@@ -10,7 +10,7 @@ namespace mllm
         class Embedding : public WLayer
         {
         public:
-            Embedding(size_t vocab_size, size_t hidden_size, base::Device device = base::Device::CPU, cudaStream_t stream = nullptr);
+            Embedding(size_t vocab_size, size_t hidden_size, base::Device device, cudaStream_t stream);
             void forward(Tensor &input, Tensor &output);
         };
     }

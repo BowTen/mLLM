@@ -47,7 +47,7 @@ namespace mllm
             void print_top_tokens(Tensor &probabilities, size_t top_k);
 
         public:
-            static Qwen3 from_pretrained(const std::string &model_path, base::Device device = base::Device::CPU, float temperature = 1.0f)
+            static Qwen3 from_pretrained(const std::string &model_path, base::Device device, float temperature = 1.0f)
             {
                 return Qwen3(model_path, device, temperature);
             }

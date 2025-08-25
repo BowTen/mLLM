@@ -11,7 +11,7 @@ namespace mllm
         {
 
         public:
-            Linear(std::vector<size_t> shape, base::Device device = base::Device::CPU, cudaStream_t stream = nullptr);
+            Linear(std::vector<size_t> shape, base::Device device, cudaStream_t stream);
             void forward(Tensor &input, Tensor &output);
         };
     }

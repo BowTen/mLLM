@@ -18,7 +18,7 @@ class Qwen3RMSNormKernelTest : public ::testing::Test
 {
 protected:
     base::json config = base::load_json("/home/hznuojai/ai_infra/MiniLLM/resources/Qwen/Qwen3-0.6B/config.json");
-    op::RMSNorm norm = op::RMSNorm(config["hidden_size"], config["rms_norm_eps"]);
+    op::RMSNorm norm = op::RMSNorm(config["hidden_size"], config["rms_norm_eps"], Device::CPU, nullptr);
     base::SafeTensors safetensors = base::SafeTensors("/home/hznuojai/ai_infra/MiniLLM/resources/Qwen/Qwen3-0.6B/model.safetensors");
     Tensor cpu_input;
     Tensor cpu_weight;

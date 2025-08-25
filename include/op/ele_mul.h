@@ -10,7 +10,7 @@ namespace mllm
         class EleMul : public Layer
         {
         public:
-            EleMul(base::Device device = base::Device::CPU, cudaStream_t stream = nullptr)
+            EleMul(base::Device device, cudaStream_t stream)
                 : Layer(2, 1, device, stream) {}
 
             void forward(const Tensor &input0, const Tensor &input1, Tensor &output);

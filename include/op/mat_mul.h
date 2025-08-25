@@ -10,7 +10,7 @@ namespace mllm
         class MatMul : public Layer
         {
         public:
-            MatMul(base::Device device = base::Device::CPU, cudaStream_t stream = nullptr)
+            MatMul(base::Device device, cudaStream_t stream)
                 : Layer(2, 1, device, stream) {}
 
             void forward(const Tensor &input0, const Tensor &input1, Tensor &output);

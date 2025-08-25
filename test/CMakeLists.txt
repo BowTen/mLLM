@@ -213,6 +213,12 @@ target_link_libraries(print_layer_weight
 target_include_directories(print_layer_weight PRIVATE ${GTEST_INCLUDE_DIRS})
 target_compile_options(print_layer_weight PRIVATE ${GTEST_CFLAGS_OTHER})
 
+# Add debug symbols and disable optimization for debugging
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(print_layer_weight PRIVATE -g -O0)
+    target_compile_definitions(print_layer_weight PRIVATE DEBUG)
+endif()
+
 # Enable testing
 enable_testing()
 

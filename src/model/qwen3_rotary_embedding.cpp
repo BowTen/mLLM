@@ -15,7 +15,7 @@ namespace mllm
             for (size_t i = 0; i < inv_freq_data.size(); i++)
                 inv_freq_data[i] = 1.0f / std::pow(rope_theta, static_cast<float>(i) / (head_dim / 2));
             inv_freq_data.insert(inv_freq_data.end(), inv_freq_data.begin(), inv_freq_data.end());
-            inv_freq = base::Tensor(inv_freq_data.data(), {1, head_dim}, true, device);
+            inv_freq = base::Tensor::from_vector(inv_freq_data, {1, head_dim}, device);
         }
 
         void Qwen3RotaryEmbedding::forward(size_t pos_start, size_t pos_end, base::PosEmb pos_emb)

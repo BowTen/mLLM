@@ -98,10 +98,7 @@ namespace mllm
             if (shape_.size() == 1)
                 shape_.insert(shape_.begin(), 1);
             stride_ = default_stride(shape_);
-            if (isDevicePointer(data) != (device == Device::CUDA))
-            {
-                throw std::invalid_argument("Data pointer device type does not match Tensor device type.");
-            }
+            CHECK(isDevicePointer(data) == (device == Device::CUDA)) << "Data pointer device type does not match Tensor device type.";
             size_t expected_size = 1;
             for (auto dim : shape_)
             {
@@ -123,7 +120,7 @@ namespace mllm
         }
         Tensor Tensor::from_float(float value, Device device, bool mut)
         {
-            return Tensor(std::vector<float>({value}).data(), {1}, true, device, mut);
+            return Tensor::from_vector(std::vector<float>({value}), {1}, device, mut);
         }
 
         size_t Tensor::size() const

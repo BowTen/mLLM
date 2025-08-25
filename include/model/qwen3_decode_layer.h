@@ -30,7 +30,7 @@ namespace mllm
             std::string name_;
 
         public:
-            Qwen3DecodeLayer(size_t layer_index, JsonConfig config, base::Device device = base::Device::CPU, cudaStream_t stream = nullptr);
+            Qwen3DecodeLayer(size_t layer_index, JsonConfig config, base::Device device, cudaStream_t stream);
             void forward(Tensor *input, Tensor *output, base::PosEmb position_embeddings);
             void loadWeight(const std::string &name, base::SafeTensors &st);
 

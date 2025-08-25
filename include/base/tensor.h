@@ -38,6 +38,13 @@ namespace mllm
             Tensor(const std::vector<size_t> &shape, Device device = Device::CPU, bool mut = false);
             Tensor(void *data, const std::vector<size_t> &shape, bool copy, Device device = Device::CPU, bool mut = false);
             static Tensor from_float(float value, Device device = Device::CPU, bool mut = false);
+            template <class T>
+            static Tensor from_vector(std::vector<T> vec, std::vector<size_t> shape, Device device = Device::CPU, bool mut = false)
+            {
+                Tensor tensor(vec.data(), shape, true, Device::CPU, mut);
+                tensor.toDevice(device);
+                return tensor;
+            }
 
             void view(std::vector<size_t> shape);
             void reshape(std::vector<size_t> shape);

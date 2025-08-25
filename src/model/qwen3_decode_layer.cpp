@@ -12,8 +12,8 @@ namespace mllm
     {
         Qwen3DecodeLayer::Qwen3DecodeLayer(size_t layer_index, JsonConfig config, base::Device device, cudaStream_t stream)
             : layer_index_(layer_index),
-              input_layernorm(config["hidden_size"], config["rms_norm_eps"]),
-              post_attention_layernorm(config["hidden_size"], config["rms_norm_eps"]),
+              input_layernorm(config["hidden_size"], config["rms_norm_eps"], device, stream),
+              post_attention_layernorm(config["hidden_size"], config["rms_norm_eps"], device, stream),
               self_attn(layer_index, config, device, stream),
               mlp(layer_index, config, device, stream),
               add_op(device, stream)

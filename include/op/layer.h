@@ -22,7 +22,7 @@ namespace mllm
             base::Device device_;
             cudaStream_t stream_;
 
-            Layer(size_t input_count, size_t output_count, base::Device device = base::Device::CPU, cudaStream_t stream = nullptr)
+            Layer(size_t input_count, size_t output_count, base::Device device, cudaStream_t stream)
                 : inputs(input_count), outputs(output_count), device_(device), stream_(stream) {}
 
         public:
@@ -46,9 +46,9 @@ namespace mllm
             WLayer(size_t input_count,
                    size_t output_count,
                    const std::vector<size_t> &shape,
-                   base::Device device = base::Device::CPU,
-                   cudaStream_t stream = nullptr) : Layer(input_count, output_count, device, stream),
-                                                    weight_(Tensor(shape, device)) {}
+                   base::Device device,
+                   cudaStream_t stream) : Layer(input_count, output_count, device, stream),
+                                          weight_(Tensor(shape, device)) {}
 
         public:
             const Tensor &weight() const { return weight_; }

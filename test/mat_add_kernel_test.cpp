@@ -47,7 +47,7 @@ TEST_F(MatAddTest, CPUAddSmall)
     }
 
     // 执行加法操作
-    op::Add add_op(Device::CPU);
+    op::Add add_op(Device::CPU, nullptr);
     add_op.forward(input0, input1, output);
 
     VLOG(TRACE) << "CPU ADD Small Result:";
@@ -78,7 +78,7 @@ TEST_F(MatAddTest, CPUTransposeAddSmall)
     output.t();
 
     // 执行加法操作
-    op::Add add_op(Device::CPU);
+    op::Add add_op(Device::CPU, nullptr);
     add_op.forward(input0, input1, output);
 
     VLOG(TRACE) << "CPU ADD Small Result:";
@@ -109,7 +109,7 @@ TEST_F(MatAddTest, CUDAAddSmall)
     input1.toDevice(Device::CUDA);
     output.toDevice(Device::CUDA);
     // 执行加法操作
-    op::Add add_op(Device::CUDA);
+    op::Add add_op(Device::CUDA, nullptr);
     add_op.forward(input0, input1, output);
     input0.toDevice(Device::CPU);
     input1.toDevice(Device::CPU);
@@ -145,7 +145,7 @@ TEST_F(MatAddTest, CUDATransposeAddSmall)
     input0.t();
     output.t();
     // 执行加法操作
-    op::Add add_op(Device::CUDA);
+    op::Add add_op(Device::CUDA, nullptr);
     add_op.forward(input0, input1, output);
     input0.toDevice(Device::CPU);
     input1.toDevice(Device::CPU);
@@ -179,7 +179,7 @@ TEST_F(MatAddTest, CUDAAddLarge)
     input1.toDevice(Device::CUDA);
     output.toDevice(Device::CUDA);
     // 执行加法操作
-    op::Add add_op(Device::CUDA);
+    op::Add add_op(Device::CUDA, nullptr);
     add_op.forward(input0, input1, output);
     input0.toDevice(Device::CPU);
     input1.toDevice(Device::CPU);
@@ -215,7 +215,7 @@ TEST_F(MatAddTest, CUDATransposeAddLarge)
     input0.t();
     output.t();
     // 执行加法操作
-    op::Add add_op(Device::CUDA);
+    op::Add add_op(Device::CUDA, nullptr);
     add_op.forward(input0, input1, output);
     input0.toDevice(Device::CPU);
     input1.toDevice(Device::CPU);
@@ -244,7 +244,7 @@ TEST_F(MatAddTest, CPUAddLarge)
     }
 
     // 执行加法操作
-    op::Add add_op(Device::CPU);
+    op::Add add_op(Device::CPU, nullptr);
     add_op.forward(input0, input1, output);
 
     // 验证输出结果
@@ -274,7 +274,7 @@ TEST_F(MatAddTest, CPUTransposeAddLarge)
     output.t();
 
     // 执行加法操作
-    op::Add add_op(Device::CPU);
+    op::Add add_op(Device::CPU, nullptr);
     add_op.forward(input0, input1, output);
 
     // 验证输出结果

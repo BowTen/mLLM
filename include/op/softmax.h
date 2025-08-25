@@ -10,7 +10,7 @@ namespace mllm
         class Softmax : public Layer
         {
         public:
-            Softmax(base::Device device = base::Device::CPU, cudaStream_t stream = nullptr);
+            Softmax(base::Device device, cudaStream_t stream);
             void forward(Tensor &input, Tensor &output);
         };
     }

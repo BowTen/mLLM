@@ -29,8 +29,8 @@ protected:
                           1.0, 6.0, 7.0, 4.0,
                           5.0, 2.0, 3.0, 8.0}),
                     a(data.data(), shape, true, Device::CPU),
-                    softmax_cpu(Device::CPU),
-                    softmax_cuda(Device::CUDA)
+                    softmax_cpu(Device::CPU, nullptr),
+                    softmax_cuda(Device::CUDA, nullptr)
     {
         google::InitGoogleLogging("SoftmaxTest");
         FLAGS_logtostderr = true;
@@ -93,8 +93,8 @@ protected:
 
     SoftmaxCheck() : shape({8, 8, 1024}),
                      a(shape),
-                     softmax_cpu(Device::CPU),
-                     softmax_cuda(Device::CUDA)
+                     softmax_cpu(Device::CPU, nullptr),
+                     softmax_cuda(Device::CUDA, nullptr)
     {
         google::InitGoogleLogging("SoftmaxTest");
         FLAGS_logtostderr = true;

@@ -10,7 +10,7 @@ namespace mllm
         class SiLU : public Layer
         {
         public:
-            SiLU(base::Device device = base::Device::CPU, cudaStream_t stream = nullptr);
+            SiLU(base::Device device, cudaStream_t stream);
             void forward(Tensor &input);
         };
     }

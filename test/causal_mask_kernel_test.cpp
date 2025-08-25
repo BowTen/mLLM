@@ -36,10 +36,10 @@ protected:
                              1.0, 6.0, 7.0, 4.0,
                              5.0, 2.0, 3.0, 8.0}),
                        a(data.data(), shape, true, Device::CPU),
-                       softmax_cpu(Device::CPU),
-                       softmax_cuda(Device::CUDA),
-                       causal_mask_cpu(Device::CPU),
-                       causal_mask_cuda(Device::CUDA)
+                       softmax_cpu(Device::CPU, nullptr),
+                       softmax_cuda(Device::CUDA, nullptr),
+                       causal_mask_cpu(Device::CPU, nullptr),
+                       causal_mask_cuda(Device::CUDA, nullptr)
     {
         google::InitGoogleLogging("CausalMaskTest");
         FLAGS_logtostderr = true;
@@ -104,8 +104,8 @@ protected:
 
     CausalMaskCheck() : shape({8, 1024, 1024}),
                         a(shape),
-                        causal_mask_cpu(Device::CPU),
-                        causal_mask_cuda(Device::CUDA)
+                        causal_mask_cpu(Device::CPU, nullptr),
+                        causal_mask_cuda(Device::CUDA, nullptr)
     {
         google::InitGoogleLogging("CausalMaskTest");
         FLAGS_logtostderr = true;

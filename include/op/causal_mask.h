@@ -10,7 +10,7 @@ namespace mllm
         class CausalMask : public Layer
         {
         public:
-            CausalMask(base::Device device = base::Device::CPU, cudaStream_t stream = nullptr);
+            CausalMask(base::Device device, cudaStream_t stream);
             void forward(Tensor &input);
         };
     }

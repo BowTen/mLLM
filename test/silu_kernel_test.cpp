@@ -23,8 +23,8 @@ protected:
 
     SiLUTest() : shape({2, 4, 4}),
                  a(shape),
-                 silu_cpu(Device::CPU),
-                 silu_cuda(Device::CUDA)
+                 silu_cpu(Device::CPU, nullptr),
+                 silu_cuda(Device::CUDA, nullptr)
     {
         google::InitGoogleLogging("SiLUTest");
         FLAGS_logtostderr = true;
@@ -90,8 +90,8 @@ protected:
 
     SiLUCheck() : shape({8, 1024, 1024}),
                   a(shape),
-                  silu_cpu(Device::CPU),
-                  silu_cuda(Device::CUDA)
+                  silu_cpu(Device::CPU, nullptr),
+                  silu_cuda(Device::CUDA, nullptr)
     {
         google::InitGoogleLogging("SiLUTest");
         FLAGS_logtostderr = true;
