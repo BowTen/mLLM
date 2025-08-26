@@ -16,8 +16,11 @@ namespace mllm
 {
     namespace base
     {
-        class Tensor
+        class Tensor;
+
+        class TensorMeta
         {
+        private:
             std::vector<size_t> shape_;
             std::vector<size_t> stride_;
             bool is_contiguous_;
@@ -30,13 +33,30 @@ namespace mllm
             static std::vector<size_t> default_stride(const std::vector<size_t> &shape);
             void update();
 
+            friend Tensor;
+
+        public:
+            TensorMeta();
+            TensorMeta(const std::vector<size_t> &shape, Buffer::BufferPtr buffer, Device device = Device::CPU, bool mut = false);
+            TensorMeta(const std::vector<size_t> &shape, Device device = Device::CPU, bool mut = false);
+            TensorMeta(void *data, const std::vector<size_t> &shape, bool copy, Device device = Device::CPU, bool mut = false);
+        };
+
+        class Tensor
+        {
+        private:
+            std::shared_ptr<TensorMeta> meta_;
+
             size_t check_index(int idx) const;
 
         public:
-            Tensor();
-            Tensor(const std::vector<size_t> &shape, Buffer::BufferPtr buffer, Device device = Device::CPU, bool mut = false);
-            Tensor(const std::vector<size_t> &shape, Device device = Device::CPU, bool mut = false);
-            Tensor(void *data, const std::vector<size_t> &shape, bool copy, Device device = Device::CPU, bool mut = false);
+            Tensor() : meta_(std::make_shared<TensorMeta>()) {}
+            Tensor(const std::vector<size_t> &shape, Buffer::BufferPtr buffer, Device device = Device::CPU, bool mut = false)
+                : meta_(std::make_shared<TensorMeta>(shape, buffer, device, mut)) {}
+            Tensor(const std::vector<size_t> &shape, Device device = Device::CPU, bool mut = false)
+                : meta_(std::make_shared<TensorMeta>(shape, device, mut)) {}
+            Tensor(void *data, const std::vector<size_t> &shape, bool copy, Device device = Device::CPU, bool mut = false)
+                : meta_(std::make_shared<TensorMeta>(data, shape, copy, device, mut)) {}
             static Tensor from_float(float value, Device device = Device::CPU, bool mut = false);
             template <class T>
             static Tensor from_vector(std::vector<T> vec, std::vector<size_t> shape, Device device = Device::CPU, bool mut = false)
@@ -56,22 +76,22 @@ namespace mllm
             float *operator[](std::vector<size_t> idx);
             size_t num_mats()
             {
-                // update();
-                return num_mats_;
+                meta_->update();
+                return meta_->num_mats_;
             }
             float *mat(size_t idx);
 
-            const std::vector<size_t> &shape() const { return shape_; }
+            const std::vector<size_t> &shape() const { return meta_->shape_; }
             size_t shape(int idx) const;
             size_t stride(int idx) const;
-            const std::vector<size_t> &stride() const { return stride_; }
-            void set_buffer(Buffer::BufferPtr buffer) { buffer_ = buffer; }
-            Buffer::BufferPtr buffer() const { return buffer_; }
-            bool is_contiguous() const { return is_contiguous_; }
+            const std::vector<size_t> &stride() const { return meta_->stride_; }
+            void set_buffer(Buffer::BufferPtr buffer) { meta_->buffer_ = buffer; }
+            Buffer::BufferPtr buffer() const { return meta_->buffer_; }
+            bool is_contiguous() const { return meta_->is_contiguous_; }
             size_t size() const;
             float *data();
-            bool empty() const { return buffer_ == nullptr; }
-            Tensor *toDevice(Device device);
+            bool empty() const { return meta_->buffer_ == nullptr; }
+            Tensor toDevice(Device device);
             Tensor clone();
 
             void push(float *bytes, size_t num_bytes);

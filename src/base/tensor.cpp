@@ -14,21 +14,32 @@ namespace mllm
     namespace base
     {
 
-        size_t Tensor::check_index(int idx) const
+        void TensorMeta::update()
         {
-            if (idx >= 0)
-            {
-                CHECK(static_cast<size_t>(idx) < shape_.size()) << "Index out of range, shape size: " << shape_.size() << ", idx: " << idx;
-                return idx;
-            }
+            if (shape_.size() >= 2)
+                num_mats_ = std::accumulate(shape_.begin(), shape_.end() - 2, 1, std::multiplies<size_t>());
+            else if (shape_.size() == 1)
+                num_mats_ = 1;
             else
+                num_mats_ = 0;
+            if (shape_.empty())
+                return;
+            if (stride_.back() != 1)
             {
-                CHECK(static_cast<size_t>(-idx) <= shape_.size()) << "Index out of range, shape size: " << shape_.size() << ", -idx: " << -idx;
-                return shape_.size() + idx;
+                is_contiguous_ = false;
+                return;
             }
+            for (int i = static_cast<int>(stride_.size()) - 2; i >= 0; --i)
+            {
+                if (stride_[i] != stride_[i + 1] * shape_[i + 1])
+                {
+                    is_contiguous_ = false;
+                    return;
+                }
+            }
+            is_contiguous_ = true;
         }
-
-        std::vector<size_t> Tensor::default_stride(const std::vector<size_t> &shape)
+        std::vector<size_t> TensorMeta::default_stride(const std::vector<size_t> &shape)
         {
             if (shape.empty())
                 return {};
@@ -40,15 +51,15 @@ namespace mllm
             }
             return stride;
         }
-        Tensor::Tensor() : shape_(),
-                           stride_(default_stride(shape_)),
-                           is_contiguous_(true),
-                           buffer_(nullptr),
-                           device_(Device::CPU)
+        TensorMeta::TensorMeta() : shape_(),
+                                   stride_(default_stride(shape_)),
+                                   is_contiguous_(true),
+                                   buffer_(nullptr),
+                                   device_(Device::CPU)
         {
             update();
         }
-        Tensor::Tensor(const std::vector<size_t> &shape, Buffer::BufferPtr buffer, Device device, bool mut)
+        TensorMeta::TensorMeta(const std::vector<size_t> &shape, Buffer::BufferPtr buffer, Device device, bool mut)
             : shape_(shape),
               is_contiguous_(true),
               buffer_(buffer),
@@ -61,7 +72,7 @@ namespace mllm
             update();
         }
 
-        Tensor::Tensor(const std::vector<size_t> &shape, Device device, bool mut)
+        TensorMeta::TensorMeta(const std::vector<size_t> &shape, Device device, bool mut)
             : shape_(shape), is_contiguous_(true), device_(device), mut_(mut)
         {
             if (shape_.size() == 1)
@@ -92,7 +103,7 @@ namespace mllm
             update();
         }
 
-        Tensor::Tensor(void *data, const std::vector<size_t> &shape, bool copy, Device device, bool mut)
+        TensorMeta::TensorMeta(void *data, const std::vector<size_t> &shape, bool copy, Device device, bool mut)
             : shape_(shape), is_contiguous_(true), device_(device), mut_(mut)
         {
             if (shape_.size() == 1)
@@ -118,6 +129,21 @@ namespace mllm
                 buffer_ = std::make_shared<ArrBuffer>(allocator, data, expected_size * sizeof(float), copy);
             update();
         }
+
+        size_t Tensor::check_index(int idx) const
+        {
+            if (idx >= 0)
+            {
+                CHECK(static_cast<size_t>(idx) < meta_->shape_.size()) << "Index out of range, shape size: " << meta_->shape_.size() << ", idx: " << idx;
+                return idx;
+            }
+            else
+            {
+                CHECK(static_cast<size_t>(-idx) <= meta_->shape_.size()) << "Index out of range, shape size: " << meta_->shape_.size() << ", -idx: " << -idx;
+                return meta_->shape_.size() + idx;
+            }
+        }
+
         Tensor Tensor::from_float(float value, Device device, bool mut)
         {
             return Tensor::from_vector(std::vector<float>({value}), {1}, device, mut);
@@ -125,28 +151,28 @@ namespace mllm
 
         size_t Tensor::size() const
         {
-            if (!buffer_)
+            if (!meta_->buffer_)
                 return 0;
-            return buffer_->size() / sizeof(float);
+            return meta_->buffer_->size() / sizeof(float);
         }
 
         float *Tensor::data()
         {
-            if (!buffer_)
+            if (!meta_->buffer_)
                 return nullptr;
-            return static_cast<float *>(buffer_->data());
+            return static_cast<float *>(meta_->buffer_->data());
         }
 
-        Tensor *Tensor::toDevice(Device device)
+        Tensor Tensor::toDevice(Device device)
         {
-            if (device_ == device)
-                return this;
-            if (!buffer_)
+            if (meta_->device_ == device)
+                return *this;
+            if (!meta_->buffer_)
             {
                 LOG(WARNING) << "Tensor buffer is empty, cannot transfer device.";
-                return this;
+                return *this;
             }
-            VLOG(4) << "Transferring tensor from device " << (device_ == Device::CPU ? "CPU" : "CUDA") << " to " << (device == Device::CPU ? "CPU" : "CUDA");
+            VLOG(4) << "Transferring tensor from device " << (meta_->device_ == Device::CPU ? "CPU" : "CUDA") << " to " << (device == Device::CPU ? "CPU" : "CUDA");
 
             Allocator *new_allocator = nullptr;
             if (device == Device::CPU)
@@ -156,104 +182,78 @@ namespace mllm
             else
                 throw std::invalid_argument("Tensor::toDevice: Unsupported device type.");
             Buffer::BufferPtr new_buffer;
-            if (mut_)
-                new_buffer = std::make_shared<VecBuffer>(new_allocator, buffer_->size() * 2, buffer_->size());
+            if (meta_->mut_)
+                new_buffer = std::make_shared<VecBuffer>(new_allocator, meta_->buffer_->size() * 2, meta_->buffer_->size());
             else
-                new_buffer = std::make_shared<ArrBuffer>(new_allocator, buffer_->size());
-            cudaMemcpy(new_buffer->data(), buffer_->data(), buffer_->size(), device == Device::CPU ? cudaMemcpyDeviceToHost : cudaMemcpyHostToDevice);
-            buffer_ = new_buffer;
-            device_ = device;
-            return this;
+                new_buffer = std::make_shared<ArrBuffer>(new_allocator, meta_->buffer_->size());
+            cudaMemcpy(new_buffer->data(), meta_->buffer_->data(), meta_->buffer_->size(), device == Device::CPU ? cudaMemcpyDeviceToHost : cudaMemcpyHostToDevice);
+            meta_->buffer_ = new_buffer;
+            meta_->device_ = device;
+            return *this;
         }
 
         size_t Tensor::shape(int idx) const
         {
             if (idx < 0)
             {
-                if (-idx > static_cast<int>(shape_.size()))
+                if (-idx > static_cast<int>(meta_->shape_.size()))
                     return 1;
-                return shape_[shape_.size() + idx];
+                return meta_->shape_[meta_->shape_.size() + idx];
             }
             else
             {
-                if (idx >= static_cast<int>(shape_.size()))
+                if (idx >= static_cast<int>(meta_->shape_.size()))
                     throw std::out_of_range("Index out of range in shape()");
-                return shape_[idx];
+                return meta_->shape_[idx];
             }
         }
         size_t Tensor::stride(int idx) const
         {
             if (idx < 0)
             {
-                if (-idx > static_cast<int>(stride_.size()))
+                if (-idx > static_cast<int>(meta_->stride_.size()))
                     return size();
-                return stride_[stride_.size() + idx];
+                return meta_->stride_[meta_->stride_.size() + idx];
             }
             else
             {
-                if (idx >= static_cast<int>(stride_.size()))
+                if (idx >= static_cast<int>(meta_->stride_.size()))
                     throw std::out_of_range("Index out of range in stride()");
-                return stride_[idx];
+                return meta_->stride_[idx];
             }
         }
 
         Tensor Tensor::clone()
         {
-            auto new_tensor = Tensor(shape_, buffer_->clone(), device_, mut_);
-            new_tensor.stride_ = stride_;
+            auto new_tensor = Tensor(meta_->shape_, meta_->buffer_->clone(), meta_->device_, meta_->mut_);
+            new_tensor.meta_->stride_ = meta_->stride_;
             return new_tensor;
-        }
-
-        void Tensor::update()
-        {
-            if (shape_.size() >= 2)
-                num_mats_ = std::accumulate(shape_.begin(), shape_.end() - 2, 1, std::multiplies<size_t>());
-            else if (shape_.size() == 1)
-                num_mats_ = 1;
-            else
-                num_mats_ = 0;
-            if (shape_.empty())
-                return;
-            if (stride_.back() != 1)
-            {
-                is_contiguous_ = false;
-                return;
-            }
-            for (int i = static_cast<int>(stride_.size()) - 2; i >= 0; --i)
-            {
-                if (stride_[i] != stride_[i + 1] * shape_[i + 1])
-                {
-                    is_contiguous_ = false;
-                    return;
-                }
-            }
-            is_contiguous_ = true;
         }
 
         void Tensor::view(std::vector<size_t> shape)
         {
-            if (!is_contiguous_)
+            if (!meta_->is_contiguous_)
             {
                 throw std::runtime_error("Tensor must be contiguous to use view.");
             }
             size_t new_size = 1;
-            size_t dim = shape_.size();
+            size_t dim = meta_->shape_.size();
             for (size_t i = 0; i < dim; i++)
-                if (stride_[i] > 0)
-                    new_size *= shape_[i];
+                if (meta_->stride_[i] > 0)
+                    new_size *= meta_->shape_[i];
 
             if (new_size != this->size())
             {
                 throw std::invalid_argument("New shape size must match the original size.");
             }
-            shape_ = shape;
-            stride_ = Tensor::default_stride(shape_);
-            update();
+            meta_->shape_ = shape;
+            meta_->stride_ = TensorMeta::default_stride(shape);
+            meta_->update();
         }
 
         void Tensor::reshape(std::vector<size_t> shape)
         {
-            if (!is_contiguous_)
+            if (!meta_->is_contiguous_)
             {
                 this->contiguous();
             }
@@ -262,93 +262,93 @@ namespace mllm
 
         void Tensor::contiguous(cudaStream_t stream)
         {
-            if (is_contiguous_)
+            if (meta_->is_contiguous_)
                 return;
-            kernel::get_contiguous_kernel(device_)(this, stream);
-            stride_ = default_stride(shape_);
-            update();
-            CHECK(is_contiguous_) << "Tensor faild to contiguous";
+            kernel::get_contiguous_kernel(meta_->device_)(this, stream);
+            meta_->stride_ = TensorMeta::default_stride(meta_->shape_);
+            meta_->update();
+            CHECK(meta_->is_contiguous_) << "Tensor faild to contiguous";
         }
         void Tensor::transpose(int i, int j)
         {
-            if (i >= static_cast<int>(shape_.size()) ||
-                j >= static_cast<int>(shape_.size()) ||
-                -i > static_cast<int>(shape_.size()) ||
-                -j > static_cast<int>(shape_.size()))
+            if (i >= static_cast<int>(meta_->shape_.size()) ||
+                j >= static_cast<int>(meta_->shape_.size()) ||
+                -i > static_cast<int>(meta_->shape_.size()) ||
+                -j > static_cast<int>(meta_->shape_.size()))
             {
-                throw std::invalid_argument("Invalid transpose dimensions. shape dim: " + std::to_string(shape_.size()));
+                throw std::invalid_argument("Invalid transpose dimensions. shape dim: " + std::to_string(meta_->shape_.size()));
             }
             if (i < 0)
-                i += shape_.size();
+                i += meta_->shape_.size();
             if (j < 0)
-                j += shape_.size();
-            std::swap(shape_[i], shape_[j]);
-            std::swap(stride_[i], stride_[j]);
-            update();
+                j += meta_->shape_.size();
+            std::swap(meta_->shape_[i], meta_->shape_[j]);
+            std::swap(meta_->stride_[i], meta_->stride_[j]);
+            meta_->update();
         }
         void Tensor::t()
         {
-            if (shape_.size() < 2)
+            if (meta_->shape_.size() < 2)
             {
                 throw std::invalid_argument("Invalid transpose dimensions.");
             }
-            transpose(shape_.size() - 1, shape_.size() - 2);
+            transpose(meta_->shape_.size() - 1, meta_->shape_.size() - 2);
         }
 
         float *Tensor::operator[](size_t idx)
         {
             size_t offset = 0;
-            for (int i = shape_.size() - 1; i >= 0; i--)
+            for (int i = meta_->shape_.size() - 1; i >= 0; i--)
             {
-                offset += (idx % shape_[i]) * stride_[i];
-                idx /= shape_[i];
+                offset += (idx % meta_->shape_[i]) * meta_->stride_[i];
+                idx /= meta_->shape_[i];
             }
             return this->data() + offset;
         }
         float *Tensor::operator[](std::vector<size_t> idx)
         {
-            if (idx.size() != shape_.size())
+            if (idx.size() != meta_->shape_.size())
             {
                 throw std::invalid_argument("Index size must match tensor shape size.");
             }
             size_t offset = 0;
             for (size_t i = 0; i < idx.size(); ++i)
             {
-                CHECK(idx[i] < shape_[i]) << "Index out of range in operator[{}], dim: " +
-                                                 std::to_string(i) +
-                                                 ", idx: " +
-                                                 std::to_string(idx[i]) +
-                                                 ", shape: " +
-                                                 std::to_string(shape_[i]);
-                offset += idx[i] * stride_[i];
+                CHECK(idx[i] < meta_->shape_[i]) << "Index out of range in operator[{}], dim: " +
+                                                        std::to_string(i) +
+                                                        ", idx: " +
+                                                        std::to_string(idx[i]) +
+                                                        ", shape: " +
+                                                        std::to_string(meta_->shape_[i]);
+                offset += idx[i] * meta_->stride_[i];
             }
             return data() + offset;
         }
 
         float *Tensor::mat(size_t idx)
         {
-            if (idx >= num_mats_)
+            if (idx >= meta_->num_mats_)
             {
                 throw std::out_of_range("Matrix index out of range in mat()");
             }
-            if (num_mats_ == 1)
+            if (meta_->num_mats_ == 1)
                 return data();
             size_t offset = 0;
-            for (int i = static_cast<int>(stride_.size()) - 3; i >= 0; i--)
+            for (int i = static_cast<int>(meta_->stride_.size()) - 3; i >= 0; i--)
             {
-                offset += (idx % shape_[i]) * stride_[i];
-                idx /= shape_[i];
+                offset += (idx % meta_->shape_[i]) * meta_->stride_[i];
+                idx /= meta_->shape_[i];
             }
             return data() + offset;
         }
 
         void Tensor::push(float *bytes, size_t num_bytes)
         {
-            CHECK(mut_) << "Tensor must be mutable in push()";
+            CHECK(meta_->mut_) << "Tensor must be mutable in push()";
             CHECK(bytes != nullptr) << "Invalid data pointer in push()";
-            CHECK(buffer_ != nullptr) << "Tensor buffer is null in push()";
+            CHECK(meta_->buffer_ != nullptr) << "Tensor buffer is null in push()";
 
-            auto vec_buffer = std::dynamic_pointer_cast<VecBuffer>(buffer_);
+            auto vec_buffer = std::dynamic_pointer_cast<VecBuffer>(meta_->buffer_);
             CHECK(vec_buffer != nullptr) << "Tensor buffer is not a VecBuffer in push()";
 
             vec_buffer->push(bytes, num_bytes);
@@ -356,24 +356,24 @@ namespace mllm
 
         void Tensor::cat(Tensor &other, int dim)
         {
-            CHECK(mut_) << "Tensor must be mutable in cat()";
-            CHECK(dim < static_cast<int>(shape_.size()) && -dim <= static_cast<int>(shape_.size())) << "Dimension out of range in cat()";
+            CHECK(meta_->mut_) << "Tensor must be mutable in cat()";
+            CHECK(dim < static_cast<int>(meta_->shape_.size()) && -dim <= static_cast<int>(meta_->shape_.size())) << "Dimension out of range in cat()";
             CHECK(other.shape().size() == this->shape().size()) << "Other tensor must have the same number of dimensions.";
             if (dim < 0)
-                dim += static_cast<int>(shape_.size());
+                dim += static_cast<int>(meta_->shape_.size());
             auto other_shape = other.shape();
-            other_shape[dim] = this->shape_[dim];
-            CHECK(other_shape == this->shape_) << "Other tensor must have the same shape except for the concatenation dimension.";
+            other_shape[dim] = meta_->shape_[dim];
+            CHECK(other_shape == meta_->shape_) << "Other tensor must have the same shape except for the concatenation dimension.";
 
-            std::vector<size_t> next_idx(shape_.size(), 0);
-            next_idx[dim] = this->shape_[dim] - 1;
-            float *next_ptr = this->operator[](next_idx) + stride_[dim];
+            std::vector<size_t> next_idx(meta_->shape_.size(), 0);
+            next_idx[dim] = meta_->shape_[dim] - 1;
+            float *next_ptr = this->operator[](next_idx) + meta_->stride_[dim];
             if (next_ptr == this->data() + this->size() && other.stride() == this->stride())
             {
                 VLOG(DEBUG) << "directly pushing data to cat Tensors";
                 this->push(other.data(), other.size() * sizeof(float));
-                this->shape_[dim] += other.shape(dim);
-                update();
+                meta_->shape_[dim] += other.shape(dim);
+                meta_->update();
                 return;
             }
 
@@ -381,18 +381,18 @@ namespace mllm
             auto cp = this->clone();
             cp.contiguous();
             other.contiguous();
-            buf_holder_ = cp.buffer();
+            meta_->buf_holder_ = cp.buffer();
 
-            auto vec_buffer = std::dynamic_pointer_cast<VecBuffer>(buffer_);
+            auto vec_buffer = std::dynamic_pointer_cast<VecBuffer>(meta_->buffer_);
             CHECK(vec_buffer != nullptr) << "Buffer is not a VecBuffer in cat()";
 
             vec_buffer->resize((this->size() + other.size()) * sizeof(float));
 
-            size_t dim_size = std::accumulate(shape_.begin() + dim + 1, shape_.end(), 1, std::multiplies<size_t>());
+            size_t dim_size = std::accumulate(meta_->shape_.begin() + dim + 1, meta_->shape_.end(), 1, std::multiplies<size_t>());
             size_t this_num_dims = this->size() / dim_size;
             size_t other_num_dims = other.size() / dim_size;
 
-            auto allocator = this->buffer_->get_allocator();
+            auto allocator = meta_->buffer_->get_allocator();
             float *st = this->data();
             float *ed = st + this->size();
             float *src_a = cp.data();
@@ -410,26 +410,26 @@ namespace mllm
                 st += stride_b;
                 src_b += stride_b;
             }
-            shape_[dim] += other.shape(dim);
-            update();
+            meta_->shape_[dim] += other.shape(dim);
+            meta_->update();
         }
 
         void Tensor::insert_dim(int dim_int)
         {
             size_t dim = check_index(dim_int);
-            CHECK(dim < shape_.size()) << "Dimension out of range in insert_dim()";
-            shape_.insert(shape_.begin() + dim, 1);
-            stride_.insert(stride_.begin() + dim, 0);
-            stride_[dim] = stride_[dim + 1] * shape_[dim + 1];
-            update();
+            CHECK(dim < meta_->shape_.size()) << "Dimension out of range in insert_dim()";
+            meta_->shape_.insert(meta_->shape_.begin() + dim, 1);
+            meta_->stride_.insert(meta_->stride_.begin() + dim, 0);
+            meta_->stride_[dim] = meta_->stride_[dim + 1] * meta_->shape_[dim + 1];
+            meta_->update();
         }
         void Tensor::expand(int dim_int, size_t size)
         {
             size_t dim = check_index(dim_int);
-            CHECK(shape_[dim] == 1) << "Dimension must be 1 in expand()";
-            shape_[dim] = size;
-            stride_[dim] = 0;
-            update();
+            CHECK(meta_->shape_[dim] == 1) << "Dimension must be 1 in expand()";
+            meta_->shape_[dim] = size;
+            meta_->stride_[dim] = 0;
+            meta_->update();
         }
     } // namespace base
 } // namespace mllm
