@@ -3,6 +3,7 @@
 #include "base/tensor.h"
 #include "base/allocator.h"
 #include "base/buffer.h"
+#include "base/util.h"
 #include "kernel/kernel.h"
 #include <cuda_runtime.h>
 
@@ -186,7 +187,7 @@ namespace mllm
                 new_buffer = std::make_shared<VecBuffer>(new_allocator, meta_->buffer_->size() * 2, meta_->buffer_->size());
             else
                 new_buffer = std::make_shared<ArrBuffer>(new_allocator, meta_->buffer_->size());
-            cudaMemcpy(new_buffer->data(), meta_->buffer_->data(), meta_->buffer_->size(), device == Device::CPU ? cudaMemcpyDeviceToHost : cudaMemcpyHostToDevice);
+            Allocator::device_memcpy(new_buffer->data(), meta_->buffer_->data(), meta_->buffer_->size(), device == Device::CPU ? cudaMemcpyDeviceToHost : cudaMemcpyHostToDevice);
             meta_->buffer_ = new_buffer;
             meta_->device_ = device;
             return *this;

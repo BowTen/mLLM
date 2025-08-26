@@ -1,6 +1,7 @@
 #include "base/buffer.h"
 #include "base/allocator.h"
 #include "base/common.h"
+#include "base/util.h"
 #include <iostream>
 #include <algorithm>
 
@@ -19,6 +20,7 @@ namespace mllm
             data_ = allocator->allocate(size);
             if (!data_)
             {
+                CHECK_CUDA_ERR(cudaGetLastError());
                 throw std::bad_alloc();
             }
         }
@@ -86,7 +88,7 @@ namespace mllm
         {
             if (copy)
             {
-                data_ = allocator->allocate(initial_size);
+                data_ = allocator->allocate(capacity_);
                 allocator->memcpy(data_, data, initial_size);
             }
             if (!data_ && initial_size > 0)
@@ -122,11 +124,11 @@ namespace mllm
         }
         void VecBuffer::resize(size_t new_size)
         {
-            size_ = new_size;
-            if (size_ > capacity_)
+            if (new_size > capacity_)
             {
-                this->reserve(size_);
+                this->reserve(new_size);
             }
+            size_ = new_size;
         }
 
         size_t VecBuffer::size() const

@@ -1,5 +1,6 @@
 #include "kernel/cuda/embedding_kernel.cuh"
 #include "kernel/kernel.h"
+#include "base/util.h"
 
 #define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
@@ -99,6 +100,9 @@ namespace mllm
                     seq_len,
                     hidden_size);
             }
+            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+
+            CHECK_CUDA_ERR(cudaGetLastError());
         }
     }
 }

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cstring>
 #include <cuda_runtime.h>
+#include "base/util.h"
 
 #define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
@@ -10,6 +11,18 @@ namespace mllm
 {
     namespace base
     {
+
+        size_t align_size(size_t size)
+        {
+            return ((size + MEM_ALIGN - 1) / MEM_ALIGN) * MEM_ALIGN;
+        }
+
+        void Allocator::device_memcpy(void *dest, const void *src, size_t size, cudaMemcpyKind kind)
+        {
+            CHECK_CUDA_ERR(cudaMemcpy(dest, src, size, kind));
+            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+        }
+
         // HostAllocator implementation
         HostAllocator *HostAllocator::instance = nullptr;
 
@@ -24,6 +37,10 @@ namespace mllm
 
         void *HostAllocator::allocate(size_t size)
         {
+            size = align_size(size);
+            // void *ptr = nullptr;
+            // CHECK_CUDA_ERR(cudaMallocHost(&ptr, size));
+            // return ptr;
             return malloc(size);
         }
 
@@ -34,6 +51,7 @@ namespace mllm
 
         void HostAllocator::deallocate(void *ptr)
         {
+            // CHECK_CUDA_ERR(cudaFreeHost(ptr));
             free(ptr);
         }
 
@@ -49,29 +67,29 @@ namespace mllm
             return instance;
         }
 
-#define BYTE_ALIGN 16
         void *CudaAllocator::allocate(size_t size)
         {
             CHECK(size > 0) << "Cannot allocate zero bytes";
-            size = ((size + BYTE_ALIGN - 1) / BYTE_ALIGN) * BYTE_ALIGN;
+            size = align_size(size);
             void *ptr;
-            auto err = cudaMalloc(&ptr, size);
-            if (err != cudaSuccess)
-            {
-                LOG(FATAL) << "Cuda allocation failed while alloce " << size << " bytes: " << cudaGetErrorString(err);
-                throw std::bad_alloc();
-            }
+            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+            CHECK_CUDA_ERR(cudaMalloc(&ptr, size));
+            CHECK_CUDA_ERR(cudaDeviceSynchronize());
             return ptr;
         }
 
         void CudaAllocator::memcpy(void *dest, const void *src, size_t size)
         {
-            cudaMemcpy(dest, src, size, cudaMemcpyDeviceToDevice);
+            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+            CHECK_CUDA_ERR(cudaMemcpy(dest, src, size, cudaMemcpyDeviceToDevice));
+            CHECK_CUDA_ERR(cudaDeviceSynchronize());
         }
 
         void CudaAllocator::deallocate(void *ptr)
         {
-            cudaFree(ptr);
+            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+            CHECK_CUDA_ERR(cudaFree(ptr));
+            CHECK_CUDA_ERR(cudaDeviceSynchronize());
         }
     }
 }

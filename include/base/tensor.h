@@ -58,6 +58,7 @@ namespace mllm
             Tensor(void *data, const std::vector<size_t> &shape, bool copy, Device device = Device::CPU, bool mut = false)
                 : meta_(std::make_shared<TensorMeta>(data, shape, copy, device, mut)) {}
             static Tensor from_float(float value, Device device = Device::CPU, bool mut = false);
+
             template <class T>
             static Tensor from_vector(std::vector<T> vec, std::vector<size_t> shape, Device device = Device::CPU, bool mut = false)
             {

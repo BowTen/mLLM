@@ -1,4 +1,5 @@
 #include "kernel/cuda/gen_rope_kernel.cuh"
+#include "base/util.h"
 
 namespace mllm
 {
@@ -82,6 +83,9 @@ namespace mllm
                     pos_start,
                     head_dim);
             }
+            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+
+            CHECK_CUDA_ERR(cudaGetLastError());
         }
     }
 }

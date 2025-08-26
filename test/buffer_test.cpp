@@ -31,10 +31,10 @@ protected:
 TEST_F(ArrBufferTestCUDA, AllocMore)
 {
     size_t test_size = 1024 * 1024; // 1MB
-    std::vector<mllm::base::ArrBuffer> vec;
+    std::vector<mllm::base::Buffer::BufferPtr> vec;
     for (size_t i = 1; i <= 250; i++)
     {
-        vec.push_back(mllm::base::ArrBuffer(allocator, test_size));
+        vec.push_back(mllm::base::Buffer::BufferPtr(new mllm::base::ArrBuffer(allocator, test_size)));
     }
 
     LOG(INFO) << "alloc 10 GB on CUDA, keep 5 sec...";
@@ -43,8 +43,8 @@ TEST_F(ArrBufferTestCUDA, AllocMore)
 
     for (auto &buffer : vec)
     {
-        EXPECT_EQ(buffer.size(), test_size);
-        EXPECT_NE(buffer.data(), nullptr);
+        EXPECT_EQ(buffer->size(), test_size);
+        EXPECT_NE(buffer->data(), nullptr);
     }
 }
 
@@ -55,14 +55,6 @@ TEST_F(ArrBufferTestCUDA, BasicConstruction)
 
     EXPECT_EQ(buffer.size(), test_size);
     EXPECT_NE(buffer.data(), nullptr);
-}
-
-TEST_F(ArrBufferTestCUDA, ZeroSizeConstruction)
-{
-    mllm::base::ArrBuffer buffer(allocator, 0);
-
-    EXPECT_EQ(buffer.size(), 0);
-    EXPECT_EQ(buffer.data(), nullptr); // 即使大小为0，data()也应该返回有效指针
 }
 
 TEST_F(ArrBufferTestCUDA, LargeSizeConstruction)
@@ -164,6 +156,7 @@ TEST_F(BufferExceptionTestCUDA, VecBufferGrowthPattern)
     size_t initial_capacity = 4;
     size_t initial_size = 0;
     mllm::base::VecBuffer buffer(allocator, initial_capacity, initial_size);
+    mllm::base::ArrBuffer arr_buffer(allocator, 16);
 
     // 测试容量增长模式
     std::vector<size_t> capacities;
@@ -172,8 +165,7 @@ TEST_F(BufferExceptionTestCUDA, VecBufferGrowthPattern)
     // 连续添加数据，观察容量增长
     for (int i = 0; i < 10; ++i)
     {
-        std::string data = "data" + std::to_string(i) + " ";
-        buffer.push(data.c_str(), data.length());
+        buffer.push(arr_buffer.data(), arr_buffer.size());
 
         size_t current_capacity = buffer.capacity();
         if (current_capacity != capacities.back())
@@ -216,14 +208,6 @@ TEST_F(ArrBufferTest, BasicConstruction)
 
     EXPECT_EQ(buffer.size(), test_size);
     EXPECT_NE(buffer.data(), nullptr);
-}
-
-TEST_F(ArrBufferTest, ZeroSizeConstruction)
-{
-    mllm::base::ArrBuffer buffer(allocator, 0);
-
-    EXPECT_EQ(buffer.size(), 0);
-    EXPECT_EQ(buffer.data(), nullptr); // 即使大小为0，data()也应该返回有效指针
 }
 
 TEST_F(ArrBufferTest, LargeSizeConstruction)

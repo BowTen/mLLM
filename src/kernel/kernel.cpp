@@ -32,6 +32,11 @@ namespace mllm
 {
     namespace kernel
     {
+        bool align_float4(base::Tensor *tensor)
+        {
+            return tensor->shape(-1) % 4 == 0 || tensor->shape(-1) == tensor->size();
+        }
+
         EmbeddingKernel get_emb_kernel(base::Device device)
         {
             switch (device)

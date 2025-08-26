@@ -2,11 +2,16 @@
 #define MLLM_ALLOCATOR_H
 
 #include <cstddef>
+#include <cuda_runtime_api.h>
 
 namespace mllm
 {
     namespace base
     {
+#define MEM_ALIGN 32
+
+        size_t align_size(size_t size);
+
         class Allocator
         {
         public:
@@ -18,6 +23,8 @@ namespace mllm
 
             // 复制内存
             virtual void memcpy(void *dest, const void *src, size_t size) = 0;
+
+            static void device_memcpy(void *dest, const void *src, size_t size, cudaMemcpyKind kind);
 
             // 释放内存
             virtual void deallocate(void *ptr) = 0;

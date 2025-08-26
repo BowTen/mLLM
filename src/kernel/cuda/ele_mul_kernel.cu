@@ -1,4 +1,5 @@
 #include "kernel/cuda/ele_mul_kernel.cuh"
+#include "base/util.h"
 
 namespace mllm
 {
@@ -48,6 +49,9 @@ namespace mllm
                 LOG(WARNING) << "No stream provided for CUDA ele mul kernel, running in default stream.";
                 ele_mul_kernel_cuda_fp32<<<8, 128>>>(input0->data(), input1->data(), output->data(), total_size, stream);
             }
+            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+
+            CHECK_CUDA_ERR(cudaGetLastError());
         }
     }
 }

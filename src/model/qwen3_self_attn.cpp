@@ -117,6 +117,7 @@ namespace mllm
             auto attn_out_shape = attn_output.shape();
             attn_out_shape.pop_back();
             attn_out_shape.back() *= head_dim;
+            CHECK_CUDA_ERR(cudaGetLastError());
             attn_output.reshape(attn_out_shape);
 
             o_proj.forward(attn_output, *output);

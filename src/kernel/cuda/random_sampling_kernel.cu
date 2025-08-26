@@ -41,6 +41,9 @@ namespace mllm
                 LOG(WARNING) << "Random sampling kernel called without stream";
                 write_u32<<<1, 1>>>(reinterpret_cast<uint32_t *>(output->data()), token_id);
             }
+            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+
+            CHECK_CUDA_ERR(cudaGetLastError());
         }
     }
 }

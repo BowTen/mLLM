@@ -1,11 +1,46 @@
 #include "kernel/cpu/softmax_kernel.h"
 #include <cuda_runtime.h>
 #include <cub/block/block_reduce.cuh>
+#include "base/util.h"
+#include "kernel/kernel.h"
 
 namespace mllm
 {
     namespace kernel
     {
+        namespace simple
+        {
+            __global__ void softmax_kernel_cuda(float *input, float *output, size_t N, size_t M)
+            {
+                size_t mat_id = blockIdx.x;
+                size_t row_id = blockIdx.y;
+
+                input += mat_id * N * M + row_id * M;
+                output += mat_id * N * M + row_id * M;
+
+                float sum = 0.f;
+                for (size_t i = threadIdx.x; i < M; i += blockDim.x)
+                {
+                    sum += exp(input[i]);
+                }
+
+                using BlockReduce = cub::BlockReduce<float, 128>;
+                __shared__ typename BlockReduce::TempStorage temp_storage;
+                __shared__ float shared_sum;
+                sum = BlockReduce(temp_storage).Sum(sum);
+
+                if (threadIdx.x == 0)
+                    shared_sum = sum;
+                __syncthreads();
+                sum = shared_sum;
+
+                for (size_t i = threadIdx.x; i < M; i += blockDim.x)
+                {
+                    output[i] = exp(input[i]) / sum;
+                }
+            }
+        }
+
         __global__ void softmax_kernel_cuda(float *input, float *output, size_t N, size_t M)
         {
             size_t mat_id = blockIdx.x;
@@ -58,16 +93,17 @@ namespace mllm
             size_t n = input->shape(-2);
             size_t m = input->shape(-1);
             dim3 grid(num_mats, n);
-            VLOG(TRACE) << "softmax cuda: num_mats: " << num_mats << ", n: " << n << ", m: " << m;
 
-            if (stream)
-            {
-                softmax_kernel_cuda<<<grid, 128, 0, static_cast<cudaStream_t>(stream)>>>(input->data(), output->data(), n, m);
-            }
+            if (stream == nullptr)
+                LOG(WARNING) << "Softmax: use default stream";
+
+            if (!align_float4(input) || !align_float4(output))
+                simple::softmax_kernel_cuda<<<grid, 128, 0, static_cast<cudaStream_t>(stream)>>>(input->data(), output->data(), n, m);
             else
-            {
-                softmax_kernel_cuda<<<grid, 128>>>(input->data(), output->data(), n, m);
-            }
+                softmax_kernel_cuda<<<grid, 128, 0, static_cast<cudaStream_t>(stream)>>>(input->data(), output->data(), n, m);
+            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+
+            CHECK_CUDA_ERR(cudaGetLastError());
         }
     }
 }

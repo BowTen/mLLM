@@ -8,6 +8,8 @@ namespace mllm
 {
     namespace kernel
     {
+        bool align_float4(base::Tensor *tensor);
+
         typedef void (*EmbeddingKernel)(base::Tensor *input,
                                         base::Tensor *weight,
                                         base::Tensor *output,

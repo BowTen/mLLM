@@ -1,5 +1,6 @@
 #include "op/layer.h"
 #include "base/util.h"
+#include "base/allocator.h"
 
 namespace mllm
 {
@@ -70,7 +71,7 @@ namespace mllm
                 // CUDA设备，先拷贝到临时缓冲区处理
                 base::ArrBuffer buffer(base::HostAllocator::getInstance(), weight_size * sizeof(float));
                 base::load_bf16_to_f32(st.get_weight(name_ + ".weight"), buffer.data(), weight_size);
-                cudaMemcpy(weight_data, buffer.data(), weight_size * sizeof(float), cudaMemcpyHostToDevice);
+                base::Allocator::device_memcpy(weight_data, buffer.data(), weight_size * sizeof(float), cudaMemcpyHostToDevice);
             }
             if (transpose)
             {
