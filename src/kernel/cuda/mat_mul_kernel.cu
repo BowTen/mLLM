@@ -60,13 +60,13 @@ namespace mllm
                                                          uint32_t M)
             {
                 uint32_t row = blockIdx.y;
+                size_t row_offset = row * K;
 
                 using BlockReduce = cub::BlockReduce<float, 128>;
 
                 for (uint32_t col = 0; col < M; col++)
                 {
                     float sum = 0.0f;
-                    size_t row_offset = row * K;
                     for (uint32_t i = threadIdx.x; i < K; i += blockDim.x)
                     {
                         sum += mat0_data[row_offset + i] * mat1_data[i * M + col];
@@ -103,7 +103,7 @@ namespace mllm
                 mat_data += mat_id * N * M + row_id * M;
                 output_data += mat_id * N * M + row_id * M;
 
-                for (uint32_t i = threadIdx.x; i < M; i++)
+                for (uint32_t i = threadIdx.x; i < M; i += blockDim.x)
                 {
                     output_data[i] = mat_data[i] * scalar;
                 }
@@ -235,7 +235,7 @@ namespace mllm
                     mat_val.z * scalar,
                     mat_val.w * scalar);
             }
-            for (uint32_t i = threadIdx.x + vec_end; i < M; i++)
+            for (uint32_t i = threadIdx.x + vec_end; i < M; i += blockDim.x)
             {
                 output_data[i] = mat_data[i] * scalar;
             }

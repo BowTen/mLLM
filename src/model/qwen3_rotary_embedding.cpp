@@ -6,7 +6,7 @@ namespace mllm
 {
     namespace model
     {
-        Qwen3RotaryEmbedding::Qwen3RotaryEmbedding(JsonConfig config,
+        Qwen3RotaryEmbedding::Qwen3RotaryEmbedding(op::JsonConfig config,
                                                    base::Device device,
                                                    cudaStream_t stream)
             : device_(device), stream_(stream), head_dim(config["head_dim"]), rope_theta(config["rope_theta"])

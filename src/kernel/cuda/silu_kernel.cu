@@ -25,7 +25,7 @@ namespace mllm
                 v.w = v.w / (1.0f + expf(-v.w));
                 input_vec[i] = v;
             }
-            for (size_t i = threadIdx.x + vec_end; i < head_dim; i++)
+            for (size_t i = threadIdx.x + vec_end; i < head_dim; i += blockDim.x)
             {
                 input[i] = input[i] / (1.0f + expf(-input[i]));
             }

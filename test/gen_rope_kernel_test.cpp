@@ -1,12 +1,14 @@
-// #include "kernel/kernel.h"
-// #include <gtest/gtest.h>
+#include "kernel/kernel.h"
+#include <gtest/gtest.h>
+#include "model/qwen3_rotary_embedding.h"
+#include "model/qwen3.h"
 
-// #define GLOG_USE_GLOG_EXPORT
-// #include <glog/logging.h>
+#define GLOG_USE_GLOG_EXPORT
+#include <glog/logging.h>
 
-// using namespace std;
-// using namespace mllm;
-// using namespace mllm::base;
+using namespace std;
+using namespace mllm;
+using namespace mllm::base;
 
 // class CPUGenRoPE : public ::testing::Test
 // {
@@ -158,84 +160,56 @@
 //     cout << endl;
 // }
 
-// class RoPECheck : public ::testing::Test
-// {
-// protected:
-//     Tensor Q;
-//     Tensor cos;
-//     Tensor sin;
+class RoPECheck : public ::testing::Test
+{
+protected:
+    model::Qwen3 qwen3_cuda;
 
-//     float check_eps = 1e-6;
+    float check_eps = 1e-6;
+    model::Qwen3RotaryEmbedding rope_cpu;
+    model::Qwen3RotaryEmbedding rope_cuda;
 
-//     std::mt19937 rnd = std::mt19937(std::random_device{}());
-//     std::uniform_real_distribution<> urd = std::uniform_real_distribution<>(-1.0, 1.0);
+    std::mt19937 rnd = std::mt19937(std::random_device{}());
+    std::uniform_real_distribution<> urd = std::uniform_real_distribution<>(-1.0, 1.0);
 
-//     void SetUp() override
-//     {
-//         google::InitGoogleLogging("RoPECheck");
-//         FLAGS_logtostderr = true;
-//         VLOG(DEBUG) << "Setting up RoPECheck test environment";
-//         std::vector<size_t> input_shape({8, 32, 128});
-//         std::vector<size_t> weight_shape({32, 128});
+    RoPECheck() : qwen3_cuda(model::Qwen3::from_pretrained("/home/hznuojai/ai_infra/MiniLLM/resources/Qwen/Qwen3-0.6B", base::Device::CUDA, 1.0)),
+                  rope_cpu(qwen3_cuda.config(), base::Device::CPU, static_cast<cudaStream_t>(nullptr)),
+                  rope_cuda(qwen3_cuda.config(), base::Device::CUDA, static_cast<cudaStream_t>(nullptr)) {}
 
-//         Q = Tensor(input_shape);
-//         cos = Tensor(weight_shape);
-//         sin = Tensor(weight_shape);
+    void SetUp() override
+    {
+        google::InitGoogleLogging("RoPECheck");
+        FLAGS_logtostderr = true;
+        VLOG(DEBUG) << "Setting up RoPECheck test environment";
+    }
 
-//         for (size_t i = 0; i < Q.size(); i++)
-//             *Q[i] = urd(rnd);
-//         for (size_t i = 0; i < cos.size(); i++)
-//         {
-//             *cos[i] = urd(rnd);
-//             *sin[i] = urd(rnd);
-//         }
-//     }
+    void TearDown() override
+    {
+        google::ShutdownGoogleLogging();
+    }
+};
 
-//     void TearDown() override
-//     {
-//         google::ShutdownGoogleLogging();
-//     }
-// };
+TEST_F(RoPECheck, CPUvsCUDA)
+{
+    Tensor cos_cpu = Tensor({2, 128}, base::Device::CPU);
+    Tensor sin_cpu = Tensor({2, 128}, base::Device::CPU);
+    Tensor cos_cuda = Tensor({2, 128}, base::Device::CUDA);
+    Tensor sin_cuda = Tensor({2, 128}, base::Device::CUDA);
 
-// TEST_F(RoPECheck, CPUvsCUDA)
-// {
-//     cout << "CPUvsCUDA\n";
-//     cout << "Q: ";
-//     for (int i = 0; i < 5; i++)
-//         cout << *Q[i] << ' ';
-//     cout << "...\n";
+    PosEmb pos_emb_cpu(&cos_cpu, &sin_cpu);
+    PosEmb pos_emb_cuda(&cos_cuda, &sin_cuda);
 
-//     cout << "cos: ";
-//     for (int i = 0; i < 5; i++)
-//         cout << *cos[i] << ' ';
-//     cout << "...\n";
+    rope_cpu.forward(0, 2, pos_emb_cpu);
+    rope_cuda.forward(0, 2, pos_emb_cuda);
+    cudaDeviceSynchronize();
 
-//     cout << "sin: ";
-//     for (int i = 0; i < 5; i++)
-//         cout << *sin[i] << ' ';
-//     cout << "...\n";
+    cos_cuda.toDevice(base::Device::CPU);
+    sin_cuda.toDevice(base::Device::CPU);
 
-//     VLOG(DEBUG) << "clone data to cuda";
-//     Tensor Qcuda = Q.clone();
-//     Tensor coscuda = cos.clone();
-//     Tensor sincuda = sin.clone();
-//     Qcuda.toDevice(Device::CUDA);
-//     coscuda.toDevice(Device::CUDA);
-//     sincuda.toDevice(Device::CUDA);
-
-//     VLOG(DEBUG) << "Running RoPE kernel on CPU";
-//     kernel::get_rope_kernel(Device::CPU)(&Q, &cos, &sin, &Q, nullptr);
-//     VLOG(DEBUG) << "Running RoPE kernel on CUDA";
-//     kernel::get_rope_kernel(Device::CUDA)(&Qcuda, &coscuda, &sincuda, &Qcuda, nullptr);
-//     Qcuda.toDevice(Device::CPU);
-
-//     cout << "Qcpu  Qcuda\n";
-//     int diff = 0;
-//     for (size_t i = 0; i < Q.size(); i++)
-//     {
-//         if (i < 5)
-//             cout << *Q[i] << ' ' << *Qcuda[i] << '\n';
-//         diff += std::fabs(*Q[i] - *Qcuda[i]) > check_eps;
-//     }
-//     EXPECT_EQ(diff, 0) << "Mismatch found " << diff << " between CPU and CUDA results";
-// }
+    size_t total_size = cos_cpu.size();
+    for (size_t i = 0; i < total_size; i++)
+    {
+        EXPECT_NEAR(*cos_cpu[i], *cos_cuda[i], check_eps);
+        EXPECT_NEAR(*sin_cpu[i], *sin_cuda[i], check_eps);
+    }
+}

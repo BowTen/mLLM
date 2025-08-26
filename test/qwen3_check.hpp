@@ -93,8 +93,8 @@ public:
         LOG(INFO) << "Starting forward pass comparison between CPU and CUDA";
 
         // Prepare input tensors
-        Tensor token_ids_cpu = Tensor::from_vector(token_ids, {token_ids.size()}, Device::CPU);
-        Tensor token_ids_cuda = Tensor::from_vector(token_ids, {token_ids.size()}, Device::CUDA);
+        Tensor token_ids_cpu = Tensor::from_vector(token_ids, {token_ids.size(), 1}, Device::CPU);
+        Tensor token_ids_cuda = Tensor::from_vector(token_ids, {token_ids.size(), 1}, Device::CUDA);
 
         // 1. Embedding layer comparison
         LOG(INFO) << "Checking embedding layer...";

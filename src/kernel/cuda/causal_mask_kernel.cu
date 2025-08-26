@@ -12,7 +12,7 @@ namespace mllm
             size_t seq_len = gridDim.y;
             input += mat_id * seq_len * head_dim + row_id * head_dim;
 
-            for (size_t i = threadIdx.x + head_dim - (seq_len - 1 - row_id); i < head_dim; i++)
+            for (size_t i = threadIdx.x + head_dim - (seq_len - 1 - row_id); i < head_dim; i += blockDim.x)
             {
                 input[i] = -FLOAT_INF;
             }

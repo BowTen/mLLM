@@ -76,11 +76,11 @@ namespace mllm
             q_output.view(q_shape);
             k_output.view(kv_shape);
             v_output.view(kv_shape);
+            q_norm.forward(q_output, q_output);
+            k_norm.forward(k_output, k_output);
             q_output.transpose(-3, -2);
             k_output.transpose(-3, -2);
             v_output.transpose(-3, -2);
-            q_norm.forward(q_output, q_output);
-            k_norm.forward(k_output, k_output);
 
             kernel::get_rope_kernel(device_)(&q_output, position_embeddings.first, position_embeddings.second, &q_output, stream_);
             kernel::get_rope_kernel(device_)(&k_output, position_embeddings.first, position_embeddings.second, &k_output, stream_);
@@ -117,10 +117,10 @@ namespace mllm
             auto attn_out_shape = attn_output.shape();
             attn_out_shape.pop_back();
             attn_out_shape.back() *= head_dim;
-            CHECK_CUDA_ERR(cudaGetLastError());
             attn_output.reshape(attn_out_shape);
 
             o_proj.forward(attn_output, *output);
+            CHECK_CUDA_ERR(cudaGetLastError());
         }
 
         void Qwen3SelfAttn::loadWeight(const std::string &name, base::SafeTensors &st)

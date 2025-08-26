@@ -16,15 +16,15 @@ namespace mllm
             size_t pos = pos_start + token_id;
             size_t seq_len = gridDim.y;
 
-            cos += mat_id * head_dim * seq_len + token_id * seq_len;
-            sin += mat_id * head_dim * seq_len + token_id * seq_len;
+            cos += mat_id * head_dim * seq_len + token_id * head_dim;
+            sin += mat_id * head_dim * seq_len + token_id * head_dim;
 
             float4 *inv_freq_vec = reinterpret_cast<float4 *>(inv_freq);
             float4 *cos_vec = reinterpret_cast<float4 *>(cos);
             float4 *sin_vec = reinterpret_cast<float4 *>(sin);
             size_t vec_size = head_dim / 4;
             size_t vec_end = vec_size * 4;
-            for (size_t i = threadIdx.x; i < vec_size; i++)
+            for (size_t i = threadIdx.x; i < vec_size; i += blockDim.x)
             {
                 float4 inv_freq_val = inv_freq_vec[i];
                 cos_vec[i] = make_float4(

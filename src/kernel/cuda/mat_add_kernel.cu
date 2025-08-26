@@ -16,7 +16,7 @@ namespace mllm
             float4 *input0_vec = reinterpret_cast<float4 *>(input0_data);
             float4 *input1_vec = reinterpret_cast<float4 *>(input1_data);
             float4 *output_vec = reinterpret_cast<float4 *>(output_data);
-            for (size_t i = threadIdx.x; i < vec_size; i++)
+            for (size_t i = threadIdx.x; i < vec_size; i += blockDim.x)
             {
                 float4 val0 = input0_vec[i];
                 float4 val1 = input1_vec[i];

@@ -18,7 +18,7 @@ namespace mllm
             base::Tensor inv_freq;
 
         public:
-            Qwen3RotaryEmbedding(JsonConfig config,
+            Qwen3RotaryEmbedding(op::JsonConfig config,
                                  base::Device device,
                                  cudaStream_t stream);
             void forward(size_t pos_start, size_t pos_end, base::PosEmb pos_emb);
