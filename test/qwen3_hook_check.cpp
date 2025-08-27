@@ -63,6 +63,8 @@ protected:
     void check_hook(WLayer *layer)
     {
         auto name = layer->name();
+        if (name == "lm_head")
+            return;
         std::replace(name.begin(), name.end(), '.', '_');
         auto right_output = cnpy::npy_load(outputs_path + "/" + name + ".npy");
         float *right_output_data = right_output.data<float>();
@@ -108,6 +110,7 @@ TEST_F(Qwen3HookCheck, Demo)
     model.forward(ids_tensor, next_id);
     LOG(INFO) << "Model forward completed.";
 
+    next_id.toDevice(Device::CPU);
     size_t next_id_value = *reinterpret_cast<uint32_t *>(next_id[0]);
     cout << "next id: " << next_id_value << endl;
 

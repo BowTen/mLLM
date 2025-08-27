@@ -68,6 +68,7 @@ namespace mllm
 
             std::vector<WLayer *> weighted_layers();
             void register_hooks(WLayer::Hook hook);
+            void clear_hooks();
         };
     }
 }

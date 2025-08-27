@@ -30,6 +30,7 @@ add_executable(tokenizer_test tokenizer_test.cpp)
 add_executable(allocator_test allocator_test.cpp)
 add_executable(buffer_test buffer_test.cpp)
 add_executable(tensor_test tensor_test.cpp)
+add_executable(tensor_cat_test tensor_cat_test.cpp)
 add_executable(safetensors_test safetensors_test.cpp)
 add_executable(emb_kernel_test emb_kernel_test.cpp)
 add_executable(qwen3_test qwen3_test.cpp)
@@ -44,6 +45,7 @@ add_executable(silu_kernel_test silu_kernel_test.cpp)
 add_executable(print_layer_weight print_layer_weight.cpp)
 add_executable(qwen3_cpu_cuda_check qwen3_cpu_cuda_check.cpp)
 add_executable(qwen3_hook_check qwen3_hook_check.cpp)
+add_executable(qwen3_incremental_check qwen3_incremental_check.cpp)
 
 # Link libraries
 target_link_libraries(tokenizer_test 
@@ -82,6 +84,16 @@ target_link_libraries(tensor_test
 )
 target_include_directories(tensor_test PRIVATE ${GTEST_INCLUDE_DIRS})
 target_compile_options(tensor_test PRIVATE ${GTEST_CFLAGS_OTHER})
+
+target_link_libraries(tensor_cat_test 
+    base  # Link to the base library from src
+    kernel
+    ${GTEST_LIBRARIES}
+    ${GTEST_MAIN_LIBRARIES}
+    Threads::Threads
+)
+target_include_directories(tensor_cat_test PRIVATE ${GTEST_INCLUDE_DIRS})
+target_compile_options(tensor_cat_test PRIVATE ${GTEST_CFLAGS_OTHER})
 
 target_link_libraries(safetensors_test 
     base  # Link to the base library from src
@@ -294,6 +306,28 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(qwen3_hook_check PRIVATE DEBUG)
 endif()
 
+target_link_libraries(qwen3_incremental_check 
+    base  # Link to the base library from src
+    kernel  # Link to the kernel library from src
+    op
+    model
+    ${CNPY_LIBRARY}
+    z
+    ${GTEST_LIBRARIES}
+    ${GTEST_MAIN_LIBRARIES}
+    Threads::Threads
+    armadillo
+    openblas
+)
+target_include_directories(qwen3_incremental_check PRIVATE ${GTEST_INCLUDE_DIRS} ${CNPY_INCLUDE_DIR})
+target_compile_options(qwen3_incremental_check PRIVATE ${GTEST_CFLAGS_OTHER})
+
+# Add debug symbols and disable optimization for debugging
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(qwen3_incremental_check PRIVATE -g -O0)
+    target_compile_definitions(qwen3_incremental_check PRIVATE DEBUG)
+endif()
+
 # Enable testing
 enable_testing()
 
@@ -302,6 +336,7 @@ add_test(NAME TokenizerTest COMMAND tokenizer_test)
 add_test(NAME AllocatorTest COMMAND allocator_test)
 add_test(NAME BufferTest COMMAND buffer_test)
 add_test(NAME TensorTest COMMAND tensor_test)
+add_test(NAME TensorCatTest COMMAND tensor_cat_test)
 add_test(NAME SafeTensorsTest COMMAND safetensors_test)
 add_test(NAME EmbKernelTest COMMAND emb_kernel_test)
 add_test(NAME Qwen3Test COMMAND qwen3_test)
@@ -316,3 +351,4 @@ add_test(NAME SiLUKernelTest COMMAND silu_kernel_test)
 add_test(NAME PrintLayerWeight COMMAND print_layer_weight)
 add_test(NAME Qwen3CpuCudaCheck COMMAND qwen3_cpu_cuda_check)
 add_test(NAME Qwen3HookCheck COMMAND qwen3_hook_check)
+add_test(NAME Qwen3IncrementalCheck COMMAND qwen3_incremental_check)

@@ -66,6 +66,7 @@ namespace mllm
             void loadWeight(const std::string &name, base::SafeTensors &st, bool transpose);
 
             void registerHook(Hook hook) { hook_ = hook; }
+            void clearHook() { hook_ = nullptr; }
         };
 
     }

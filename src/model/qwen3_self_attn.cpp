@@ -60,6 +60,9 @@ namespace mllm
             if (q_output.shape() != q_shape)
             {
                 q_output = Tensor(q_shape, device_, false);
+            }
+            if (k_output.shape() != kv_shape)
+            {
                 k_output = Tensor(kv_shape, device_, true); // reapeat_kv需要扩展Tensor
                 v_output = Tensor(kv_shape, device_, true); // reapeat_kv需要扩展Tensor
             }
@@ -101,7 +104,7 @@ namespace mllm
                 v_cache.cat(v_output, -2);
             }
 
-            Tensor attn_weights({num_attention_heads, k_cache.shape(-2), k_cache.shape(-2)}, device_);
+            Tensor attn_weights({num_attention_heads, q_output.shape(-2), k_cache.shape(-2)}, device_);
 
             k_cache.t();
             mat_mul.forward(q_output, k_cache, attn_weights);

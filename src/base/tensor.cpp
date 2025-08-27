@@ -23,6 +23,8 @@ namespace mllm
                 num_mats_ = 1;
             else
                 num_mats_ = 0;
+            size_ = std::accumulate(shape_.begin(), shape_.end(), 1, std::multiplies<size_t>());
+
             if (shape_.empty())
                 return;
             if (stride_.back() != 1)
@@ -148,13 +150,6 @@ namespace mllm
         Tensor Tensor::from_float(float value, Device device, bool mut)
         {
             return Tensor::from_vector(std::vector<float>({value}), {1}, device, mut);
-        }
-
-        size_t Tensor::size() const
-        {
-            if (!meta_->buffer_)
-                return 0;
-            return meta_->buffer_->size() / sizeof(float);
         }
 
         float *Tensor::data()
@@ -387,19 +382,18 @@ namespace mllm
             auto vec_buffer = std::dynamic_pointer_cast<VecBuffer>(meta_->buffer_);
             CHECK(vec_buffer != nullptr) << "Buffer is not a VecBuffer in cat()";
 
-            vec_buffer->resize((this->size() + other.size()) * sizeof(float));
-
             size_t dim_size = std::accumulate(meta_->shape_.begin() + dim + 1, meta_->shape_.end(), 1, std::multiplies<size_t>());
-            size_t this_num_dims = this->size() / dim_size;
-            size_t other_num_dims = other.size() / dim_size;
+            size_t this_dim_shape = this->shape(dim);
+            size_t other_dim_shape = other.shape(dim);
+            vec_buffer->resize((this->size() + other.size()) * sizeof(float));
 
             auto allocator = meta_->buffer_->get_allocator();
             float *st = this->data();
             float *ed = st + this->size();
             float *src_a = cp.data();
             float *src_b = other.data();
-            size_t stride_a = dim_size * this_num_dims;
-            size_t stride_b = dim_size * other_num_dims;
+            size_t stride_a = dim_size * this_dim_shape;
+            size_t stride_b = dim_size * other_dim_shape;
             size_t num_a_copy_bytes = stride_a * sizeof(float);
             size_t num_b_copy_bytes = stride_b * sizeof(float);
             while (st < ed)

@@ -102,6 +102,7 @@ namespace mllm
             base::PosEmb pos_emb(&cos, &sin);
             size_t seq_len = hidden_state.shape(-2);
             rotary_embedding.forward(pos_id, pos_id + seq_len, pos_emb);
+            pos_id += seq_len;
 
             // Forward pass through each decode layer
             for (auto &layer : layers)
@@ -109,17 +110,20 @@ namespace mllm
                 layer.forward(&hidden_state, &hidden_state, pos_emb);
             }
 
-            kernel::get_last_hidden_state_kernel(device_)(&hidden_state, nullptr);
-
             norm.forward(hidden_state, hidden_state);
             temp_scal.forward(hidden_state, temperature_scaling, hidden_state);
 
+            kernel::get_last_hidden_state_kernel(device_)(&hidden_state, nullptr);
             lm_head.forward(hidden_state, final_probability);
             softmax.forward(final_probability, final_probability);
 
             kernel::get_random_sampling_kernel(device_)(&final_probability, &next_token_id, stream_);
+
+            // DEBUG
             final_probability.toDevice(base::Device::CPU);
             print_top_tokens_cpu(final_probability, 10);
+            final_probability.toDevice(device_);
+            // DEBUG
         }
 
         std::vector<WLayer *> Qwen3::weighted_layers()
@@ -144,5 +148,15 @@ namespace mllm
                 layer->registerHook(hook);
             }
         }
+
+        void Qwen3::clear_hooks()
+        {
+            auto layers = weighted_layers();
+            for (auto layer : layers)
+            {
+                layer->clearHook();
+            }
+        }
+
     } // namespace model
 } // namespace mllm

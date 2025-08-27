@@ -29,6 +29,7 @@ namespace mllm
             Device device_;
             bool mut_;
             size_t num_mats_ = 0;
+            size_t size_;
 
             static std::vector<size_t> default_stride(const std::vector<size_t> &shape);
             void update();
@@ -89,7 +90,13 @@ namespace mllm
             void set_buffer(Buffer::BufferPtr buffer) { meta_->buffer_ = buffer; }
             Buffer::BufferPtr buffer() const { return meta_->buffer_; }
             bool is_contiguous() const { return meta_->is_contiguous_; }
-            size_t size() const;
+            size_t logic_size() const { return meta_->size_; }
+            size_t size() const
+            {
+                if (!meta_->buffer_)
+                    return 0;
+                return meta_->buffer_->size() / sizeof(float);
+            }
             float *data();
             bool empty() const { return meta_->buffer_ == nullptr; }
             Tensor toDevice(Device device);
