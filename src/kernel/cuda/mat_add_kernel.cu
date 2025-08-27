@@ -38,9 +38,9 @@ namespace mllm
         {
             CHECK(input0->shape() == input1->shape());
             CHECK(input0->shape() == output->shape());
-            input0->contiguous(static_cast<cudaStream_t>(stream));
-            input1->contiguous(static_cast<cudaStream_t>(stream));
-            output->contiguous(static_cast<cudaStream_t>(stream));
+            input0->contiguous();
+            input1->contiguous();
+            output->contiguous();
 
             dim3 block(1024);
             dim3 grid(1);
@@ -62,7 +62,7 @@ namespace mllm
                     output->data(),
                     input0->size());
             }
-            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+            // CHECK_CUDA_ERR(cudaDeviceSynchronize());
 
             CHECK_CUDA_ERR(cudaGetLastError());
         }

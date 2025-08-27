@@ -76,7 +76,7 @@ namespace mllm
             if (transpose)
             {
                 weight_.t();
-                weight_.contiguous(stream_);
+                weight_.contiguous();
             }
         }
     }

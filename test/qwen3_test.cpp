@@ -24,53 +24,53 @@ int main()
     return result;
 }
 
-class Qwen3Test : public ::testing::Test
-{
-protected:
-    Qwen3 model;
+// class Qwen3Test : public ::testing::Test
+// {
+// protected:
+//     Qwen3 model;
 
-    Qwen3Test() : model(Qwen3::from_pretrained("/home/hznuojai/ai_infra/MiniLLM/resources/Qwen/Qwen3-0.6B", base::Device::CPU, 0.3f))
-    {
-        VLOG(DEBUG) << "Set up Qwen3Test";
-    }
+//     Qwen3Test() : model(Qwen3::from_pretrained("/home/hznuojai/ai_infra/MiniLLM/resources/Qwen/Qwen3-0.6B", base::Device::CPU, 0.3f))
+//     {
+//         VLOG(DEBUG) << "Set up Qwen3Test";
+//     }
 
-    void TearDown() override
-    {
-        VLOG(DEBUG) << "Tearing down Qwen3Test";
-    }
-};
+//     void TearDown() override
+//     {
+//         VLOG(DEBUG) << "Tearing down Qwen3Test";
+//     }
+// };
 
-TEST_F(Qwen3Test, Demo)
-{
-    LOG(INFO) << "Run Demo";
-    auto tokenizer = model.get_tokenizer();
-    string input_text = "我喜欢蓝";
-    auto ids = tokenizer->encode(input_text);
-    cout << input_text << " -> ";
-    for (auto id : ids)
-        cout << id << ", ";
-    cout << endl;
+// TEST_F(Qwen3Test, Demo)
+// {
+//     LOG(INFO) << "Run Demo";
+//     auto tokenizer = model.get_tokenizer();
+//     string input_text = "下面是一段人工智能助手与人类的对话：\n人类:你是谁？\n助手:你好呀！我是Qwen3！\n人类:你会做什么？\n";
+//     auto ids = tokenizer->encode(input_text);
+//     cout << input_text << " -> ";
+//     for (auto id : ids)
+//         cout << id << ", ";
+//     cout << endl;
 
-    Tensor input_id = Tensor::from_vector(ids, {ids.size(), 1}, Device::CPU, false);
-    Tensor next_id({1, 1}, Device::CPU, false);
+//     Tensor input_id = Tensor::from_vector(ids, {ids.size(), 1}, Device::CPU, false);
+//     Tensor next_id({1, 1}, Device::CPU, false);
 
-    for (int i = 0; i < 10; i++)
-    {
-        LOG(INFO) << "Model forward round " << i << "...";
-        model.forward(input_id, next_id);
-        LOG(INFO) << "Model forward completed.";
+//     for (int i = 0; i < 100; i++)
+//     {
+//         LOG(INFO) << "Model forward round " << i << "...";
+//         model.forward(input_id, next_id);
+//         LOG(INFO) << "Model forward completed.";
 
-        size_t next_id_value = *reinterpret_cast<uint32_t *>(next_id[0]);
-        cout << "next id: " << next_id_value << endl;
-        cout << "decode token: " << tokenizer->decode(next_id_value) << endl;
-        input_text += tokenizer->decode(next_id_value);
+//         size_t next_id_value = *reinterpret_cast<uint32_t *>(next_id[0]);
+//         cout << "next id: " << next_id_value << endl;
+//         cout << "decode token: " << tokenizer->decode(next_id_value) << endl;
+//         input_text += tokenizer->decode(next_id_value);
 
-        input_id = next_id.clone();
-    }
+//         input_id = next_id.clone();
+//     }
 
-    cout << "Final text: \n";
-    cout << input_text << endl;
-}
+//     cout << "Final text: \n";
+//     cout << input_text << endl;
+// }
 // CPU Result:
 // Top 10 tokens:
 // Token ID: 1023, token_str: lock, Probability: 2.75253e-05
@@ -84,54 +84,54 @@ TEST_F(Qwen3Test, Demo)
 // Token ID: 484, token_str: ind, Probability: 2.63745e-05
 // Token ID: 49746, token_str: mess, Probability: 2.63377e-05
 
-// class Qwen3TestCuda : public ::testing::Test
-// {
-// protected:
-//     Qwen3 model;
+class Qwen3TestCuda : public ::testing::Test
+{
+protected:
+    Qwen3 model;
 
-//     Qwen3TestCuda() : model(Qwen3::from_pretrained("/home/hznuojai/ai_infra/MiniLLM/resources/Qwen/Qwen3-0.6B", base::Device::CUDA, 1.0f))
-//     {
-//         VLOG(DEBUG) << "Set up Qwen3TestCuda";
-//     }
+    Qwen3TestCuda() : model(Qwen3::from_pretrained("/home/hznuojai/ai_infra/MiniLLM/resources/Qwen/Qwen3-0.6B", base::Device::CUDA, 1.0f))
+    {
+        VLOG(DEBUG) << "Set up Qwen3TestCuda";
+    }
 
-//     void TearDown() override
-//     {
-//         VLOG(DEBUG) << "Tearing down Qwen3TestCuda";
-//     }
-// };
+    void TearDown() override
+    {
+        VLOG(DEBUG) << "Tearing down Qwen3TestCuda";
+    }
+};
 
-// TEST_F(Qwen3TestCuda, Demo)
-// {
-//     LOG(INFO) << "Run Demo";
-//     auto tokenizer = model.get_tokenizer();
-//     string input_text = "The weather is really ";
-//     auto ids = tokenizer->encode(input_text);
-//     cout << input_text << " -> ";
-//     for (auto id : ids)
-//         cout << id << ", ";
-//     cout << endl;
+TEST_F(Qwen3TestCuda, Demo)
+{
+    LOG(INFO) << "Run Demo";
+    auto tokenizer = model.get_tokenizer();
+    string input_text = "下面是一段人工智能助手与人类的对话：\n人类:你是谁？\n助手:你好呀！我是Qwen3！\n人类:你会做什么？\n";
+    auto ids = tokenizer->encode(input_text);
+    cout << input_text << " -> ";
+    for (auto id : ids)
+        cout << id << ", ";
+    cout << endl;
 
-//     Tensor input_id = Tensor::from_vector(ids, {ids.size(), 1}, Device::CUDA, false);
-//     Tensor next_id({1, 1}, Device::CUDA, false);
+    Tensor input_id = Tensor::from_vector(ids, {ids.size(), 1}, Device::CUDA, false, model.stream());
+    Tensor next_id({1, 1}, Device::CUDA, false, model.stream());
 
-//     for (int i = 0; i < 10; i++)
-//     {
-//         LOG(INFO) << "Model forward...";
-//         model.forward(input_id, next_id);
-//         LOG(INFO) << "Model forward completed.";
-//         next_id.toDevice(Device::CPU);
-//         size_t next_id_value = *reinterpret_cast<uint32_t *>(next_id[0]);
-//         cout << "next id: " << next_id_value << endl;
-//         cout << "decode token: " << tokenizer->decode(next_id_value) << endl;
-//         input_text += tokenizer->decode(next_id_value);
+    for (int i = 0; i < 10; i++)
+    {
+        LOG(INFO) << "Model forward...";
+        model.forward(input_id, next_id);
+        LOG(INFO) << "Model forward completed.";
+        next_id.toDevice(Device::CPU);
+        size_t next_id_value = *reinterpret_cast<uint32_t *>(next_id[0]);
+        cout << "next id: " << next_id_value << endl;
+        cout << "decode token: " << tokenizer->decode(next_id_value) << endl;
+        input_text += tokenizer->decode(next_id_value);
 
-//         next_id.toDevice(Device::CUDA);
-//         input_id = next_id.clone();
-//     }
+        next_id.toDevice(Device::CUDA);
+        input_id = next_id.clone();
+    }
 
-//     cout << "Final text: \n"
-//          << input_text << endl;
-// }
+    cout << "Final text: \n"
+         << input_text << endl;
+}
 
 // Cuda Result:
 // Top 10 tokens:

@@ -35,8 +35,8 @@ namespace mllm
               lm_head({hidden_size, vocab_size}, device_, stream_),
               softmax(device_, stream_),
               pos_id(0),
-              temperature_scaling(base::Tensor::from_float(1.0f / temperature, device_, stream_)),
-              final_probability({1, vocab_size}, device_, stream_)
+              temperature_scaling(base::Tensor::from_float(1.0f / temperature, device_, false, stream_)),
+              final_probability({1, vocab_size}, device_, false, stream_)
         {
             VLOG(TRACE) << "Loading Qwen3 model from: " << model_path;
             VLOG(TRACE) << "Loading safetensors from: " << model_path + "/model.safetensors";
@@ -89,15 +89,15 @@ namespace mllm
 
             std::vector<size_t> hidden_shape({token_ids.shape(-2), hidden_size});
             if (hidden_state.shape() != hidden_shape)
-                hidden_state = Tensor(hidden_shape, device_);
+                hidden_state = Tensor(hidden_shape, device_, false, stream_);
             embed_tokens.forward(token_ids, hidden_state);
 
             auto rope_emb_shape = hidden_state.shape();
             rope_emb_shape.back() = config_["head_dim"];
             if (cos.shape() != rope_emb_shape)
             {
-                cos = Tensor(rope_emb_shape, device_);
-                sin = Tensor(rope_emb_shape, device_);
+                cos = Tensor(rope_emb_shape, device_, false, stream_);
+                sin = Tensor(rope_emb_shape, device_, false, stream_);
             }
             base::PosEmb pos_emb(&cos, &sin);
             size_t seq_len = hidden_state.shape(-2);

@@ -34,9 +34,9 @@ protected:
 
 TEST_F(MatAddTest, CPUAddSmall)
 {
-    Tensor input0(small_shape);
-    Tensor input1(small_shape);
-    Tensor output(small_shape);
+    Tensor input0(small_shape, Device::CPU, false, nullptr);
+    Tensor input1(small_shape, Device::CPU, false, nullptr);
+    Tensor output(small_shape, Device::CPU, false, nullptr);
 
     // 初始化输入数据
     size_t total_size = input0.size();
@@ -61,11 +61,11 @@ TEST_F(MatAddTest, CPUAddSmall)
 }
 TEST_F(MatAddTest, CPUTransposeAddSmall)
 {
-    Tensor input0(small_shape);
+    Tensor input0(small_shape, Device::CPU, false, nullptr);
     auto tshape = small_shape;
     std::swap(tshape[1], tshape[2]);
-    Tensor input1(tshape);
-    Tensor output(small_shape);
+    Tensor input1(tshape, Device::CPU, false, nullptr);
+    Tensor output(small_shape, Device::CPU, false, nullptr);
 
     // 初始化输入数据
     size_t total_size = input0.size();
@@ -93,9 +93,9 @@ TEST_F(MatAddTest, CPUTransposeAddSmall)
 
 TEST_F(MatAddTest, CUDAAddSmall)
 {
-    Tensor input0(small_shape);
-    Tensor input1(small_shape);
-    Tensor output(small_shape);
+    Tensor input0(small_shape, Device::CPU, false, nullptr);
+    Tensor input1(small_shape, Device::CPU, false, nullptr);
+    Tensor output(small_shape, Device::CPU, false, nullptr);
 
     // 初始化输入数据
     size_t total_size = input0.size();
@@ -125,11 +125,11 @@ TEST_F(MatAddTest, CUDAAddSmall)
 }
 TEST_F(MatAddTest, CUDATransposeAddSmall)
 {
-    Tensor input0(small_shape);
+    Tensor input0(small_shape, Device::CPU, false, nullptr);
     auto tshape = small_shape;
     std::swap(tshape[1], tshape[2]);
-    Tensor input1(tshape);
-    Tensor output(small_shape);
+    Tensor input1(tshape, Device::CPU, false, nullptr);
+    Tensor output(small_shape, Device::CPU, false, nullptr);
 
     // 初始化输入数据
     size_t total_size = input0.size();
@@ -163,9 +163,9 @@ TEST_F(MatAddTest, CUDATransposeAddSmall)
 
 TEST_F(MatAddTest, CUDAAddLarge)
 {
-    Tensor input0(large_shape);
-    Tensor input1(large_shape);
-    Tensor output(large_shape);
+    Tensor input0(large_shape, Device::CPU, false, nullptr);
+    Tensor input1(large_shape, Device::CPU, false, nullptr);
+    Tensor output(large_shape, Device::CPU, false, nullptr);
 
     // 初始化输入数据
     size_t total_size = input0.size();
@@ -195,11 +195,11 @@ TEST_F(MatAddTest, CUDAAddLarge)
 
 TEST_F(MatAddTest, CUDATransposeAddLarge)
 {
-    Tensor input0(large_shape);
+    Tensor input0(large_shape, Device::CPU, false, nullptr);
     auto tshape = large_shape;
     std::swap(tshape[2], tshape[3]);
-    Tensor input1(tshape);
-    Tensor output(large_shape);
+    Tensor input1(tshape, Device::CPU, false, nullptr);
+    Tensor output(large_shape, Device::CPU, false, nullptr);
 
     // 初始化输入数据
     size_t total_size = input0.size();
@@ -231,9 +231,9 @@ TEST_F(MatAddTest, CUDATransposeAddLarge)
 
 TEST_F(MatAddTest, CPUAddLarge)
 {
-    Tensor input0(large_shape);
-    Tensor input1(large_shape);
-    Tensor output(large_shape);
+    Tensor input0(large_shape, Device::CPU, false, nullptr);
+    Tensor input1(large_shape, Device::CPU, false, nullptr);
+    Tensor output(large_shape, Device::CPU, false, nullptr);
 
     // 初始化输入数据
     size_t total_size = input0.size();
@@ -257,11 +257,11 @@ TEST_F(MatAddTest, CPUAddLarge)
 
 TEST_F(MatAddTest, CPUTransposeAddLarge)
 {
-    Tensor input0(large_shape);
+    Tensor input0(large_shape, Device::CPU, false, nullptr);
     auto tshape = large_shape;
     std::swap(tshape[2], tshape[3]);
-    Tensor input1(tshape);
-    Tensor output(large_shape);
+    Tensor input1(tshape, Device::CPU, false, nullptr);
+    Tensor output(large_shape, Device::CPU, false, nullptr);
 
     // 初始化输入数据
     size_t total_size = input0.size();

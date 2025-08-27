@@ -100,7 +100,7 @@ namespace mllm
                 LOG(WARNING) << "RMSNorm Kernel: Stream is null, using default stream";
                 rms_norm_kernel_cuda_fp32<<<grid, 128>>>(input_data, weight_data, output_data, seq_size, hidden_size, eps);
             }
-            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+            // CHECK_CUDA_ERR(cudaDeviceSynchronize());
 
             CHECK_CUDA_ERR(cudaGetLastError());
         }

@@ -32,8 +32,8 @@ void print_ts3(Tensor ts, base::Device device = base::Device::CPU)
 
 TEST(TensorCatTest, Demo)
 {
-    Tensor k_cache({4, 3, 4}, Device::CPU, true);
-    Tensor k_proj({4, 1, 4}, Device::CPU, true);
+    Tensor k_cache({4, 3, 4}, Device::CPU, true, nullptr);
+    Tensor k_proj({4, 1, 4}, Device::CPU, true, nullptr);
 
     for (size_t i = 0; i < k_cache.size(); i++)
         *k_cache[i] = i;
@@ -69,8 +69,8 @@ TEST(TensorCatTest, Demo)
 
 TEST(TensorCatTestCuda, DemoCuda)
 {
-    Tensor k_cache({4, 3, 4}, Device::CPU, true);
-    Tensor k_proj({4, 1, 4}, Device::CPU, true);
+    Tensor k_cache({4, 3, 4}, Device::CPU, true, nullptr);
+    Tensor k_proj({4, 1, 4}, Device::CPU, true, nullptr);
 
     for (size_t i = 0; i < k_cache.size(); i++)
         *k_cache[i] = i;

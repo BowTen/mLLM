@@ -42,12 +42,12 @@ protected:
         shape_a = {128, 128};
         shape_b = {128, 32};
         shape_o = {128, 32};
-        cpu_input0 = Tensor(shape_a);
-        cpu_input1 = Tensor(shape_b);
-        cpu_output = Tensor(shape_o);
-        cuda_input0 = Tensor(shape_a);
-        cuda_input1 = Tensor(shape_b);
-        cuda_output = Tensor(shape_o);
+        cpu_input0 = Tensor(shape_a, Device::CPU, false, nullptr);
+        cpu_input1 = Tensor(shape_b, Device::CPU, false, nullptr);
+        cpu_output = Tensor(shape_o, Device::CPU, false, nullptr);
+        cuda_input0 = Tensor(shape_a, Device::CPU, false, nullptr);
+        cuda_input1 = Tensor(shape_b, Device::CPU, false, nullptr);
+        cuda_output = Tensor(shape_o, Device::CPU, false, nullptr);
 
         size_t size0 = cpu_input0.size();
         size_t size1 = cpu_input1.size();
@@ -95,12 +95,12 @@ protected:
         shape_b = {1024, 4096};
         shape_o = {4096, 4096};
 
-        cpu_input0 = Tensor(shape_a);
-        cpu_input1 = Tensor(shape_b);
-        cpu_output = Tensor(shape_o);
-        cuda_input0 = Tensor(shape_a);
-        cuda_input1 = Tensor(shape_b);
-        cuda_output = Tensor(shape_o);
+        cpu_input0 = Tensor(shape_a, Device::CPU, false, nullptr);
+        cpu_input1 = Tensor(shape_b, Device::CPU, false, nullptr);
+        cpu_output = Tensor(shape_o, Device::CPU, false, nullptr);
+        cuda_input0 = Tensor(shape_a, Device::CPU, false, nullptr);
+        cuda_input1 = Tensor(shape_b, Device::CPU, false, nullptr);
+        cuda_output = Tensor(shape_o, Device::CPU, false, nullptr);
         size_t size0 = cpu_input0.size();
         size_t size1 = cpu_input1.size();
         for (size_t i = 0; i < size0; i++)
@@ -153,12 +153,12 @@ protected:
         shape_a = {4, 2, 128, 128};
         shape_b = {4, 2, 128, 32};
         shape_o = {4, 2, 128, 32};
-        cpu_input0 = Tensor(shape_a);
-        cpu_input1 = Tensor(shape_b);
-        cpu_output = Tensor(shape_o);
-        cuda_input0 = Tensor(shape_a);
-        cuda_input1 = Tensor(shape_b);
-        cuda_output = Tensor(shape_o);
+        cpu_input0 = Tensor(shape_a, Device::CPU, false, nullptr);
+        cpu_input1 = Tensor(shape_b, Device::CPU, false, nullptr);
+        cpu_output = Tensor(shape_o, Device::CPU, false, nullptr);
+        cuda_input0 = Tensor(shape_a, Device::CPU, false, nullptr);
+        cuda_input1 = Tensor(shape_b, Device::CPU, false, nullptr);
+        cuda_output = Tensor(shape_o, Device::CPU, false, nullptr);
 
         size_t size0 = cpu_input0.size();
         size_t size1 = cpu_input1.size();
@@ -206,12 +206,12 @@ protected:
         shape_b = {4, 2, 1024, 4096};
         shape_o = {4, 2, 4096, 4096};
 
-        cpu_input0 = Tensor(shape_a);
-        cpu_input1 = Tensor(shape_b);
-        cpu_output = Tensor(shape_o);
-        cuda_input0 = Tensor(shape_a);
-        cuda_input1 = Tensor(shape_b);
-        cuda_output = Tensor(shape_o);
+        cpu_input0 = Tensor(shape_a, Device::CPU, false, nullptr);
+        cpu_input1 = Tensor(shape_b, Device::CPU, false, nullptr);
+        cpu_output = Tensor(shape_o, Device::CPU, false, nullptr);
+        cuda_input0 = Tensor(shape_a, Device::CPU, false, nullptr);
+        cuda_input1 = Tensor(shape_b, Device::CPU, false, nullptr);
+        cuda_output = Tensor(shape_o, Device::CPU, false, nullptr);
         size_t size0 = cpu_input0.size();
         size_t size1 = cpu_input1.size();
         for (size_t i = 0; i < size0; i++)

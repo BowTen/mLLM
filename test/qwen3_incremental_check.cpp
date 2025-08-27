@@ -87,7 +87,7 @@ protected:
         auto output = layer->getOutput(0);
         output.contiguous();
         output.toDevice(Device::CPU);
-        CHECK_CUDA_ERR(cudaDeviceSynchronize());
+        // CHECK_CUDA_ERR(cudaDeviceSynchronize());
 
         float *output_data = output.data();
         size_t output_size = output.size();
@@ -184,7 +184,7 @@ protected:
         auto output = layer->getOutput(0);
         output.contiguous();
         output.toDevice(Device::CPU);
-        CHECK_CUDA_ERR(cudaDeviceSynchronize());
+        // CHECK_CUDA_ERR(cudaDeviceSynchronize());
 
         float *output_data = output.data();
         size_t output_size = output.logic_size();
@@ -272,8 +272,8 @@ TEST_F(Qwen3IncrementalCheck, IncrementalInference)
         cout << id << ", ";
     cout << endl;
 
-    Tensor first_ids_tensor = Tensor::from_vector(first_ids, {first_ids.size(), 1}, check_device, false);
-    Tensor first_next_id({1, 1}, check_device, false);
+    Tensor first_ids_tensor = Tensor::from_vector(first_ids, {first_ids.size(), 1}, check_device, false, model.stream());
+    Tensor first_next_id({1, 1}, check_device, false, model.stream());
 
     LOG(INFO) << "Step 1 - Setting Hook for first forward pass...";
     is_step2 = false;
@@ -301,8 +301,8 @@ TEST_F(Qwen3IncrementalCheck, IncrementalInference)
     cout << endl;
 
     // 注意：对于增量推理，我们只输入新的token
-    Tensor second_ids_tensor = Tensor::from_vector(second_ids, {second_ids.size(), 1}, check_device, false);
-    Tensor second_next_id({1, 1}, check_device, false);
+    Tensor second_ids_tensor = Tensor::from_vector(second_ids, {second_ids.size(), 1}, check_device, false, model.stream());
+    Tensor second_next_id({1, 1}, check_device, false, model.stream());
 
     LOG(INFO) << "Step 2 - Setting Hook for incremental forward pass...";
     is_step2 = true;

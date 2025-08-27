@@ -101,7 +101,7 @@ namespace mllm
                 simple::softmax_kernel_cuda<<<grid, 128, 0, static_cast<cudaStream_t>(stream)>>>(input->data(), output->data(), n, m);
             else
                 softmax_kernel_cuda<<<grid, 128, 0, static_cast<cudaStream_t>(stream)>>>(input->data(), output->data(), n, m);
-            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+            // CHECK_CUDA_ERR(cudaDeviceSynchronize());
 
             CHECK_CUDA_ERR(cudaGetLastError());
         }

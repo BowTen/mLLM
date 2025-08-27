@@ -254,7 +254,7 @@ namespace mllm
                 size_t M = output->shape(-1);
                 size_t num_mats = input0->num_mats();
 
-                CHECK_CUDA_ERR(cudaDeviceSynchronize());
+                // CHECK_CUDA_ERR(cudaDeviceSynchronize());
                 dim3 grid(num_mats, N);
                 if (!stream)
                     LOG(WARNING) << "Using mat_sc_mul_kernel_cuda with default stream.";
@@ -269,7 +269,7 @@ namespace mllm
                                                                                                 input1->operator[](0),
                                                                                                 output->data(), N, M);
 
-                CHECK_CUDA_ERR(cudaDeviceSynchronize());
+                // CHECK_CUDA_ERR(cudaDeviceSynchronize());
                 return;
             }
 
@@ -319,7 +319,7 @@ namespace mllm
                     mat_mul_kernel_cuda_fp32_vec_fine_router<<<gridDim, blockDim, 0, static_cast<cudaStream_t>(stream)>>>(
                         input0->data(), input1->data(), output->data(), N, K, M);
             }
-            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+            // CHECK_CUDA_ERR(cudaDeviceSynchronize());
 
             CHECK_CUDA_ERR(cudaGetLastError());
         }

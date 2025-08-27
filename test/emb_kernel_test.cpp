@@ -60,9 +60,9 @@ protected:
                                           8, 3, 6, 8};
 
         LOG(INFO) << "Init Tensors";
-        cpu_input = Tensor(input_data.data(), input_shape, true, Device::CPU);
-        cpu_weight = Tensor(weight_data.data(), weight_shape, true, Device::CPU);
-        cpu_output = Tensor(output_shape, Device::CPU);
+        cpu_input = Tensor(input_data.data(), input_shape, true, Device::CPU, false, nullptr);
+        cpu_weight = Tensor(weight_data.data(), weight_shape, true, Device::CPU, false, nullptr);
+        cpu_output = Tensor(output_shape, Device::CPU, false, nullptr);
         VLOG(DEBUG) << "input size: " << cpu_input.size()
                     << ", weight size: " << cpu_weight.size()
                     << ", output size: " << cpu_output.size();
@@ -70,7 +70,7 @@ protected:
         cuda_input.toDevice(Device::CUDA);
         cuda_weight = cpu_weight.clone();
         cuda_weight.toDevice(Device::CUDA);
-        cuda_output = Tensor(output_shape, Device::CUDA);
+        cuda_output = Tensor(output_shape, Device::CUDA, false, nullptr);
     }
 
     void TearDown() override
@@ -175,9 +175,9 @@ protected:
                                             1, 7};
 
         LOG(INFO) << "Init Tensors";
-        cpu_input = Tensor(input_data.data(), input_shape, true, Device::CPU);
+        cpu_input = Tensor(input_data.data(), input_shape, true, Device::CPU, false, nullptr);
         cpu_weight = embedding.getWeight();
-        cpu_output = Tensor(output_shape, Device::CPU);
+        cpu_output = Tensor(output_shape, Device::CPU, false, nullptr);
         VLOG(DEBUG) << "input size: " << cpu_input.size()
                     << ", weight size: " << cpu_weight.size()
                     << ", output size: " << cpu_output.size();
@@ -185,7 +185,7 @@ protected:
         cuda_input.toDevice(Device::CUDA);
         cuda_weight = cpu_weight.clone();
         cuda_weight.toDevice(Device::CUDA);
-        cuda_output = Tensor(output_shape, Device::CUDA);
+        cuda_output = Tensor(output_shape, Device::CUDA, false, nullptr);
     }
 
     void TearDown() override

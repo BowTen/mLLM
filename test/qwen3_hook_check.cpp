@@ -72,7 +72,7 @@ protected:
         auto output = layer->getOutput(0);
         output.contiguous();
         output.toDevice(Device::CPU);
-        CHECK_CUDA_ERR(cudaDeviceSynchronize());
+        // CHECK_CUDA_ERR(cudaDeviceSynchronize());
 
         float *output_data = output.data();
         size_t output_size = output.size();
@@ -99,8 +99,8 @@ TEST_F(Qwen3HookCheck, Demo)
         cout << id << ", ";
     cout << endl;
 
-    Tensor ids_tensor = Tensor::from_vector(ids, {ids.size(), 1}, Device::CUDA, false);
-    Tensor next_id({1, 1}, Device::CUDA, false);
+    Tensor ids_tensor = Tensor::from_vector(ids, {ids.size(), 1}, Device::CUDA, false, model.stream());
+    Tensor next_id({1, 1}, Device::CUDA, false, model.stream());
 
     LOG(INFO) << "Setting Hook...";
     model.register_hooks([this](WLayer *layer)

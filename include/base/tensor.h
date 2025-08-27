@@ -30,6 +30,8 @@ namespace mllm
             size_t num_mats_ = 0;
             size_t size_;
 
+            cudaStream_t stream_;
+
             static std::vector<size_t> default_stride(const std::vector<size_t> &shape);
             void update();
 
@@ -37,9 +39,9 @@ namespace mllm
 
         public:
             TensorMeta();
-            TensorMeta(const std::vector<size_t> &shape, Buffer::BufferPtr buffer, Device device = Device::CPU, bool mut = false);
-            TensorMeta(const std::vector<size_t> &shape, Device device = Device::CPU, bool mut = false);
-            TensorMeta(void *data, const std::vector<size_t> &shape, bool copy, Device device = Device::CPU, bool mut = false);
+            TensorMeta(const std::vector<size_t> &shape, Buffer::BufferPtr buffer, Device device, bool mut, cudaStream_t stream);
+            TensorMeta(const std::vector<size_t> &shape, Device device, bool mut, cudaStream_t stream);
+            TensorMeta(void *data, const std::vector<size_t> &shape, bool copy, Device device, bool mut, cudaStream_t stream);
         };
 
         class Tensor
@@ -52,25 +54,25 @@ namespace mllm
         public:
             Tensor() : meta_(std::make_shared<TensorMeta>()) {}
             Tensor(std::shared_ptr<TensorMeta> meta) : meta_(meta) {}
-            Tensor(const std::vector<size_t> &shape, Buffer::BufferPtr buffer, Device device = Device::CPU, bool mut = false)
-                : meta_(std::make_shared<TensorMeta>(shape, buffer, device, mut)) {}
-            Tensor(const std::vector<size_t> &shape, Device device = Device::CPU, bool mut = false)
-                : meta_(std::make_shared<TensorMeta>(shape, device, mut)) {}
-            Tensor(void *data, const std::vector<size_t> &shape, bool copy, Device device = Device::CPU, bool mut = false)
-                : meta_(std::make_shared<TensorMeta>(data, shape, copy, device, mut)) {}
-            static Tensor from_float(float value, Device device = Device::CPU, bool mut = false);
+            Tensor(const std::vector<size_t> &shape, Buffer::BufferPtr buffer, Device device, bool mut, cudaStream_t stream)
+                : meta_(std::make_shared<TensorMeta>(shape, buffer, device, mut, stream)) {}
+            Tensor(const std::vector<size_t> &shape, Device device, bool mut, cudaStream_t stream)
+                : meta_(std::make_shared<TensorMeta>(shape, device, mut, stream)) {}
+            Tensor(void *data, const std::vector<size_t> &shape, bool copy, Device device, bool mut, cudaStream_t stream)
+                : meta_(std::make_shared<TensorMeta>(data, shape, copy, device, mut, stream)) {}
+            static Tensor from_float(float value, Device device, bool mut, cudaStream_t stream);
 
             template <class T>
-            static Tensor from_vector(std::vector<T> vec, std::vector<size_t> shape, Device device = Device::CPU, bool mut = false)
+            static Tensor from_vector(std::vector<T> vec, std::vector<size_t> shape, Device device, bool mut, cudaStream_t stream)
             {
-                Tensor tensor(vec.data(), shape, true, Device::CPU, mut);
+                Tensor tensor(vec.data(), shape, true, Device::CPU, mut, stream);
                 tensor.toDevice(device);
                 return tensor;
             }
 
             void view(std::vector<size_t> shape);
             void reshape(std::vector<size_t> shape);
-            void contiguous(cudaStream_t stream = nullptr);
+            void contiguous();
             void transpose(int i, int j);
             void t();
 

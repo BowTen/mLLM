@@ -54,19 +54,34 @@ namespace mllm
                    const std::vector<size_t> &shape,
                    base::Device device,
                    cudaStream_t stream) : Layer(input_count, output_count, device, stream),
-                                          weight_(Tensor(shape, device)),
+                                          weight_(Tensor(shape, device, false, stream_)),
                                           hook_(nullptr)
             {
             }
 
         public:
-            const Tensor &weight() const { return weight_; }
-            void setWeight(const Tensor &weight) { weight_ = weight; }
-            Tensor &getWeight() { return weight_; }
+            const Tensor &weight() const
+            {
+                return weight_;
+            }
+            void setWeight(const Tensor &weight)
+            {
+                weight_ = weight;
+            }
+            Tensor &getWeight()
+            {
+                return weight_;
+            }
             void loadWeight(const std::string &name, base::SafeTensors &st, bool transpose);
 
-            void registerHook(Hook hook) { hook_ = hook; }
-            void clearHook() { hook_ = nullptr; }
+            void registerHook(Hook hook)
+            {
+                hook_ = hook;
+            }
+            void clearHook()
+            {
+                hook_ = nullptr;
+            }
         };
 
     }

@@ -28,7 +28,7 @@ protected:
 
                           1.0, 6.0, 7.0, 4.0,
                           5.0, 2.0, 3.0, 8.0}),
-                    a(data.data(), shape, true, Device::CPU),
+                    a(data.data(), shape, true, Device::CPU, false, nullptr),
                     softmax_cpu(Device::CPU, nullptr),
                     softmax_cuda(Device::CUDA, nullptr)
     {
@@ -92,7 +92,7 @@ protected:
     op::Softmax softmax_cuda;
 
     SoftmaxCheck() : shape({8, 8, 1024}),
-                     a(shape),
+                     a(shape, Device::CPU, false, nullptr),
                      softmax_cpu(Device::CPU, nullptr),
                      softmax_cuda(Device::CUDA, nullptr)
     {

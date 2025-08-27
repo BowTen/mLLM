@@ -83,7 +83,7 @@ namespace mllm
                     pos_start,
                     head_dim);
             }
-            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+            // CHECK_CUDA_ERR(cudaDeviceSynchronize());
 
             CHECK_CUDA_ERR(cudaGetLastError());
         }

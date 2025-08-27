@@ -13,6 +13,7 @@ namespace mllm
         Qwen3MLP::Qwen3MLP(size_t layer_index, JsonConfig config, base::Device device, cudaStream_t stream)
             : layer_index_(layer_index),
               device_(device),
+              stream_(stream),
               config_(config),
               hidden_size(config["hidden_size"]),
               intermediate_size(config["intermediate_size"]),
@@ -32,8 +33,8 @@ namespace mllm
             intermediate_shape.back() = intermediate_size;
             if (gate_state.shape() != intermediate_shape)
             {
-                gate_state = Tensor(intermediate_shape, device_);
-                up_state = Tensor(intermediate_shape, device_);
+                gate_state = Tensor(intermediate_shape, device_, false, stream_);
+                up_state = Tensor(intermediate_shape, device_, false, stream_);
             }
 
             up_proj.forward(*hidden_state, up_state);

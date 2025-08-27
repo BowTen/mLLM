@@ -35,7 +35,7 @@ protected:
                              5.0, 2.0, 3.0, 8.0,
                              1.0, 6.0, 7.0, 4.0,
                              5.0, 2.0, 3.0, 8.0}),
-                       a(data.data(), shape, true, Device::CPU),
+                       a(Tensor::from_vector(data, shape, Device::CPU, true, nullptr)),
                        softmax_cpu(Device::CPU, nullptr),
                        softmax_cuda(Device::CUDA, nullptr),
                        causal_mask_cpu(Device::CPU, nullptr),
@@ -103,7 +103,7 @@ protected:
     op::CausalMask causal_mask_cuda;
 
     CausalMaskCheck() : shape({8, 1024, 1024}),
-                        a(shape),
+                        a(shape, Device::CPU, true, nullptr),
                         causal_mask_cpu(Device::CPU, nullptr),
                         causal_mask_cuda(Device::CUDA, nullptr)
     {

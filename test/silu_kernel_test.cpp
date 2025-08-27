@@ -22,7 +22,7 @@ protected:
     op::SiLU silu_cuda;
 
     SiLUTest() : shape({2, 4, 4}),
-                 a(shape),
+                 a(shape, Device::CPU, false, nullptr),
                  silu_cpu(Device::CPU, nullptr),
                  silu_cuda(Device::CUDA, nullptr)
     {
@@ -89,7 +89,7 @@ protected:
     op::SiLU silu_cuda;
 
     SiLUCheck() : shape({8, 1024, 1024}),
-                  a(shape),
+                  a(shape, Device::CPU, false, nullptr),
                   silu_cpu(Device::CPU, nullptr),
                   silu_cuda(Device::CUDA, nullptr)
     {

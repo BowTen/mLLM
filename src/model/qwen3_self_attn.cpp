@@ -45,7 +45,7 @@ namespace mllm
               mat_mul_attn_output(device_, stream_),
               causal_mask(device_, stream_),
               softmax(device_, stream_),
-              scaling(Tensor::from_float(static_cast<float>(std::pow(head_dim, -0.5f)), device))
+              scaling(Tensor::from_float(static_cast<float>(std::pow(head_dim, -0.5f)), device_, false, stream_))
         {
             VLOG(TRACE) << "Constructor: Qwen3SelfAttn with layer index: " << layer_index_;
         }
@@ -59,12 +59,12 @@ namespace mllm
             kv_shape.back() = num_key_value_heads * head_dim;
             if (q_output.shape() != q_shape)
             {
-                q_output = Tensor(q_shape, device_, false);
+                q_output = Tensor(q_shape, device_, false, stream_);
             }
             if (k_output.shape() != kv_shape)
             {
-                k_output = Tensor(kv_shape, device_, true); // reapeat_kv需要扩展Tensor
-                v_output = Tensor(kv_shape, device_, true); // reapeat_kv需要扩展Tensor
+                k_output = Tensor(kv_shape, device_, true, stream_); // reapeat_kv需要扩展Tensor
+                v_output = Tensor(kv_shape, device_, true, stream_); // reapeat_kv需要扩展Tensor
             }
 
             q_proj.forward(*hidden_state, q_output);
@@ -104,7 +104,7 @@ namespace mllm
                 v_cache.cat(v_output, -2);
             }
 
-            Tensor attn_weights({num_attention_heads, q_output.shape(-2), k_cache.shape(-2)}, device_);
+            Tensor attn_weights({num_attention_heads, q_output.shape(-2), k_cache.shape(-2)}, device_, false, stream_);
 
             k_cache.t();
             mat_mul.forward(q_output, k_cache, attn_weights);

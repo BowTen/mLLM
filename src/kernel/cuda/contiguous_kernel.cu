@@ -63,7 +63,7 @@ namespace mllm
                 batch_size_stride, num_heads_stride, seq_len_stride, head_dim_stride,
                 total_logic_size);
 
-            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+            // CHECK_CUDA_ERR(cudaDeviceSynchronize());
             CHECK_CUDA_ERR(cudaGetLastError());
         }
     }

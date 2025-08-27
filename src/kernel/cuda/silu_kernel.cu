@@ -47,7 +47,7 @@ namespace mllm
             {
                 silu_kernel_cuda_fp32<<<grid, 128>>>(input->data(), seq_len, head_dim);
             }
-            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+            // CHECK_CUDA_ERR(cudaDeviceSynchronize());
 
             CHECK_CUDA_ERR(cudaGetLastError());
         }

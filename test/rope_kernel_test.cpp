@@ -15,8 +15,11 @@ protected:
     Tensor Q;
     Tensor cos;
     Tensor sin;
+    cudaStream_t stream;
+
     void SetUp() override
     {
+        cudaStreamCreate(&stream);
         google::InitGoogleLogging("CPURoPE");
         FLAGS_logtostderr = true;
         VLOG(DEBUG) << "Setting up CPURoPE test environment";
@@ -33,9 +36,9 @@ protected:
         vector<float> sin_data({std::sin(0.1f), std::sin(0.2f), std::sin(0.1f), std::sin(0.2f),
                                 std::sin(0.3f), std::sin(0.4f), std::sin(0.3f), std::sin(0.4f)});
 
-        Q = Tensor(Q_data.data(), input_shape, true);
-        cos = Tensor(cos_data.data(), weight_shape, true);
-        sin = Tensor(sin_data.data(), weight_shape, true);
+        Q = Tensor(Q_data.data(), input_shape, true, Device::CPU, false, stream);
+        cos = Tensor(cos_data.data(), weight_shape, true, Device::CPU, false, stream);
+        sin = Tensor(sin_data.data(), weight_shape, true, Device::CPU, false, stream);
     }
 
     void TearDown() override
@@ -164,6 +167,7 @@ protected:
     Tensor Q;
     Tensor cos;
     Tensor sin;
+    cudaStream_t stream;
 
     float check_eps = 1e-6;
 
@@ -172,15 +176,16 @@ protected:
 
     void SetUp() override
     {
+        cudaStreamCreate(&stream);
         google::InitGoogleLogging("RoPECheck");
         FLAGS_logtostderr = true;
         VLOG(DEBUG) << "Setting up RoPECheck test environment";
         std::vector<size_t> input_shape({8, 32, 128});
         std::vector<size_t> weight_shape({32, 128});
 
-        Q = Tensor(input_shape);
-        cos = Tensor(weight_shape);
-        sin = Tensor(weight_shape);
+        Q = Tensor(input_shape, Device::CPU, false, stream);
+        cos = Tensor(weight_shape, Device::CPU, false, stream);
+        sin = Tensor(weight_shape, Device::CPU, false, stream);
 
         for (size_t i = 0; i < Q.size(); i++)
             *Q[i] = urd(rnd);

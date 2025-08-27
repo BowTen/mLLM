@@ -94,13 +94,13 @@ public:
         LOG(INFO) << "Starting forward pass comparison between CPU and CUDA";
 
         // Prepare input tensors
-        Tensor token_ids_cpu = Tensor::from_vector(token_ids, {token_ids.size(), 1}, Device::CPU);
-        Tensor token_ids_cuda = Tensor::from_vector(token_ids, {token_ids.size(), 1}, Device::CUDA);
+        Tensor token_ids_cpu = Tensor::from_vector(token_ids, {token_ids.size(), 1}, Device::CPU, false, nullptr);
+        Tensor token_ids_cuda = Tensor::from_vector(token_ids, {token_ids.size(), 1}, Device::CUDA, false, model_cuda.stream_);
 
         // 1. Embedding layer comparison
         LOG(INFO) << "Checking embedding layer...";
-        model_cpu.hidden_state = Tensor({token_ids_cpu.shape(0), hidden_size}, model_cpu.device_);
-        model_cuda.hidden_state = Tensor({token_ids_cuda.shape(0), hidden_size}, model_cuda.device_);
+        model_cpu.hidden_state = Tensor({token_ids_cpu.shape(0), hidden_size}, model_cpu.device_, false, nullptr);
+        model_cuda.hidden_state = Tensor({token_ids_cuda.shape(0), hidden_size}, model_cuda.device_, false, model_cuda.stream_);
         model_cpu.embed_tokens.forward(token_ids_cpu, model_cpu.hidden_state);
         model_cuda.embed_tokens.forward(token_ids_cuda, model_cuda.hidden_state);
         check_tensor(model_cpu.hidden_state, model_cuda.hidden_state, "embedding_output");
@@ -113,10 +113,10 @@ public:
         rope_emb_shape_cpu.back() = model_cpu.config_["head_dim"];
         rope_emb_shape_cuda.back() = model_cuda.config_["head_dim"];
 
-        model_cpu.cos = Tensor(rope_emb_shape_cpu, model_cpu.device_);
-        model_cpu.sin = Tensor(rope_emb_shape_cpu, model_cpu.device_);
-        model_cuda.cos = Tensor(rope_emb_shape_cuda, model_cuda.device_);
-        model_cuda.sin = Tensor(rope_emb_shape_cuda, model_cuda.device_);
+        model_cpu.cos = Tensor(rope_emb_shape_cpu, model_cpu.device_, false, nullptr);
+        model_cpu.sin = Tensor(rope_emb_shape_cpu, model_cpu.device_, false, nullptr);
+        model_cuda.cos = Tensor(rope_emb_shape_cuda, model_cuda.device_, false, model_cuda.stream_);
+        model_cuda.sin = Tensor(rope_emb_shape_cuda, model_cuda.device_, false, model_cuda.stream_);
 
         base::PosEmb pos_emb_cpu(&model_cpu.cos, &model_cpu.sin);
         base::PosEmb pos_emb_cuda(&model_cuda.cos, &model_cuda.sin);
@@ -181,8 +181,8 @@ public:
 
         // 7. Language model head
         LOG(INFO) << "Checking language model head...";
-        model_cpu.final_probability = Tensor({model_cpu.hidden_state.shape(0), model_cpu.vocab_size}, model_cpu.device_);
-        model_cuda.final_probability = Tensor({model_cuda.hidden_state.shape(0), model_cuda.vocab_size}, model_cuda.device_);
+        model_cpu.final_probability = Tensor({model_cpu.hidden_state.shape(0), model_cpu.vocab_size}, model_cpu.device_, false, nullptr);
+        model_cuda.final_probability = Tensor({model_cuda.hidden_state.shape(0), model_cuda.vocab_size}, model_cuda.device_, false, model_cuda.stream_);
         model_cpu.lm_head.forward(model_cpu.hidden_state, model_cpu.final_probability);
         model_cuda.lm_head.forward(model_cuda.hidden_state, model_cuda.final_probability);
         check_tensor(model_cpu.final_probability, model_cuda.final_probability, "lm_head_output");
@@ -202,7 +202,7 @@ public:
         model_cuda.final_probability.toDevice(Device::CPU);
 
         // Return next token (using CPU model result)
-        Tensor next_token = Tensor({1}, Device::CPU);
+        Tensor next_token = Tensor({1}, Device::CPU, false, nullptr);
         kernel::get_random_sampling_kernel(Device::CPU)(&model_cpu.final_probability, &next_token, nullptr);
 
         return *next_token[0];
@@ -270,13 +270,13 @@ public:
         q_shape.back() = this_cpu->num_attention_heads * this_cpu->head_dim;
         kv_shape.back() = this_cpu->num_key_value_heads * this_cpu->head_dim;
 
-        this_cpu->q_output = Tensor(q_shape, this_cpu->device_, false);
-        this_cpu->k_output = Tensor(kv_shape, this_cpu->device_, true);
-        this_cpu->v_output = Tensor(kv_shape, this_cpu->device_, true);
+        this_cpu->q_output = Tensor(q_shape, this_cpu->device_, false, nullptr);
+        this_cpu->k_output = Tensor(kv_shape, this_cpu->device_, true, nullptr);
+        this_cpu->v_output = Tensor(kv_shape, this_cpu->device_, true, nullptr);
 
-        this_cuda->q_output = Tensor(q_shape, this_cuda->device_, false);
-        this_cuda->k_output = Tensor(kv_shape, this_cuda->device_, true);
-        this_cuda->v_output = Tensor(kv_shape, this_cuda->device_, true);
+        this_cuda->q_output = Tensor(q_shape, this_cuda->device_, false, model_cuda.stream_);
+        this_cuda->k_output = Tensor(kv_shape, this_cuda->device_, true, model_cuda.stream_);
+        this_cuda->v_output = Tensor(kv_shape, this_cuda->device_, true, model_cuda.stream_);
 
         // Step 2: Q, K, V projections
         LOG(INFO) << "      Checking Q projection...";
@@ -377,8 +377,8 @@ public:
 
         // Step 9: Attention computation
         LOG(INFO) << "      Checking attention weights computation...";
-        Tensor attn_weights_cpu({this_cpu->num_attention_heads, this_cpu->q_output.shape(-2), this_cpu->k_cache.shape(-2)}, this_cpu->device_);
-        Tensor attn_weights_cuda({this_cuda->num_attention_heads, this_cuda->q_output.shape(-2), this_cuda->k_cache.shape(-2)}, this_cuda->device_);
+        Tensor attn_weights_cpu({this_cpu->num_attention_heads, this_cpu->q_output.shape(-2), this_cpu->k_cache.shape(-2)}, this_cpu->device_, false, nullptr);
+        Tensor attn_weights_cuda({this_cuda->num_attention_heads, this_cuda->q_output.shape(-2), this_cuda->k_cache.shape(-2)}, this_cuda->device_, false, model_cuda.stream_);
 
         this_cpu->k_cache.t();
         this_cuda->k_cache.t();
@@ -452,14 +452,14 @@ public:
 
         if (this_cpu->gate_state.shape() != intermediate_shape)
         {
-            this_cpu->gate_state = Tensor(intermediate_shape, this_cpu->device_);
-            this_cpu->up_state = Tensor(intermediate_shape, this_cpu->device_);
+            this_cpu->gate_state = Tensor(intermediate_shape, this_cpu->device_, false, nullptr);
+            this_cpu->up_state = Tensor(intermediate_shape, this_cpu->device_, false, nullptr);
         }
 
         if (this_cuda->gate_state.shape() != intermediate_shape)
         {
-            this_cuda->gate_state = Tensor(intermediate_shape, this_cuda->device_);
-            this_cuda->up_state = Tensor(intermediate_shape, this_cuda->device_);
+            this_cuda->gate_state = Tensor(intermediate_shape, this_cuda->device_, false, model_cuda.stream_);
+            this_cuda->up_state = Tensor(intermediate_shape, this_cuda->device_, false, model_cuda.stream_);
         }
 
         // Step 2: Up projection

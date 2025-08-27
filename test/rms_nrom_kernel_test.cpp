@@ -34,6 +34,8 @@ protected:
     std::vector<size_t> weight_shape;
     std::vector<size_t> output_shape;
 
+    cudaStream_t stream;
+
     std::mt19937 rnd = std::mt19937(std::random_device{}());
     std::uniform_real_distribution<> urd = std::uniform_real_distribution<>(0.0, 1.0);
 
@@ -45,6 +47,8 @@ protected:
         FLAGS_logtostderr = true;
         VLOG(DEBUG) << "Setting up test environment";
 
+        cudaStreamCreate(&stream);
+
         norm.loadWeight("model.norm", safetensors, false);
 
         batch_size = 4;
@@ -55,14 +59,14 @@ protected:
         output_shape = {batch_size, seq_len, hidden_size};
 
         LOG(INFO) << "Init Tensors";
-        cpu_input = Tensor(input_shape);
+        cpu_input = Tensor(input_shape, Device::CPU, false, stream);
         for (size_t i = 0; i < cpu_input.size(); i++)
         {
             *cpu_input[i] = urd(rnd);
         }
 
         cpu_weight = norm.getWeight();
-        cpu_output = Tensor(output_shape);
+        cpu_output = Tensor(output_shape, Device::CPU, false, stream);
         VLOG(DEBUG) << "input size: " << cpu_input.size()
                     << ", weight size: " << cpu_weight.size()
                     << ", output size: " << cpu_output.size();
@@ -70,7 +74,7 @@ protected:
         cuda_input.toDevice(Device::CUDA);
         cuda_weight = cpu_weight.clone();
         cuda_weight.toDevice(Device::CUDA);
-        cuda_output = Tensor(output_shape, Device::CUDA);
+        cuda_output = Tensor(output_shape, Device::CUDA, false, stream);
     }
 
     void TearDown() override
@@ -149,8 +153,11 @@ TEST_F(Qwen3RMSNormKernelTest, CPUvsCUDAQwen3)
 class RMSNormKernelTest : public ::testing::Test
 {
 protected:
+    cudaStream_t stream;
+
     void SetUp() override
     {
+        cudaStreamCreate(&stream);
         // Initialize test parameters
         seq_length = 4;
         hidden_size = 8;
@@ -252,10 +259,10 @@ protected:
 TEST_F(RMSNormKernelTest, BasicRMSNormCPU)
 {
     // Create tensors
-    Tensor input({seq_length, hidden_size}, Device::CPU);
-    Tensor weight({hidden_size}, Device::CPU);
-    Tensor output({seq_length, hidden_size}, Device::CPU);
-    Tensor reference_output({seq_length, hidden_size}, Device::CPU);
+    Tensor input({seq_length, hidden_size}, Device::CPU, false, stream);
+    Tensor weight({hidden_size}, Device::CPU, false, stream);
+    Tensor output({seq_length, hidden_size}, Device::CPU, false, stream);
+    Tensor reference_output({seq_length, hidden_size}, Device::CPU, false, stream);
 
     // Fill input with random data
     fillTensorRandom(input);
@@ -278,10 +285,10 @@ TEST_F(RMSNormKernelTest, BasicRMSNormCPU)
 TEST_F(RMSNormKernelTest, RMSNormCPUWithRandomWeights)
 {
     // Create tensors
-    Tensor input({seq_length, hidden_size}, Device::CPU);
-    Tensor weight({hidden_size}, Device::CPU);
-    Tensor output({seq_length, hidden_size}, Device::CPU);
-    Tensor reference_output({seq_length, hidden_size}, Device::CPU);
+    Tensor input({seq_length, hidden_size}, Device::CPU, false, stream);
+    Tensor weight({hidden_size}, Device::CPU, false, stream);
+    Tensor output({seq_length, hidden_size}, Device::CPU, false, stream);
+    Tensor reference_output({seq_length, hidden_size}, Device::CPU, false, stream);
 
     // Fill tensors with random data
     fillTensorRandom(input);
@@ -302,9 +309,9 @@ TEST_F(RMSNormKernelTest, RMSNormCPUWithRandomWeights)
 TEST_F(RMSNormKernelTest, RMSNormCPUZeroInput)
 {
     // Create tensors
-    Tensor input({seq_length, hidden_size}, Device::CPU);
-    Tensor weight({hidden_size}, Device::CPU);
-    Tensor output({seq_length, hidden_size}, Device::CPU);
+    Tensor input({seq_length, hidden_size}, Device::CPU, false, stream);
+    Tensor weight({hidden_size}, Device::CPU, false, stream);
+    Tensor output({seq_length, hidden_size}, Device::CPU, false, stream);
 
     // Fill input with zeros
     fillTensorValue(input, 0.0f);
@@ -328,10 +335,10 @@ TEST_F(RMSNormKernelTest, RMSNormCPUZeroInput)
 TEST_F(RMSNormKernelTest, BasicRMSNormCUDA)
 {
     // Create tensors on CPU first
-    Tensor input({seq_length, hidden_size}, Device::CPU);
-    Tensor weight({hidden_size}, Device::CPU);
-    Tensor output({seq_length, hidden_size}, Device::CPU);
-    Tensor reference_output({seq_length, hidden_size}, Device::CPU);
+    Tensor input({seq_length, hidden_size}, Device::CPU, false, stream);
+    Tensor weight({hidden_size}, Device::CPU, false, stream);
+    Tensor output({seq_length, hidden_size}, Device::CPU, false, stream);
+    Tensor reference_output({seq_length, hidden_size}, Device::CPU, false, stream);
 
     // Fill CPU tensors with random data
     fillTensorRandom(input);
@@ -360,10 +367,10 @@ TEST_F(RMSNormKernelTest, BasicRMSNormCUDA)
 TEST_F(RMSNormKernelTest, CPUvsCUDAConsistency)
 {
     // Create tensors on CPU
-    Tensor input({seq_length, hidden_size}, Device::CPU);
-    Tensor weight({hidden_size}, Device::CPU);
-    Tensor output_cpu({seq_length, hidden_size}, Device::CPU);
-    Tensor output_cuda({seq_length, hidden_size}, Device::CPU);
+    Tensor input({seq_length, hidden_size}, Device::CPU, false, stream);
+    Tensor weight({hidden_size}, Device::CPU, false, stream);
+    Tensor output_cpu({seq_length, hidden_size}, Device::CPU, false, stream);
+    Tensor output_cuda({seq_length, hidden_size}, Device::CPU, false, stream);
 
     // Fill tensors with random data
     fillTensorRandom(input);
@@ -374,8 +381,8 @@ TEST_F(RMSNormKernelTest, CPUvsCUDAConsistency)
     cpu_kernel(&input, &weight, &output_cpu, eps, nullptr);
 
     // Create copies for CUDA test
-    Tensor input_cuda({seq_length, hidden_size}, Device::CPU);
-    Tensor weight_cuda({hidden_size}, Device::CPU);
+    Tensor input_cuda({seq_length, hidden_size}, Device::CPU, false, stream);
+    Tensor weight_cuda({hidden_size}, Device::CPU, false, stream);
 
     // Copy data to CUDA tensors
     std::memcpy(input_cuda.data(), input.data(), input.size() * sizeof(float));
@@ -405,10 +412,10 @@ TEST_F(RMSNormKernelTest, LargerTensorCUDATest)
     size_t large_hidden = 256;
 
     // Create tensors on CPU first
-    Tensor input({large_seq, large_hidden}, Device::CPU);
-    Tensor weight({large_hidden}, Device::CPU);
-    Tensor output_cpu({large_seq, large_hidden}, Device::CPU);
-    Tensor output_cuda({large_seq, large_hidden}, Device::CPU);
+    Tensor input({large_seq, large_hidden}, Device::CPU, false, stream);
+    Tensor weight({large_hidden}, Device::CPU, false, stream);
+    Tensor output_cpu({large_seq, large_hidden}, Device::CPU, false, stream);
+    Tensor output_cuda({large_seq, large_hidden}, Device::CPU, false, stream);
 
     // Fill tensors with random data
     fillTensorRandom(input);
@@ -419,8 +426,8 @@ TEST_F(RMSNormKernelTest, LargerTensorCUDATest)
     cpu_kernel(&input, &weight, &output_cpu, eps, nullptr);
 
     // Create copies for CUDA test
-    Tensor input_cuda({large_seq, large_hidden}, Device::CPU);
-    Tensor weight_cuda({large_hidden}, Device::CPU);
+    Tensor input_cuda({large_seq, large_hidden}, Device::CPU, false, stream);
+    Tensor weight_cuda({large_hidden}, Device::CPU, false, stream);
 
     // Copy data
     std::memcpy(input_cuda.data(), input.data(), input.size() * sizeof(float));
@@ -451,10 +458,10 @@ TEST_F(RMSNormKernelTest, CUDAWithDifferentEpsValues)
     for (float test_eps : eps_values)
     {
         // Create tensors on CPU
-        Tensor input({seq_length, hidden_size}, Device::CPU);
-        Tensor weight({hidden_size}, Device::CPU);
-        Tensor output_cpu({seq_length, hidden_size}, Device::CPU);
-        Tensor output_cuda({seq_length, hidden_size}, Device::CPU);
+        Tensor input({seq_length, hidden_size}, Device::CPU, false, stream);
+        Tensor weight({hidden_size}, Device::CPU, false, stream);
+        Tensor output_cpu({seq_length, hidden_size}, Device::CPU, false, stream);
+        Tensor output_cuda({seq_length, hidden_size}, Device::CPU, false, stream);
 
         // Fill tensors with random data
         fillTensorRandom(input);
@@ -465,8 +472,8 @@ TEST_F(RMSNormKernelTest, CUDAWithDifferentEpsValues)
         cpu_kernel(&input, &weight, &output_cpu, test_eps, nullptr);
 
         // Create copies for CUDA
-        Tensor input_cuda({seq_length, hidden_size}, Device::CPU);
-        Tensor weight_cuda({hidden_size}, Device::CPU);
+        Tensor input_cuda({seq_length, hidden_size}, Device::CPU, false, stream);
+        Tensor weight_cuda({hidden_size}, Device::CPU, false, stream);
 
         std::memcpy(input_cuda.data(), input.data(), input.size() * sizeof(float));
         std::memcpy(weight_cuda.data(), weight.data(), weight.size() * sizeof(float));
@@ -495,10 +502,10 @@ TEST_F(RMSNormKernelTest, LargerTensorTest)
     size_t large_seq = 16;
     size_t large_hidden = 128;
 
-    Tensor input({large_seq, large_hidden}, Device::CPU);
-    Tensor weight({large_hidden}, Device::CPU);
-    Tensor output({large_seq, large_hidden}, Device::CPU);
-    Tensor reference_output({large_seq, large_hidden}, Device::CPU);
+    Tensor input({large_seq, large_hidden}, Device::CPU, false, stream);
+    Tensor weight({large_hidden}, Device::CPU, false, stream);
+    Tensor output({large_seq, large_hidden}, Device::CPU, false, stream);
+    Tensor reference_output({large_seq, large_hidden}, Device::CPU, false, stream);
 
     // Fill tensors with random data
     fillTensorRandom(input);
@@ -523,10 +530,10 @@ TEST_F(RMSNormKernelTest, DifferentEpsValues)
 
     for (float test_eps : eps_values)
     {
-        Tensor input({seq_length, hidden_size}, Device::CPU);
-        Tensor weight({hidden_size}, Device::CPU);
-        Tensor output({seq_length, hidden_size}, Device::CPU);
-        Tensor reference_output({seq_length, hidden_size}, Device::CPU);
+        Tensor input({seq_length, hidden_size}, Device::CPU, false, stream);
+        Tensor weight({hidden_size}, Device::CPU, false, stream);
+        Tensor output({seq_length, hidden_size}, Device::CPU, false, stream);
+        Tensor reference_output({seq_length, hidden_size}, Device::CPU, false, stream);
 
         // Fill tensors with random data
         fillTensorRandom(input);

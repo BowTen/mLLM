@@ -58,16 +58,19 @@ namespace mllm
                                    stride_(default_stride(shape_)),
                                    is_contiguous_(true),
                                    buffer_(nullptr),
-                                   device_(Device::CPU)
+                                   device_(Device::CPU),
+                                   mut_(false),
+                                   stream_(nullptr)
         {
             update();
         }
-        TensorMeta::TensorMeta(const std::vector<size_t> &shape, Buffer::BufferPtr buffer, Device device, bool mut)
+        TensorMeta::TensorMeta(const std::vector<size_t> &shape, Buffer::BufferPtr buffer, Device device, bool mut, cudaStream_t stream)
             : shape_(shape),
               is_contiguous_(true),
               buffer_(buffer),
               device_(device),
-              mut_(mut)
+              mut_(mut),
+              stream_(stream)
         {
             if (shape_.size() == 1)
                 shape_.insert(shape_.begin(), 1);
@@ -75,8 +78,8 @@ namespace mllm
             update();
         }
 
-        TensorMeta::TensorMeta(const std::vector<size_t> &shape, Device device, bool mut)
-            : shape_(shape), is_contiguous_(true), device_(device), mut_(mut)
+        TensorMeta::TensorMeta(const std::vector<size_t> &shape, Device device, bool mut, cudaStream_t stream)
+            : shape_(shape), is_contiguous_(true), device_(device), mut_(mut), stream_(stream)
         {
             if (shape_.size() == 1)
                 shape_.insert(shape_.begin(), 1);
@@ -106,8 +109,8 @@ namespace mllm
             update();
         }
 
-        TensorMeta::TensorMeta(void *data, const std::vector<size_t> &shape, bool copy, Device device, bool mut)
-            : shape_(shape), is_contiguous_(true), device_(device), mut_(mut)
+        TensorMeta::TensorMeta(void *data, const std::vector<size_t> &shape, bool copy, Device device, bool mut, cudaStream_t stream)
+            : shape_(shape), is_contiguous_(true), device_(device), mut_(mut), stream_(stream)
         {
             if (shape_.size() == 1)
                 shape_.insert(shape_.begin(), 1);
@@ -147,9 +150,9 @@ namespace mllm
             }
         }
 
-        Tensor Tensor::from_float(float value, Device device, bool mut)
+        Tensor Tensor::from_float(float value, Device device, bool mut, cudaStream_t stream)
         {
-            return Tensor::from_vector(std::vector<float>({value}), {1}, device, mut);
+            return Tensor::from_vector(std::vector<float>({value}), {1}, device, mut, stream);
         }
 
         float *Tensor::data()
@@ -253,11 +256,11 @@ namespace mllm
             view(shape);
         }
 
-        void Tensor::contiguous(cudaStream_t stream)
+        void Tensor::contiguous()
         {
             if (meta_->is_contiguous_)
                 return;
-            kernel::get_contiguous_kernel(meta_->device_)(this, stream);
+            kernel::get_contiguous_kernel(meta_->device_)(this, this->meta_->stream_);
             meta_->stride_ = TensorMeta::default_stride(meta_->shape_);
             meta_->update();
             CHECK(meta_->is_contiguous_) << "Tensor faild to contiguous";

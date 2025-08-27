@@ -38,7 +38,7 @@ namespace mllm
                 LOG(WARNING) << "Causal Mask: use default stream";
                 causal_mask_kernel_cuda_fp32<<<grid, 128>>>(input->data(), head_dim);
             }
-            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+            // CHECK_CUDA_ERR(cudaDeviceSynchronize());
 
             CHECK_CUDA_ERR(cudaGetLastError());
         }

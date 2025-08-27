@@ -191,10 +191,10 @@ protected:
 
 TEST_F(RoPECheck, CPUvsCUDA)
 {
-    Tensor cos_cpu = Tensor({2, 128}, base::Device::CPU);
-    Tensor sin_cpu = Tensor({2, 128}, base::Device::CPU);
-    Tensor cos_cuda = Tensor({2, 128}, base::Device::CUDA);
-    Tensor sin_cuda = Tensor({2, 128}, base::Device::CUDA);
+    Tensor cos_cpu = Tensor({2, 128}, base::Device::CPU, false, nullptr);
+    Tensor sin_cpu = Tensor({2, 128}, base::Device::CPU, false, nullptr);
+    Tensor cos_cuda = Tensor({2, 128}, base::Device::CUDA, false, nullptr);
+    Tensor sin_cuda = Tensor({2, 128}, base::Device::CUDA, false, nullptr);
 
     PosEmb pos_emb_cpu(&cos_cpu, &sin_cpu);
     PosEmb pos_emb_cuda(&cos_cuda, &sin_cuda);

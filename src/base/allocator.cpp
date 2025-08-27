@@ -20,7 +20,7 @@ namespace mllm
         void Allocator::device_memcpy(void *dest, const void *src, size_t size, cudaMemcpyKind kind)
         {
             CHECK_CUDA_ERR(cudaMemcpy(dest, src, size, kind));
-            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+            // CHECK_CUDA_ERR(cudaDeviceSynchronize());
         }
 
         // HostAllocator implementation
@@ -38,9 +38,6 @@ namespace mllm
         void *HostAllocator::allocate(size_t size)
         {
             size = align_size(size);
-            // void *ptr = nullptr;
-            // CHECK_CUDA_ERR(cudaMallocHost(&ptr, size));
-            // return ptr;
             return malloc(size);
         }
 
@@ -51,7 +48,6 @@ namespace mllm
 
         void HostAllocator::deallocate(void *ptr)
         {
-            // CHECK_CUDA_ERR(cudaFreeHost(ptr));
             free(ptr);
         }
 
@@ -72,24 +68,24 @@ namespace mllm
             CHECK(size > 0) << "Cannot allocate zero bytes";
             size = align_size(size);
             void *ptr;
-            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+            // CHECK_CUDA_ERR(cudaDeviceSynchronize());
             CHECK_CUDA_ERR(cudaMalloc(&ptr, size));
-            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+            // CHECK_CUDA_ERR(cudaDeviceSynchronize());
             return ptr;
         }
 
         void CudaAllocator::memcpy(void *dest, const void *src, size_t size)
         {
-            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+            // CHECK_CUDA_ERR(cudaDeviceSynchronize());
             CHECK_CUDA_ERR(cudaMemcpy(dest, src, size, cudaMemcpyDeviceToDevice));
-            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+            // CHECK_CUDA_ERR(cudaDeviceSynchronize());
         }
 
         void CudaAllocator::deallocate(void *ptr)
         {
-            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+            // CHECK_CUDA_ERR(cudaDeviceSynchronize());
             CHECK_CUDA_ERR(cudaFree(ptr));
-            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+            // CHECK_CUDA_ERR(cudaDeviceSynchronize());
         }
     }
 }

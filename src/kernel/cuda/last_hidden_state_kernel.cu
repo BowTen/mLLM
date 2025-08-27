@@ -29,7 +29,7 @@ namespace mllm
             }
             shape[shape.size() - 2] = 1;
             input->view(shape);
-            CHECK_CUDA_ERR(cudaDeviceSynchronize());
+            // CHECK_CUDA_ERR(cudaDeviceSynchronize());
 
             CHECK_CUDA_ERR(cudaGetLastError());
         }

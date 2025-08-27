@@ -30,7 +30,7 @@ protected:
 TEST_F(TensorTest, ConstructorCPU)
 {
     std::vector<size_t> shape = {2, 3, 4};
-    Tensor tensor(shape, Device::CPU);
+    Tensor tensor(shape, Device::CPU, false, nullptr);
 
     EXPECT_EQ(tensor.shape(), shape);
     EXPECT_EQ(tensor.size(), 24); // 2 * 3 * 4 = 24
@@ -41,7 +41,8 @@ TEST_F(TensorTest, ConstructorCPU)
 TEST_F(TensorTest, ConstructorCUDA)
 {
     std::vector<size_t> shape = {5, 5};
-    Tensor tensor(shape, Device::CUDA);
+    Tensor tensor(shape, Device::CUDA, false, nullptr);
+    ;
 
     EXPECT_EQ(tensor.shape(), shape);
     EXPECT_EQ(tensor.size(), 25); // 5 * 5 = 25
@@ -52,7 +53,7 @@ TEST_F(TensorTest, ConstructorCUDA)
 TEST_F(TensorTest, ConstructorMutable)
 {
     std::vector<size_t> shape = {3, 3};
-    Tensor tensor(shape, Device::CPU, true);
+    Tensor tensor(shape, Device::CPU, true, nullptr);
 
     EXPECT_EQ(tensor.shape(), shape);
     EXPECT_EQ(tensor.size(), 9); // 3 * 3 = 9
@@ -63,7 +64,7 @@ TEST_F(TensorTest, ConstructorMutable)
 TEST_F(TensorTest, Constructor4D)
 {
     std::vector<size_t> shape = {2, 3, 4, 5};
-    Tensor tensor(shape, Device::CPU);
+    Tensor tensor(shape, Device::CPU, false, nullptr);
 
     EXPECT_EQ(tensor.shape(), shape);
     EXPECT_EQ(tensor.size(), 120); // 2 * 3 * 4 * 5 = 120
@@ -74,7 +75,7 @@ TEST_F(TensorTest, Constructor4D)
 TEST_F(TensorTest, ConstructorSingleElement)
 {
     std::vector<size_t> shape = {1, 1, 1};
-    Tensor tensor(shape, Device::CPU);
+    Tensor tensor(shape, Device::CPU, false, nullptr);
 
     EXPECT_EQ(tensor.shape(), shape);
     EXPECT_EQ(tensor.size(), 1);
@@ -85,7 +86,7 @@ TEST_F(TensorTest, ConstructorSingleElement)
 TEST_F(TensorTest, ShapeMethod)
 {
     std::vector<size_t> shape = {7, 8, 9};
-    Tensor tensor(shape, Device::CPU);
+    Tensor tensor(shape, Device::CPU, false, nullptr);
 
     const auto &returned_shape = tensor.shape();
     EXPECT_EQ(returned_shape.size(), 3);
@@ -111,7 +112,7 @@ TEST_F(TensorTest, SizeCalculation)
 
     for (size_t i = 0; i < shapes.size(); ++i)
     {
-        Tensor tensor(shapes[i], Device::CPU);
+        Tensor tensor(shapes[i], Device::CPU, false, nullptr);
         EXPECT_EQ(tensor.size(), expected_sizes[i])
             << "Failed for shape index " << i;
     }
@@ -121,7 +122,7 @@ TEST_F(TensorTest, SizeCalculation)
 TEST_F(TensorTest, DataAccess)
 {
     std::vector<size_t> shape = {2, 2};
-    Tensor tensor(shape, Device::CPU);
+    Tensor tensor(shape, Device::CPU, false, nullptr);
 
     float *data = tensor.data();
     ASSERT_NE(data, nullptr);
@@ -142,7 +143,7 @@ TEST_F(TensorTest, DataAccess)
 TEST_F(TensorTest, LargeTensor)
 {
     std::vector<size_t> shape = {100, 100};
-    Tensor tensor(shape, Device::CPU);
+    Tensor tensor(shape, Device::CPU, false, nullptr);
 
     EXPECT_EQ(tensor.shape(), shape);
     EXPECT_EQ(tensor.size(), 10000);
@@ -163,8 +164,8 @@ TEST_F(TensorTest, MultipleTensors)
     std::vector<size_t> shape1 = {3, 3};
     std::vector<size_t> shape2 = {2, 5};
 
-    Tensor tensor1(shape1, Device::CPU);
-    Tensor tensor2(shape2, Device::CPU);
+    Tensor tensor1(shape1, Device::CPU, false, nullptr);
+    Tensor tensor2(shape2, Device::CPU, false, nullptr);
 
     EXPECT_EQ(tensor1.size(), 9);
     EXPECT_EQ(tensor2.size(), 10);
@@ -182,7 +183,7 @@ TEST_F(TensorTest, EmptyShape)
     // depending on implementation. Adjust test accordingly.
     try
     {
-        Tensor tensor(shape, Device::CPU);
+        Tensor tensor(shape, Device::CPU, false, nullptr);
         // If construction succeeds, check reasonable behavior
         EXPECT_EQ(tensor.shape(), shape);
     }
@@ -197,7 +198,7 @@ TEST_F(TensorTest, EmptyShape)
 TEST_F(TensorTest, ViewFunction)
 {
     std::vector<size_t> original_shape = {2, 3, 4};
-    Tensor tensor(original_shape, Device::CPU);
+    Tensor tensor(original_shape, Device::CPU, false, nullptr);
 
     // Fill with test data
     float *data = tensor.data();
@@ -225,7 +226,7 @@ TEST_F(TensorTest, ViewFunction)
 TEST_F(TensorTest, View1D)
 {
     std::vector<size_t> original_shape = {12};
-    Tensor tensor(original_shape, Device::CPU);
+    Tensor tensor(original_shape, Device::CPU, false, nullptr);
 
     // Test view to 2D
     std::vector<size_t> new_shape = {3, 4};
@@ -239,7 +240,7 @@ TEST_F(TensorTest, View1D)
 TEST_F(TensorTest, ViewDifferentShapes)
 {
     std::vector<size_t> original_shape = {2, 3, 4};
-    Tensor tensor(original_shape, Device::CPU);
+    Tensor tensor(original_shape, Device::CPU, false, nullptr);
 
     // Test multiple valid views
     std::vector<std::vector<size_t>> valid_shapes = {
@@ -265,7 +266,7 @@ TEST_F(TensorTest, ViewDifferentShapes)
 TEST_F(TensorTest, ReshapeFunction)
 {
     std::vector<size_t> original_shape = {2, 6};
-    Tensor tensor(original_shape, Device::CPU);
+    Tensor tensor(original_shape, Device::CPU, false, nullptr);
 
     // Fill with test data
     float *data = tensor.data();
@@ -293,7 +294,7 @@ TEST_F(TensorTest, ReshapeFunction)
 TEST_F(TensorTest, ReshapeDifferentDimensions)
 {
     std::vector<size_t> original_shape = {2, 3, 4};
-    Tensor tensor(original_shape, Device::CPU);
+    Tensor tensor(original_shape, Device::CPU, false, nullptr);
 
     // Test reshape to different dimensions
     std::vector<std::vector<size_t>> reshape_targets = {
@@ -306,7 +307,7 @@ TEST_F(TensorTest, ReshapeDifferentDimensions)
 
     for (const auto &target_shape : reshape_targets)
     {
-        Tensor test_tensor(original_shape, Device::CPU);
+        Tensor test_tensor(original_shape, Device::CPU, false, nullptr);
         test_tensor.reshape(target_shape);
         EXPECT_EQ(test_tensor.shape(), target_shape);
         EXPECT_EQ(test_tensor.size(), 24);
@@ -317,7 +318,7 @@ TEST_F(TensorTest, ReshapeDifferentDimensions)
 TEST_F(TensorTest, TransposeFunction)
 {
     std::vector<size_t> shape = {2, 3, 4};
-    Tensor tensor(shape, Device::CPU);
+    Tensor tensor(shape, Device::CPU, false, nullptr);
 
     // Fill with test data to verify transpose correctness
     float *data = tensor.data();
@@ -356,7 +357,7 @@ TEST_F(TensorTest, TransposeDifferentDimensions)
 
     for (const auto &test : transpose_tests)
     {
-        Tensor tensor(original_shape, Device::CPU);
+        Tensor tensor(original_shape, Device::CPU, false, nullptr);
         tensor.transpose(test.dim1, test.dim2);
         EXPECT_EQ(tensor.shape(), test.expected_shape)
             << "Failed for transpose(" << test.dim1 << ", " << test.dim2 << ")";
@@ -368,7 +369,7 @@ TEST_F(TensorTest, TransposeDifferentDimensions)
 TEST_F(TensorTest, Transpose2D)
 {
     std::vector<size_t> shape = {3, 4};
-    Tensor tensor(shape, Device::CPU);
+    Tensor tensor(shape, Device::CPU, false, nullptr);
 
     // Fill with test data
     float *data = tensor.data();
@@ -393,7 +394,7 @@ TEST_F(TensorTest, Transpose2D)
 TEST_F(TensorTest, TFunction)
 {
     std::vector<size_t> shape = {3, 4};
-    Tensor tensor(shape, Device::CPU);
+    Tensor tensor(shape, Device::CPU, false, nullptr);
 
     // Fill with test data
     float *data = tensor.data();
@@ -415,7 +416,7 @@ TEST_F(TensorTest, TFunction)
 TEST_F(TensorTest, TFunctionSquare)
 {
     std::vector<size_t> shape = {3, 3};
-    Tensor tensor(shape, Device::CPU);
+    Tensor tensor(shape, Device::CPU, false, nullptr);
 
     // Fill with test data
     float *data = tensor.data();
@@ -436,7 +437,7 @@ TEST_F(TensorTest, TFunctionSquare)
 TEST_F(TensorTest, ContiguousFunction)
 {
     std::vector<size_t> shape = {2, 3, 4};
-    Tensor tensor(shape, Device::CPU);
+    Tensor tensor(shape, Device::CPU, false, nullptr);
 
     // Initially should be contiguous
     EXPECT_TRUE(tensor.is_contiguous());
@@ -454,7 +455,7 @@ TEST_F(TensorTest, ContiguousFunction)
 TEST_F(TensorTest, ChainedOperations)
 {
     std::vector<size_t> original_shape = {2, 3, 4};
-    Tensor tensor(original_shape, Device::CPU);
+    Tensor tensor(original_shape, Device::CPU, false, nullptr);
 
     // Fill with test data
     float *data = tensor.data();
@@ -482,7 +483,8 @@ TEST_F(TensorTest, ChainedOperations)
 TEST_F(TensorTest, ConstructorCUDA_LargeAligned)
 {
     std::vector<size_t> shape = {64, 64}; // 64*64*4 = 16384 bytes (multiple of 128)
-    Tensor tensor(shape, Device::CUDA);
+    Tensor tensor(shape, Device::CUDA, false, nullptr);
+    ;
 
     EXPECT_EQ(tensor.shape(), shape);
     EXPECT_EQ(tensor.size(), 4096);
@@ -493,7 +495,7 @@ TEST_F(TensorTest, ConstructorCUDA_LargeAligned)
 TEST_F(TensorTest, ConstructorCUDA_Mutable)
 {
     std::vector<size_t> shape = {32, 32};
-    Tensor tensor(shape, Device::CUDA, true);
+    Tensor tensor(shape, Device::CUDA, true, nullptr);
 
     EXPECT_EQ(tensor.shape(), shape);
     EXPECT_EQ(tensor.size(), 1024);
@@ -506,7 +508,7 @@ TEST_F(TensorTest, CUDADeviceTransfer)
     std::vector<size_t> shape = {32, 32};
 
     // Create CPU tensor and fill with data
-    Tensor cpu_tensor(shape, Device::CPU);
+    Tensor cpu_tensor(shape, Device::CPU, false, nullptr);
     float *cpu_data = cpu_tensor.data();
     for (size_t i = 0; i < cpu_tensor.size(); ++i)
     {
@@ -532,7 +534,8 @@ TEST_F(TensorTest, CUDAClone)
     std::vector<size_t> shape = {32, 16};
 
     // Create CUDA tensor
-    Tensor cuda_tensor(shape, Device::CUDA);
+    Tensor cuda_tensor(shape, Device::CUDA, false, nullptr);
+    ;
 
     // Clone it
     Tensor cloned_tensor = cuda_tensor.clone();
@@ -546,7 +549,7 @@ TEST_F(TensorTest, CUDAClone)
 TEST_F(TensorTest, CUDAView)
 {
     std::vector<size_t> original_shape = {32, 32};
-    Tensor cuda_tensor(original_shape, Device::CUDA);
+    Tensor cuda_tensor(original_shape, Device::CUDA, false, nullptr);
 
     // Test view with same total size
     std::vector<size_t> new_shape = {64, 16};
@@ -560,7 +563,7 @@ TEST_F(TensorTest, CUDAView)
 TEST_F(TensorTest, CUDAReshape)
 {
     std::vector<size_t> original_shape = {32, 32};
-    Tensor cuda_tensor(original_shape, Device::CUDA);
+    Tensor cuda_tensor(original_shape, Device::CUDA, false, nullptr);
 
     // Test reshape
     std::vector<size_t> new_shape = {128, 8};
@@ -574,7 +577,8 @@ TEST_F(TensorTest, CUDAReshape)
 TEST_F(TensorTest, CUDATranspose)
 {
     std::vector<size_t> shape = {32, 64};
-    Tensor cuda_tensor(shape, Device::CUDA);
+    Tensor cuda_tensor(shape, Device::CUDA, false, nullptr);
+    ;
 
     // Test transpose dimensions 0 and 1
     cuda_tensor.transpose(0, 1);
@@ -589,7 +593,8 @@ TEST_F(TensorTest, CUDATranspose)
 TEST_F(TensorTest, CUDA_TFunction)
 {
     std::vector<size_t> shape = {32, 64};
-    Tensor cuda_tensor(shape, Device::CUDA);
+    Tensor cuda_tensor(shape, Device::CUDA, false, nullptr);
+    ;
 
     // Apply t() function
     cuda_tensor.t();
@@ -604,7 +609,8 @@ TEST_F(TensorTest, CUDA_TFunction)
 TEST_F(TensorTest, CUDAContiguous)
 {
     std::vector<size_t> shape = {32, 32, 4};
-    Tensor cuda_tensor(shape, Device::CUDA);
+    Tensor cuda_tensor(shape, Device::CUDA, false, nullptr);
+    ;
 
     // Initially should be contiguous
     EXPECT_TRUE(cuda_tensor.is_contiguous());
@@ -622,7 +628,7 @@ TEST_F(TensorTest, CUDAContiguous)
 TEST_F(TensorTest, CUDAChainedOperations)
 {
     std::vector<size_t> original_shape = {32, 32, 4};
-    Tensor cuda_tensor(original_shape, Device::CUDA);
+    Tensor cuda_tensor(original_shape, Device::CUDA, false, nullptr);
 
     // Chain operations: view -> transpose -> reshape
     cuda_tensor.view({64, 64});
@@ -643,7 +649,8 @@ TEST_F(TensorTest, CUDALargeAlignedTensor)
 {
     // Test with larger tensor that maintains alignment
     std::vector<size_t> shape = {256, 256}; // Large but aligned
-    Tensor cuda_tensor(shape, Device::CUDA);
+    Tensor cuda_tensor(shape, Device::CUDA, false, nullptr);
+    ;
 
     EXPECT_EQ(cuda_tensor.shape(), shape);
     EXPECT_EQ(cuda_tensor.size(), 65536);
@@ -685,8 +692,8 @@ protected:
         data_cat.insert(data_cat.end(), data_a.begin(), data_a.end());
         data_cat.insert(data_cat.end(), data_b.begin(), data_b.end());
 
-        a = Tensor(data_a.data(), shape_a, true, Device::CPU, true);
-        b = Tensor(data_b.data(), shape_b, true, Device::CPU);
+        a = Tensor(data_a.data(), shape_a, true, Device::CPU, true, nullptr);
+        b = Tensor(data_b.data(), shape_b, true, Device::CPU, false, nullptr);
     }
 
     void TearDown() override
@@ -856,7 +863,7 @@ protected:
     std::vector<size_t> shape;
     Tensor ts;
 
-    TensorExpandTest() : shape({2, 4}), ts(shape, Device::CPU, true)
+    TensorExpandTest() : shape({2, 4}), ts(shape, Device::CPU, true, nullptr)
     {
         google::InitGoogleLogging("TensorExpandTest");
         FLAGS_logtostderr = true;
