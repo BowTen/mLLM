@@ -29,7 +29,7 @@ int main()
 class Qwen3IncrementalCheck : public ::testing::Test
 {
 protected:
-    base::Device check_device = base::Device::CUDA;
+    base::Device check_device = base::Device::CPU;
     float check_eps = 1e-3;
     std::string outputs_path = "/home/hznuojai/ai_infra/MiniLLM/scripts/debug_outputs";
     Qwen3 model;

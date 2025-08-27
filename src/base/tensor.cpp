@@ -221,17 +221,13 @@ namespace mllm
 
         Tensor Tensor::clone()
         {
-            auto new_tensor = Tensor(meta_->shape_, meta_->buffer_->clone(), meta_->device_, meta_->mut_);
-            new_tensor.meta_->stride_ = meta_->stride_;
-            return new_tensor;
+            TensorMeta *tm = new TensorMeta(*meta_);
+            tm->buffer_ = meta_->buffer_->clone();
+            return Tensor(std::shared_ptr<TensorMeta>(tm));
         }
 
         void Tensor::view(std::vector<size_t> shape)
         {
-            if (!meta_->is_contiguous_)
-            {
-                throw std::runtime_error("Tensor must be contiguous to use view.");
-            }
             size_t new_size = 1;
             size_t dim = meta_->shape_.size();
             for (size_t i = 0; i < dim; i++)
@@ -245,6 +241,7 @@ namespace mllm
             meta_->shape_ = shape;
             meta_->stride_ = TensorMeta::default_stride(shape);
             meta_->update();
+            CHECK(meta_->is_contiguous_) << "Tensor failed to view";
         }
 
         void Tensor::reshape(std::vector<size_t> shape)
@@ -350,13 +347,11 @@ namespace mllm
             vec_buffer->push(bytes, num_bytes);
         }
 
-        void Tensor::cat(Tensor &other, int dim)
+        void Tensor::cat(Tensor &other, int dim_int)
         {
             CHECK(meta_->mut_) << "Tensor must be mutable in cat()";
-            CHECK(dim < static_cast<int>(meta_->shape_.size()) && -dim <= static_cast<int>(meta_->shape_.size())) << "Dimension out of range in cat()";
+            int dim = check_index(dim_int);
             CHECK(other.shape().size() == this->shape().size()) << "Other tensor must have the same number of dimensions.";
-            if (dim < 0)
-                dim += static_cast<int>(meta_->shape_.size());
             auto other_shape = other.shape();
             other_shape[dim] = meta_->shape_[dim];
             CHECK(other_shape == meta_->shape_) << "Other tensor must have the same shape except for the concatenation dimension.";
@@ -368,45 +363,40 @@ namespace mllm
             {
                 VLOG(DEBUG) << "directly pushing data to cat Tensors";
                 this->push(other.data(), other.size() * sizeof(float));
-                meta_->shape_[dim] += other.shape(dim);
-                meta_->update();
+                this->meta_->shape_[dim] += other.shape(dim);
+                this->view(this->shape());
                 return;
             }
 
             LOG(WARNING) << "Falling back to cloning tensors for cat()";
-            auto cp = this->clone();
-            cp.contiguous();
+            Tensor this_cp = this->clone();
+            size_t total_size = this_cp.logic_size() + other.logic_size();
+            this->resize(total_size);
+
+            this_cp.contiguous();
             other.contiguous();
-            meta_->buf_holder_ = cp.buffer();
+            size_t block_size = std::accumulate(meta_->shape_.begin() + dim + 1, meta_->shape_.end(), 1, std::multiplies<size_t>());
 
-            auto vec_buffer = std::dynamic_pointer_cast<VecBuffer>(meta_->buffer_);
-            CHECK(vec_buffer != nullptr) << "Buffer is not a VecBuffer in cat()";
+            float *new_data = this->data();
+            float *new_data_end = new_data + total_size;
+            float *this_cp_data = this_cp.data();
+            float *other_data = other.data();
 
-            size_t dim_size = std::accumulate(meta_->shape_.begin() + dim + 1, meta_->shape_.end(), 1, std::multiplies<size_t>());
-            size_t this_dim_shape = this->shape(dim);
-            size_t other_dim_shape = other.shape(dim);
-            vec_buffer->resize((this->size() + other.size()) * sizeof(float));
-
-            auto allocator = meta_->buffer_->get_allocator();
-            float *st = this->data();
-            float *ed = st + this->size();
-            float *src_a = cp.data();
-            float *src_b = other.data();
-            size_t stride_a = dim_size * this_dim_shape;
-            size_t stride_b = dim_size * other_dim_shape;
-            size_t num_a_copy_bytes = stride_a * sizeof(float);
-            size_t num_b_copy_bytes = stride_b * sizeof(float);
-            while (st < ed)
+            size_t this_cp_stride = this_cp.shape(dim) * block_size;
+            size_t other_stride = other.shape(dim) * block_size;
+            Allocator *allocator = this->meta_->buffer_->get_allocator();
+            while (new_data < new_data_end)
             {
-                allocator->memcpy(st, src_a, num_a_copy_bytes);
-                st += stride_a;
-                src_a += stride_a;
-                allocator->memcpy(st, src_b, num_b_copy_bytes);
-                st += stride_b;
-                src_b += stride_b;
+                allocator->memcpy(new_data, this_cp_data, this_cp_stride * sizeof(float));
+                new_data += this_cp_stride;
+                this_cp_data += this_cp_stride;
+                allocator->memcpy(new_data, other_data, other_stride * sizeof(float));
+                new_data += other_stride;
+                other_data += other_stride;
             }
-            meta_->shape_[dim] += other.shape(dim);
-            meta_->update();
+
+            this->meta_->shape_[dim] += other.shape(dim);
+            this->view(this->shape());
         }
 
         void Tensor::insert_dim(int dim_int)
@@ -426,5 +416,31 @@ namespace mllm
             meta_->stride_[dim] = 0;
             meta_->update();
         }
+        void Tensor::reserve(size_t size)
+        {
+            CHECK(meta_->mut_) << "Tensor must be mutable in reserve()";
+            std::shared_ptr<VecBuffer> vec_buffer = std::dynamic_pointer_cast<VecBuffer>(meta_->buffer_);
+            CHECK(vec_buffer);
+            vec_buffer->reserve(size * sizeof(float));
+        }
+        void Tensor::resize(size_t size)
+        {
+            CHECK(meta_->mut_) << "Tensor must be mutable in reserve()";
+            std::shared_ptr<VecBuffer> vec_buffer = std::dynamic_pointer_cast<VecBuffer>(meta_->buffer_);
+            CHECK(vec_buffer);
+            vec_buffer->resize(size * sizeof(float));
+        }
+
+        std::vector<size_t> Tensor::index(size_t id)
+        {
+            std::vector<size_t> idx(meta_->shape_.size());
+            for (int i = meta_->shape_.size() - 1; i >= 0; --i)
+            {
+                idx[i] = id % meta_->shape_[i];
+                id /= meta_->shape_[i];
+            }
+            return idx;
+        }
+
     } // namespace base
 } // namespace mllm

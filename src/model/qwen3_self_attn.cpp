@@ -95,8 +95,8 @@ namespace mllm
             if (k_cache.empty())
             {
                 VLOG(DEBUG) << "Creating new KV cache tensors in layer " << layer_index_;
-                k_cache = k_output;
-                v_cache = v_output;
+                k_cache = k_output.clone();
+                v_cache = v_output.clone();
             }
             else
             {
@@ -109,6 +109,8 @@ namespace mllm
             k_cache.t();
             mat_mul.forward(q_output, k_cache, attn_weights);
             k_cache.t();
+            // this->k_cache.contiguous();
+            // this->v_cache.contiguous();
             mat_sc_mul.forward(attn_weights, scaling, attn_weights);
             causal_mask.forward(attn_weights);
             softmax.forward(attn_weights, attn_weights);

@@ -41,5 +41,6 @@ protected:
 TEST_F(Qwen3CpuCudaCheckTest, Demo)
 {
     LOG(INFO) << "Run Qwen3 Check";
-    qwen3_check.forward({1234, 5678});
+    qwen3_check.forward({1234, 5678, 4356, 1246, 9870});
+    qwen3_check.forward({910});
 }

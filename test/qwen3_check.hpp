@@ -61,15 +61,16 @@ public:
                 inf_count_cuda++;
         }
 
+        size_t mismatch_count = 0;
         if (nan_count_cpu > 0 || inf_count_cpu > 0 || nan_count_cuda > 0 || inf_count_cuda > 0)
         {
             LOG(ERROR) << "Invalid values detected in " << tensor_name << ":";
             LOG(ERROR) << "CPU - NaN: " << nan_count_cpu << ", Inf: " << inf_count_cpu;
             LOG(ERROR) << "CUDA - NaN: " << nan_count_cuda << ", Inf: " << inf_count_cuda;
+            mismatch_count += nan_count_cpu + inf_count_cpu + nan_count_cuda + inf_count_cuda;
         }
 
         // Find first few mismatches for debugging
-        size_t mismatch_count = 0;
         for (size_t i = 0; i < total_size && mismatch_count < 10; i++)
         {
             float cpu_val = *cpu[i];
@@ -376,15 +377,16 @@ public:
 
         // Step 9: Attention computation
         LOG(INFO) << "      Checking attention weights computation...";
-        Tensor attn_weights_cpu({this_cpu->num_attention_heads, this_cpu->k_cache.shape(-2), this_cpu->k_cache.shape(-2)}, this_cpu->device_);
-        Tensor attn_weights_cuda({this_cuda->num_attention_heads, this_cuda->k_cache.shape(-2), this_cuda->k_cache.shape(-2)}, this_cuda->device_);
+        Tensor attn_weights_cpu({this_cpu->num_attention_heads, this_cpu->q_output.shape(-2), this_cpu->k_cache.shape(-2)}, this_cpu->device_);
+        Tensor attn_weights_cuda({this_cuda->num_attention_heads, this_cuda->q_output.shape(-2), this_cuda->k_cache.shape(-2)}, this_cuda->device_);
 
         this_cpu->k_cache.t();
         this_cuda->k_cache.t();
-
         this_cpu->mat_mul.forward(this_cpu->q_output, this_cpu->k_cache, attn_weights_cpu);
         this_cuda->mat_mul.forward(this_cuda->q_output, this_cuda->k_cache, attn_weights_cuda);
         check_tensor(attn_weights_cpu, attn_weights_cuda, "attn_weights_raw");
+        this_cpu->k_cache.t();
+        this_cuda->k_cache.t();
 
         // Step 10: Scale attention weights
         LOG(INFO) << "      Checking attention scaling...";

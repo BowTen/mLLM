@@ -25,7 +25,6 @@ namespace mllm
             std::vector<size_t> stride_;
             bool is_contiguous_;
             Buffer::BufferPtr buffer_;
-            Buffer::BufferPtr buf_holder_;
             Device device_;
             bool mut_;
             size_t num_mats_ = 0;
@@ -52,6 +51,7 @@ namespace mllm
 
         public:
             Tensor() : meta_(std::make_shared<TensorMeta>()) {}
+            Tensor(std::shared_ptr<TensorMeta> meta) : meta_(meta) {}
             Tensor(const std::vector<size_t> &shape, Buffer::BufferPtr buffer, Device device = Device::CPU, bool mut = false)
                 : meta_(std::make_shared<TensorMeta>(shape, buffer, device, mut)) {}
             Tensor(const std::vector<size_t> &shape, Device device = Device::CPU, bool mut = false)
@@ -107,6 +107,10 @@ namespace mllm
 
             void insert_dim(int dim_int);
             void expand(int dim_int, size_t size);
+            void reserve(size_t size);
+            void resize(size_t size);
+
+            std::vector<size_t> index(size_t id);
         };
 
         using PosEmb = std::pair<Tensor *, Tensor *>; // cos sin
