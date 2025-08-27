@@ -34,8 +34,6 @@ namespace mllm
         void silu_kernel_cuda(base::Tensor *input, [[maybe_unused]] void *stream)
         {
             size_t seq_len = input->shape(-2);
-            if (seq_len <= 1)
-                return;
             input->contiguous();
             size_t head_dim = input->shape(-1);
             size_t num_mats = input->num_mats();

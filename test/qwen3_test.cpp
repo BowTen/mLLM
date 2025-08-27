@@ -29,7 +29,7 @@ class Qwen3Test : public ::testing::Test
 protected:
     Qwen3 model;
 
-    Qwen3Test() : model(Qwen3::from_pretrained("/home/hznuojai/ai_infra/MiniLLM/resources/Qwen/Qwen3-0.6B", base::Device::CPU, 1.0f))
+    Qwen3Test() : model(Qwen3::from_pretrained("/home/hznuojai/ai_infra/MiniLLM/resources/Qwen/Qwen3-0.6B", base::Device::CPU, 0.3f))
     {
         VLOG(DEBUG) << "Set up Qwen3Test";
     }
@@ -44,7 +44,7 @@ TEST_F(Qwen3Test, Demo)
 {
     LOG(INFO) << "Run Demo";
     auto tokenizer = model.get_tokenizer();
-    string input_text = "The weather is really 2";
+    string input_text = "我喜欢蓝";
     auto ids = tokenizer->encode(input_text);
     cout << input_text << " -> ";
     for (auto id : ids)

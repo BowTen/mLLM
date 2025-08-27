@@ -30,11 +30,11 @@ namespace mllm
 
             auto intermediate_shape = hidden_state->shape();
             intermediate_shape.back() = intermediate_size;
-            // if (gate_state.shape() != intermediate_shape)
-            // {
-            gate_state = Tensor(intermediate_shape, device_);
-            up_state = Tensor(intermediate_shape, device_);
-            // }
+            if (gate_state.shape() != intermediate_shape)
+            {
+                gate_state = Tensor(intermediate_shape, device_);
+                up_state = Tensor(intermediate_shape, device_);
+            }
 
             up_proj.forward(*hidden_state, up_state);
             gate_proj.forward(*hidden_state, gate_state);
