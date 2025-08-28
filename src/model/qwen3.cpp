@@ -27,7 +27,7 @@ namespace mllm
               config_(base::load_json(model_path + "/config.json")),
               vocab_size(config_["vocab_size"]),
               hidden_size(config_["hidden_size"]),
-              tokenizer(BPETokenizer::from_file(model_path + "/tokenizer.json")),
+              tokenizer(std::make_shared<BPETokenizer>(model_path + "/tokenizer.json")),
               embed_tokens(vocab_size, hidden_size, device_, stream_),
               rotary_embedding(config_, device_, stream_),
               norm(hidden_size, config_["rms_norm_eps"], device_, stream_),
@@ -74,7 +74,7 @@ namespace mllm
             std::cout << "Top " << top_k << " tokens:\n";
             for (size_t i = 0; i < top_k; ++i)
             {
-                std::string token_str = this->tokenizer.decode(token_probs[i].first);
+                std::string token_str = this->tokenizer->decode(token_probs[i].first);
                 std::cout << "Token ID: " << token_probs[i].first
                           << ", token_str: " << token_str
                           << ", Probability: " << token_probs[i].second << "\n";
@@ -83,6 +83,8 @@ namespace mllm
 
         void Qwen3::forward(Tensor &token_ids, Tensor &next_token_id)
         {
+            token_ids.set_stream(stream_);
+            next_token_id.set_stream(stream_);
             setInput(0, token_ids);
             setOutput(0, next_token_id);
             VLOG(DEBUG) << "Forward pass through Qwen3 model";

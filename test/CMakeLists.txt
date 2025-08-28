@@ -50,6 +50,8 @@ add_executable(qwen3_incremental_check qwen3_incremental_check.cpp)
 # Link libraries
 target_link_libraries(tokenizer_test 
     tokenizer  # Link to the tokenizer library from src
+    base       # tokenizer depends on base
+    kernel     # base depends on kernel
     ${GTEST_LIBRARIES}
     ${GTEST_MAIN_LIBRARIES}
     Threads::Threads

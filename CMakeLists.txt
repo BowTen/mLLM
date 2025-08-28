@@ -29,3 +29,4 @@ include_directories(include)
 # Add subdirectories
 add_subdirectory(src)
 add_subdirectory(test)
+add_subdirectory(demo)

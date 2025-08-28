@@ -26,7 +26,7 @@ namespace mllm
             JsonConfig config_;
             size_t vocab_size;
             size_t hidden_size;
-            BPETokenizer tokenizer;
+            BPETokenizerPtr tokenizer;
             Embedding embed_tokens;
             Qwen3RotaryEmbedding rotary_embedding;
             std::vector<Qwen3DecodeLayer> layers;
@@ -56,7 +56,7 @@ namespace mllm
             void forward(Tensor &token_ids, Tensor &next_token_id);
 
             JsonConfig config() const { return config_; }
-            BPETokenizer *get_tokenizer() { return &tokenizer; }
+            BPETokenizerPtr get_tokenizer() { return tokenizer; }
             Embedding *get_embed_tokens() { return &embed_tokens; }
             Qwen3RotaryEmbedding *get_rotary_embedding() { return &rotary_embedding; }
             std::vector<Qwen3DecodeLayer> *get_layers() { return &layers; }

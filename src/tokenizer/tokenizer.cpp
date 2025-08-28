@@ -15,6 +15,16 @@ namespace mllm
 {
     namespace tokenizer
     {
+        // Define static constants
+        const uint32_t BPETokenizer::QWEN3_END_OF_TEXT;
+        const uint32_t BPETokenizer::QWEN3_IM_START;
+        const uint32_t BPETokenizer::QWEN3_IM_END;
+        const uint32_t BPETokenizer::QWEN3_ENTER;
+        const uint32_t BPETokenizer::QWEN3_USER;
+        const uint32_t BPETokenizer::QWEN3_ASSISTANT;
+        const uint32_t BPETokenizer::QWEN3_THINK;
+        const uint32_t BPETokenizer::QWEN3_END_THINK;
+
         BPETokenizer::BPETokenizer(std::string tokenizer_path)
         {
             VLOG(TRACE) << "Loading tokenizer from: " << tokenizer_path;
@@ -242,5 +252,54 @@ namespace mllm
             return vocab[id];
         }
 
+        std::string BPETokenizer::decode(base::Tensor ids) const
+        {
+            base::Device device = ids.device();
+            ids.toDevice(base::Device::CPU);
+
+            std::vector<uint32_t> id_vec;
+            size_t size = ids.size();
+            uint32_t *id_data = reinterpret_cast<uint32_t *>(ids.data());
+            for (size_t i = 0; i < size; i++)
+            {
+                id_vec.push_back(id_data[i]);
+            }
+
+            ids.toDevice(device);
+            return decode(id_vec);
+        }
+
+        std::vector<uint32_t> BPETokenizer::encode_with_chat_template(
+            const std::string &text,
+            bool add_generation_prompt,
+            bool enable_thinking) const
+        {
+            std::vector<uint32_t> token_ids({BPETokenizer::QWEN3_IM_START,
+                                             BPETokenizer::QWEN3_USER,
+                                             BPETokenizer::QWEN3_ENTER});
+            auto text_ids = this->encode(text);
+            token_ids.insert(token_ids.end(), text_ids.begin(), text_ids.end());
+            token_ids.push_back(BPETokenizer::QWEN3_IM_END);
+            token_ids.push_back(BPETokenizer::QWEN3_ENTER);
+            if (add_generation_prompt)
+            {
+                token_ids.push_back(BPETokenizer::QWEN3_IM_START);
+                token_ids.push_back(BPETokenizer::QWEN3_ASSISTANT);
+                token_ids.push_back(BPETokenizer::QWEN3_ENTER);
+                if (!enable_thinking)
+                {
+                    token_ids.push_back(BPETokenizer::QWEN3_THINK);
+                    token_ids.push_back(271);
+                    token_ids.push_back(BPETokenizer::QWEN3_END_THINK);
+                    token_ids.push_back(271);
+                }
+            }
+            return token_ids;
+        }
+
+        base::Tensor BPETokenizer::to_tensor(std::vector<uint32_t> ids, base::Device device) const
+        {
+            return base::Tensor::from_vector(ids, {ids.size(), 1}, device, false, nullptr);
+        }
     } // namespace tokenizer
 } // namespace mllm

@@ -113,6 +113,10 @@ namespace mllm
             void resize(size_t size);
 
             std::vector<size_t> index(size_t id);
+
+            base::Device device() const { return meta_->device_; }
+            cudaStream_t stream() const { return meta_->stream_; }
+            void set_stream(cudaStream_t stream) { meta_->stream_ = stream; }
         };
 
         using PosEmb = std::pair<Tensor *, Tensor *>; // cos sin
