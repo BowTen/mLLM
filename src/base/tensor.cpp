@@ -371,7 +371,7 @@ namespace mllm
                 return;
             }
 
-            LOG(WARNING) << "Falling back to cloning tensors for cat()";
+            // LOG(WARNING) << "Falling back to cloning tensors for cat()";
             Tensor this_cp = this->clone();
             size_t total_size = this_cp.logic_size() + other.logic_size();
             this->resize(total_size);

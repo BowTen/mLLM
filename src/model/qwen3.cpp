@@ -118,12 +118,6 @@ namespace mllm
             softmax.forward(final_probability, final_probability);
 
             kernel::get_random_sampling_kernel(device_)(&final_probability, &next_token_id, stream_);
-
-            // DEBUG
-            final_probability.toDevice(base::Device::CPU);
-            print_top_tokens_cpu(final_probability, 10);
-            final_probability.toDevice(device_);
-            // DEBUG
         }
 
         std::vector<WLayer *> Qwen3::weighted_layers()

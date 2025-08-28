@@ -63,6 +63,7 @@ namespace mllm
             RMSNorm *get_norm() { return &norm; }
             MatMul *get_temp_scal() { return &temp_scal; }
             Linear *get_lm_head() { return &lm_head; }
+            Tensor get_final_probability() const { return final_probability; }
             base::Device device() const { return device_; }
             cudaStream_t stream() const { return stream_; }
 
