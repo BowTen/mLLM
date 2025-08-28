@@ -10,11 +10,18 @@ namespace mllm
 {
     namespace tokenizer
     {
+
         class BPETokenizer
         {
+        public:
+            static const uint32_t QWEN3_END_OF_TEXT = 151643;
+            static const uint32_t QWEN3_IM_START = 151644;
+            static const uint32_t QWEN3_IM_END = 151645;
+
         private:
             std::vector<std::pair<std::string, uint32_t>> sorted_vocab;
             std::vector<std::string> vocab;
+            size_t num_special_tokens;
 
             BPETokenizer(std::string tokenizer_path);
 
@@ -27,7 +34,7 @@ namespace mllm
         public:
             static BPETokenizer from_file(const std::string &tokenizer_path);
 
-            std::vector<uint32_t> encode(const std::string &text) const;
+            std::vector<uint32_t> encode(const std::string &text, bool special_token = false) const;
 
             std::string decode(const std::vector<uint32_t> &ids) const;
 

@@ -8,7 +8,7 @@
 using namespace mllm::tokenizer;
 
 // 全局变量存储tokenizer路径
-std::string g_tokenizer_path;
+std::string g_tokenizer_path = "/home/hznuojai/ai_infra/MiniLLM/resources/Qwen/Qwen3-0.6B/tokenizer.json";
 
 class TokenizerTest : public ::testing::Test
 {
@@ -155,6 +155,50 @@ TEST_F(TokenizerTest, MultiCharacterProcessing)
     std::string decoded = tokenizer.decode(encoded);
 
     EXPECT_EQ(text, decoded);
+}
+
+TEST_F(TokenizerTest, NoneSpecialTokens)
+{
+    auto tokenizer = BPETokenizer::from_file(test_tokenizer_path);
+
+    std::string end_token = "<|im_end|>， <|endoftext|>";
+    auto ids = tokenizer.encode(end_token, false);
+
+    std::cout << "txt: " << end_token << std::endl;
+    std::cout << "ids: ";
+    for (const auto &id : ids)
+    {
+        std::cout << id << " ";
+    }
+    std::cout << std::endl;
+
+    auto decode = tokenizer.decode(ids);
+    std::cout << "decode: " << decode << std::endl;
+
+    std::vector<uint32_t> expected_ids({27, 91, 318, 6213, 91, 29, 3837, 82639, 8691, 69, 1318, 91, 29});
+    EXPECT_EQ(ids, expected_ids);
+    EXPECT_EQ(end_token, decode);
+}
+TEST_F(TokenizerTest, SpecialTokens)
+{
+    auto tokenizer = BPETokenizer::from_file(test_tokenizer_path);
+
+    std::string end_token = "<|im_end|>， <|endoftext|>";
+    auto ids = tokenizer.encode(end_token, true);
+
+    std::cout << "txt: " << end_token << std::endl;
+    std::cout << "ids: ";
+    for (const auto &id : ids)
+    {
+        std::cout << id << " ";
+    }
+    std::cout << std::endl;
+    auto decode = tokenizer.decode(ids);
+    std::cout << "decode: " << decode << std::endl;
+
+    std::vector<uint32_t> expected_ids({151645, 3837, 220, 151643});
+    EXPECT_EQ(ids, expected_ids);
+    EXPECT_EQ(end_token, decode);
 }
 
 int main(int argc, char **argv)

@@ -41,6 +41,14 @@ namespace mllm
                 token_frequencies[token] = rank--;
             }
 
+            // 将特殊token放在最前面
+            for (auto &added_token : tokenizer_json["added_tokens"])
+            {
+                std::string token = added_token["content"];
+                uint32_t id = added_token["id"];
+                sorted_vocab.emplace_back(token, id);
+            }
+            num_special_tokens = sorted_vocab.size();
             for (auto &[token, id] : tokenizer_json["model"]["vocab"].items())
             {
                 sorted_vocab.emplace_back(token, id);
@@ -59,13 +67,7 @@ namespace mllm
                     }
                 }
             }
-            for (auto &added_token : tokenizer_json["added_tokens"])
-            {
-                std::string token = added_token["content"];
-                uint32_t id = added_token["id"];
-                sorted_vocab.emplace_back(token, id);
-            }
-            std::sort(sorted_vocab.begin(), sorted_vocab.end(),
+            std::sort(sorted_vocab.begin() + num_special_tokens, sorted_vocab.end(),
                       [&](const auto &a, const auto &b)
                       {
                           if (a.first.size() == b.first.size())
@@ -160,7 +162,7 @@ namespace mllm
             return BPETokenizer(tokenizer_path);
         }
 
-        std::vector<uint32_t> BPETokenizer::encode(const std::string &text) const
+        std::vector<uint32_t> BPETokenizer::encode(const std::string &text, bool special_token) const
         {
             if (text.empty())
             {
@@ -168,8 +170,9 @@ namespace mllm
             }
             std::vector<int> vis(text.size(), -1);
             size_t cnt = 0;
-            for (auto &[token, id] : sorted_vocab)
+            for (size_t i = (special_token ? 0 : num_special_tokens); i < sorted_vocab.size(); i++)
             {
+                auto &[token, id] = sorted_vocab[i];
                 for (int i = 0; i + token.size() <= text.size(); i++)
                 {
                     bool ok = true;
