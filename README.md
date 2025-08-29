@@ -63,6 +63,9 @@ MiniLLM/
 └── README.md
 ```
 
+## Qwen3 架构图
+![Qwen3架构图](https://github.com/BowTen/mLLM/raw/main/resources/qwen3_arc.png)
+
 ## 聊天示例
 
 ```cpp
