@@ -113,10 +113,10 @@ namespace mllm
             }
 
             norm.forward(hidden_state, hidden_state);
-            temp_scal.forward(hidden_state, temperature_scaling, hidden_state);
 
             kernel::get_last_hidden_state_kernel(device_)(&hidden_state, nullptr);
             lm_head.forward(hidden_state, final_probability);
+            temp_scal.forward(hidden_state, temperature_scaling, hidden_state);
             softmax.forward(final_probability, final_probability);
 
             kernel::get_random_sampling_kernel(device_)(&final_probability, &next_token_id, stream_);
