@@ -60,6 +60,7 @@ namespace mllm
                 : meta_(std::make_shared<TensorMeta>(shape, device, mut, stream)) {}
             Tensor(void *data, const std::vector<size_t> &shape, bool copy, Device device, bool mut, cudaStream_t stream)
                 : meta_(std::make_shared<TensorMeta>(data, shape, copy, device, mut, stream)) {}
+            static Tensor rand(const std::vector<size_t> &shape, Device device, bool mut, cudaStream_t stream);
             static Tensor from_float(float value, Device device, bool mut, cudaStream_t stream);
 
             template <class T>

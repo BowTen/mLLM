@@ -20,6 +20,13 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     message(STATUS "Debug mode enabled")
 endif()
 
+# Release flags for optimal performance
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+    set(CMAKE_CUDA_FLAGS_RELEASE "-O3 -DNDEBUG")
+    message(STATUS "Release mode enabled with optimizations")
+endif()
+
 # Add compile options
 add_compile_options(-Wall -Wextra)
 

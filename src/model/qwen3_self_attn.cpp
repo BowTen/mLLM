@@ -38,13 +38,13 @@ namespace mllm
               o_proj({num_attention_heads * head_dim, hidden_size}, device, stream),
               q_norm(head_dim, config["rms_norm_eps"], device, stream),
               k_norm(head_dim, config["rms_norm_eps"], device, stream),
-              k_cache(),
-              v_cache(),
               mat_mul(device_, stream_),
               mat_sc_mul(device_, stream_),
               mat_mul_attn_output(device_, stream_),
               causal_mask(device_, stream_),
               softmax(device_, stream_),
+              k_cache(),
+              v_cache(),
               scaling(Tensor::from_float(static_cast<float>(std::pow(head_dim, -0.5f)), device_, false, stream_))
         {
             VLOG(TRACE) << "Constructor: Qwen3SelfAttn with layer index: " << layer_index_;

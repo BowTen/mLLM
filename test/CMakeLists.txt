@@ -46,6 +46,7 @@ add_executable(print_layer_weight print_layer_weight.cpp)
 add_executable(qwen3_cpu_cuda_check qwen3_cpu_cuda_check.cpp)
 add_executable(qwen3_hook_check qwen3_hook_check.cpp)
 add_executable(qwen3_incremental_check qwen3_incremental_check.cpp)
+add_executable(gemm_eval gemm_eval.cu)
 
 # Link libraries
 target_link_libraries(tokenizer_test 
@@ -329,6 +330,35 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(qwen3_incremental_check PRIVATE -g -O0)
     target_compile_definitions(qwen3_incremental_check PRIVATE DEBUG)
 endif()
+
+target_link_libraries(gemm_eval 
+    cudart 
+    cublas
+    base  # Link to the base library from src
+    kernel  # Link to the kernel library from src
+    op
+    model
+    ${CNPY_LIBRARY}
+    z
+    ${GTEST_LIBRARIES}
+    ${GTEST_MAIN_LIBRARIES}
+    Threads::Threads
+    armadillo
+    openblas    
+)
+target_include_directories(gemm_eval PRIVATE ${GTEST_INCLUDE_DIRS} ${CNPY_INCLUDE_DIR})
+target_compile_options(gemm_eval PRIVATE ${GTEST_CFLAGS_OTHER})
+
+# Override the global debug flags for this specific target
+set_target_properties(gemm_eval PROPERTIES
+    CUDA_FLAGS "-O3 -DNDEBUG"
+    CXX_FLAGS "-O3 -DNDEBUG"
+)
+target_compile_options(gemm_eval PRIVATE 
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3>
+    $<$<COMPILE_LANGUAGE:CXX>:-O3>
+)
+target_compile_definitions(gemm_eval PRIVATE NDEBUG)
 
 # Enable testing
 enable_testing()

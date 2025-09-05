@@ -5,7 +5,8 @@
 ### ✨ 核心特性
 
 - **🤖 模型支持**: 目前支持 Qwen3-0.6B 模型，直接兼容 Hugging Face 官方模型文件格式
-- **⚡ 双后端支持**: 同时实现了 CUDA 和 CPU 算子，支持 GPU 加速和 CPU 推理
+- **⚡ 双后端支持**: 实现了 CUDA 和 CPU 算子，支持 GPU 和 CPU 推理
+- **🧮 Sgemm**: 实现了 CUDA 的 Sgemm 算子，目前性能达到 cublas 的 82%
 - **📝 BPE Tokenizer**: 自主实现的字节对编码分词器
 - **💾 KV Cache**: 实现了键值缓存机制，提升推理效率
 
@@ -63,10 +64,21 @@ MiniLLM/
 └── README.md
 ```
 
-## Qwen3 架构图
+## 🧮 Sgemm 性能对比
+**使用设备的是 4090**
+
+M=N=K, M 整除64的情况
+![SgemmDiv64性能对比图](https://github.com/BowTen/mLLM/raw/main/resources/gemm_performance_comparison_div64.png)
+
+M=N=K, M 整除1的情况<br>
+这种情况目前只是在 div64 的基础上将所有 float4 存取展开，导致性能大幅下降，后续优化TODO
+![SgemmDiv1性能对比图](https://github.com/BowTen/mLLM/raw/main/resources/gemm_performance_comparison_div1.png)
+
+
+## 🤖 Qwen3 架构图
 ![Qwen3架构图](https://github.com/BowTen/mLLM/raw/main/resources/qwen3_arc.png)
 
-## 聊天示例
+## ⌨️ 聊天示例
 
 ```cpp
 #include "model/qwen3.h"

@@ -7,7 +7,7 @@ namespace mllm
     namespace kernel
     {
         void last_hidden_state_kernel_cuda(base::Tensor *input,
-                                           void *stream)
+                                           [[maybe_unused]] void *stream)
         {
             if (input->shape(-2) == 1)
             {
