@@ -150,6 +150,18 @@ namespace mllm
             }
         }
 
+        Tensor Tensor::rand(const std::vector<size_t> &shape, Device device, bool mut, cudaStream_t stream)
+        {
+            Tensor tensor(shape, base::Device::CPU, mut, stream);
+            size_t total_size = tensor.logic_size();
+            for (size_t i = 0; i < total_size; ++i)
+            {
+                *tensor[i] = get_random_float();
+            }
+            tensor.toDevice(device);
+            return tensor;
+        }
+
         Tensor Tensor::from_float(float value, Device device, bool mut, cudaStream_t stream)
         {
             return Tensor::from_vector(std::vector<float>({value}), {1}, device, mut, stream);

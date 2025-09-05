@@ -14,7 +14,7 @@ public:
 
     std::string chat(const std::string &input)
     {
-        auto chat_token_ids = tokenizer->encode_with_chat_template(input, true, true);
+        auto chat_token_ids = tokenizer->encode_with_chat_template(input, true, false);
         auto input_id = tokenizer->to_tensor(chat_token_ids, model.device());
         base::Tensor next_id({1, 1}, model.device(), false, model.stream());
 
@@ -52,7 +52,7 @@ int main()
 {
     std::string model_path = "/home/hznuojai/ai_infra/MiniLLM/resources/Qwen/Qwen3-0.6B";
     std::cout << "Loading model..." << std::endl;
-    Qwen3Chat qwen3(model_path, base::Device::CUDA, 0.6);
+    Qwen3Chat qwen3(model_path, base::Device::CPU, 1.0);
     std::cout << "Loading accomplished." << std::endl;
 
     while (true)
