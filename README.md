@@ -154,6 +154,9 @@ int main()
 }
 ```
 
+![Qwen3 chat demo 演示动图](https://github.com/BowTen/mLLM/raw/main/resources/chat_demo.gif)
+
+
 ## 依赖库
 
 - armadillo
