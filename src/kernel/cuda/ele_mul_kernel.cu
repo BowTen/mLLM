@@ -42,12 +42,12 @@ namespace mllm
             size_t total_size = input0->size();
             if (stream)
             {
-                ele_mul_kernel_cuda_fp32<<<8, 128, 0, static_cast<cudaStream_t>(stream)>>>(input0->data(), input1->data(), output->data(), total_size, stream);
+                ele_mul_kernel_cuda_fp32<<<1, 256, 0, static_cast<cudaStream_t>(stream)>>>(input0->data(), input1->data(), output->data(), total_size, stream);
             }
             else
             {
                 LOG(WARNING) << "No stream provided for CUDA ele mul kernel, running in default stream.";
-                ele_mul_kernel_cuda_fp32<<<8, 128>>>(input0->data(), input1->data(), output->data(), total_size, stream);
+                ele_mul_kernel_cuda_fp32<<<1, 256>>>(input0->data(), input1->data(), output->data(), total_size, stream);
             }
             // CHECK_CUDA_ERR(cudaDeviceSynchronize());
 

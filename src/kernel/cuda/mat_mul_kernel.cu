@@ -1,6 +1,7 @@
 #include "base/tensor.h"
 #include "base/util.h"
 #include "kernel/kernel.h"
+#include "kernel/cuda/gemm_kernel.cuh"
 #include <cub/block/block_reduce.cuh>
 
 #define GLOG_USE_GLOG_EXPORT
@@ -273,55 +274,58 @@ namespace mllm
                 return;
             }
 
-            CHECK(input0->num_mats() > 0);
-            CHECK(input0->num_mats() == input1->num_mats());
-            CHECK(input0->num_mats() == output->num_mats());
-            CHECK(input0->shape(-1) == input1->shape(-2));
-            CHECK(input0->shape(-2) == output->shape(-2));
-            CHECK(input1->shape(-1) == output->shape(-1));
-            input0->contiguous();
-            input1->contiguous();
-            output->contiguous();
-            uint32_t num_mats = input0->num_mats();
-            uint32_t N = input0->shape(-2);
-            uint32_t K = input0->shape(-1);
-            uint32_t M = input1->shape(-1);
-            VLOG(DEBUG) << "Matrix multiplication dimensions: " << num_mats << "x" << N << "x" << K << " and " << K << "x" << M;
+            gemm_kernel(input0, input1, output, stream);
+            return;
 
-            constexpr uint32_t MAX_BLOCK = 4096;
-            if (num_mats * N * M > MAX_BLOCK)
-            {
-                // 每个线程块处理output中的一行
-                dim3 blockDim(128);
-                dim3 gridDim(num_mats, N);
-                if (stream == nullptr)
-                    LOG(WARNING) << "Using mat_mul_kernel_cuda_fp32_vec for large matrix multiplication. without stream.";
+            // CHECK(input0->num_mats() > 0);
+            // CHECK(input0->num_mats() == input1->num_mats());
+            // CHECK(input0->num_mats() == output->num_mats());
+            // CHECK(input0->shape(-1) == input1->shape(-2));
+            // CHECK(input0->shape(-2) == output->shape(-2));
+            // CHECK(input1->shape(-1) == output->shape(-1));
+            // input0->contiguous();
+            // input1->contiguous();
+            // output->contiguous();
+            // uint32_t num_mats = input0->num_mats();
+            // uint32_t N = input0->shape(-2);
+            // uint32_t K = input0->shape(-1);
+            // uint32_t M = input1->shape(-1);
+            // VLOG(DEBUG) << "Matrix multiplication dimensions: " << num_mats << "x" << N << "x" << K << " and " << K << "x" << M;
 
-                if (!align_float4(input0) || !align_float4(input1) || !align_float4(output))
-                    simple::mat_mul_kernel_cuda_fp32_vec_router<<<gridDim, blockDim, 0, static_cast<cudaStream_t>(stream)>>>(
-                        input0->data(), input1->data(), output->data(), N, K, M);
-                else
-                    mat_mul_kernel_cuda_fp32_vec_router<<<gridDim, blockDim, 0, static_cast<cudaStream_t>(stream)>>>(
-                        input0->data(), input1->data(), output->data(), N, K, M);
-            }
-            else
-            {
-                // 每个线程块处理output中的一个元素
-                dim3 blockDim(128);
-                dim3 gridDim(num_mats, N, M);
-                if (stream == nullptr)
-                    LOG(WARNING) << "Using mat_mul_kernel_cuda_fp32_vec_fine for small matrix multiplication. without stream.";
+            // constexpr uint32_t MAX_BLOCK = 4096;
+            // if (num_mats * N * M > MAX_BLOCK)
+            // {
+            //     // 每个线程块处理output中的一行
+            //     dim3 blockDim(128);
+            //     dim3 gridDim(num_mats, N);
+            //     if (stream == nullptr)
+            //         LOG(WARNING) << "Using mat_mul_kernel_cuda_fp32_vec for large matrix multiplication. without stream.";
 
-                if (!align_float4(input0) || !align_float4(input1) || !align_float4(output))
-                    simple::mat_mul_kernel_cuda_fp32_vec_fine_router<<<gridDim, blockDim, 0, static_cast<cudaStream_t>(stream)>>>(
-                        input0->data(), input1->data(), output->data(), N, K, M);
-                else
-                    mat_mul_kernel_cuda_fp32_vec_fine_router<<<gridDim, blockDim, 0, static_cast<cudaStream_t>(stream)>>>(
-                        input0->data(), input1->data(), output->data(), N, K, M);
-            }
-            // CHECK_CUDA_ERR(cudaDeviceSynchronize());
+            //     if (!align_float4(input0) || !align_float4(input1) || !align_float4(output))
+            //         simple::mat_mul_kernel_cuda_fp32_vec_router<<<gridDim, blockDim, 0, static_cast<cudaStream_t>(stream)>>>(
+            //             input0->data(), input1->data(), output->data(), N, K, M);
+            //     else
+            //         mat_mul_kernel_cuda_fp32_vec_router<<<gridDim, blockDim, 0, static_cast<cudaStream_t>(stream)>>>(
+            //             input0->data(), input1->data(), output->data(), N, K, M);
+            // }
+            // else
+            // {
+            //     // 每个线程块处理output中的一个元素
+            //     dim3 blockDim(128);
+            //     dim3 gridDim(num_mats, N, M);
+            //     if (stream == nullptr)
+            //         LOG(WARNING) << "Using mat_mul_kernel_cuda_fp32_vec_fine for small matrix multiplication. without stream.";
 
-            CHECK_CUDA_ERR(cudaGetLastError());
+            //     if (!align_float4(input0) || !align_float4(input1) || !align_float4(output))
+            //         simple::mat_mul_kernel_cuda_fp32_vec_fine_router<<<gridDim, blockDim, 0, static_cast<cudaStream_t>(stream)>>>(
+            //             input0->data(), input1->data(), output->data(), N, K, M);
+            //     else
+            //         mat_mul_kernel_cuda_fp32_vec_fine_router<<<gridDim, blockDim, 0, static_cast<cudaStream_t>(stream)>>>(
+            //             input0->data(), input1->data(), output->data(), N, K, M);
+            // }
+            // // CHECK_CUDA_ERR(cudaDeviceSynchronize());
+
+            // CHECK_CUDA_ERR(cudaGetLastError());
         }
     }
 }

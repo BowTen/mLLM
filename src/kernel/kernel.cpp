@@ -25,6 +25,7 @@
 #include "kernel/cuda/silu_kernel.cuh"
 #include "kernel/cuda/last_hidden_state_kernel.cuh"
 #include "kernel/cuda/random_sampling_kernel.cuh"
+#include "kernel/cuda/gemm_kernel.cuh"
 #include <stdexcept>
 #include "base/util.h"
 
@@ -83,7 +84,7 @@ namespace mllm
             case base::Device::CPU:
                 return mat_mul_kernel_cpu;
             case base::Device::CUDA:
-                return mat_mul_kernel_cuda_vec; // 向量化存取版本
+                return mat_mul_kernel_cuda_vec;
             default:
                 throw std::runtime_error("Unsupported device");
             }

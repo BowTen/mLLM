@@ -654,58 +654,52 @@ namespace mllm
             size_t N = input1->shape(-1);
             CHECK_EQ(M, output->shape(-2));
             CHECK_EQ(N, output->shape(-1));
+            CHECK(input0->num_mats() == input1->num_mats() && input0->num_mats() == output->num_mats());
 
-            CHECK(input0->num_mats() == 1);
-            CHECK(input1->num_mats() == 1);
-            CHECK(output->num_mats() == 1);
+            input0->contiguous();
+            input1->contiguous();
+            output->contiguous();
 
             if (!stream)
                 LOG(WARNING) << "gemm_kernel: using default stream";
-            if (N <= 1024)
+
+            float *A = input0->data();
+            float *B = input1->data();
+            float *C = output->data();
+            size_t num_mats = input0->num_mats();
+            for (int i = 0; i < num_mats; i++)
             {
-                dim3 grid((N + BLOCK_TILE_N_S - 1) / BLOCK_TILE_N_S, (M + BLOCK_TILE_M_S - 1) / BLOCK_TILE_M_S);
-                dim3 block((BLOCK_TILE_N_S + THREAD_TILE_N - 1) / THREAD_TILE_N, (BLOCK_TILE_M_S + THREAD_TILE_M - 1) / THREAD_TILE_M);
-                if (M % BLOCK_TILE_M_S == 0 && N % BLOCK_TILE_N_S == 0 && K % BLOCK_TILE_K == 0)
-                    SgemmDiv64<BLOCK_TILE_M_S, BLOCK_TILE_N_S, BLOCK_TILE_K, THREAD_TILE_M, THREAD_TILE_N>
-                        <<<grid, block, 0, static_cast<cudaStream_t>(stream)>>>(input0->data(),
-                                                                                input1->data(),
-                                                                                output->data(),
-                                                                                M, N, K);
-                else if (M % 4 == 0 && N % 4 == 0 && K % 4 == 0)
-                    SgemmDiv4<BLOCK_TILE_M_S, BLOCK_TILE_N_S, BLOCK_TILE_K, THREAD_TILE_M, THREAD_TILE_N>
-                        <<<grid, block, 0, static_cast<cudaStream_t>(stream)>>>(input0->data(),
-                                                                                input1->data(),
-                                                                                output->data(),
-                                                                                M, N, K);
+                if (N <= 1024)
+                {
+                    dim3 grid((N + BLOCK_TILE_N_S - 1) / BLOCK_TILE_N_S, (M + BLOCK_TILE_M_S - 1) / BLOCK_TILE_M_S);
+                    dim3 block((BLOCK_TILE_N_S + THREAD_TILE_N - 1) / THREAD_TILE_N, (BLOCK_TILE_M_S + THREAD_TILE_M - 1) / THREAD_TILE_M);
+                    if (M % BLOCK_TILE_M_S == 0 && N % BLOCK_TILE_N_S == 0 && K % BLOCK_TILE_K == 0)
+                        SgemmDiv64<BLOCK_TILE_M_S, BLOCK_TILE_N_S, BLOCK_TILE_K, THREAD_TILE_M, THREAD_TILE_N>
+                            <<<grid, block, 0, static_cast<cudaStream_t>(stream)>>>(A, B, C, M, N, K);
+                    else if (M % 4 == 0 && N % 4 == 0 && K % 4 == 0)
+                        SgemmDiv4<BLOCK_TILE_M_S, BLOCK_TILE_N_S, BLOCK_TILE_K, THREAD_TILE_M, THREAD_TILE_N>
+                            <<<grid, block, 0, static_cast<cudaStream_t>(stream)>>>(A, B, C, M, N, K);
+                    else
+                        SgemmDiv1<BLOCK_TILE_M_S, BLOCK_TILE_N_S, BLOCK_TILE_K, THREAD_TILE_M, THREAD_TILE_N>
+                            <<<grid, block, 0, static_cast<cudaStream_t>(stream)>>>(A, B, C, M, N, K);
+                }
                 else
-                    SgemmDiv1<BLOCK_TILE_M_S, BLOCK_TILE_N_S, BLOCK_TILE_K, THREAD_TILE_M, THREAD_TILE_N>
-                        <<<grid, block, 0, static_cast<cudaStream_t>(stream)>>>(input0->data(),
-                                                                                input1->data(),
-                                                                                output->data(),
-                                                                                M, N, K);
-            }
-            else
-            {
-                dim3 grid((N + BLOCK_TILE_N_L - 1) / BLOCK_TILE_N_L, (M + BLOCK_TILE_M_L - 1) / BLOCK_TILE_M_L);
-                dim3 block((BLOCK_TILE_N_L + THREAD_TILE_N - 1) / THREAD_TILE_N, (BLOCK_TILE_M_L + THREAD_TILE_M - 1) / THREAD_TILE_M);
-                if (M % BLOCK_TILE_M_L == 0 && N % BLOCK_TILE_N_L == 0 && K % BLOCK_TILE_K == 0)
-                    SgemmDiv64<BLOCK_TILE_M_L, BLOCK_TILE_N_L, BLOCK_TILE_K, THREAD_TILE_M, THREAD_TILE_N>
-                        <<<grid, block, 0, static_cast<cudaStream_t>(stream)>>>(input0->data(),
-                                                                                input1->data(),
-                                                                                output->data(),
-                                                                                M, N, K);
-                else if (M % 4 == 0 && N % 4 == 0 && K % 4 == 0)
-                    SgemmDiv4<BLOCK_TILE_M_L, BLOCK_TILE_N_L, BLOCK_TILE_K, THREAD_TILE_M, THREAD_TILE_N>
-                        <<<grid, block, 0, static_cast<cudaStream_t>(stream)>>>(input0->data(),
-                                                                                input1->data(),
-                                                                                output->data(),
-                                                                                M, N, K);
-                else
-                    SgemmDiv1<BLOCK_TILE_M_L, BLOCK_TILE_N_L, BLOCK_TILE_K, THREAD_TILE_M, THREAD_TILE_N>
-                        <<<grid, block, 0, static_cast<cudaStream_t>(stream)>>>(input0->data(),
-                                                                                input1->data(),
-                                                                                output->data(),
-                                                                                M, N, K);
+                {
+                    dim3 grid((N + BLOCK_TILE_N_L - 1) / BLOCK_TILE_N_L, (M + BLOCK_TILE_M_L - 1) / BLOCK_TILE_M_L);
+                    dim3 block((BLOCK_TILE_N_L + THREAD_TILE_N - 1) / THREAD_TILE_N, (BLOCK_TILE_M_L + THREAD_TILE_M - 1) / THREAD_TILE_M);
+                    if (M % BLOCK_TILE_M_L == 0 && N % BLOCK_TILE_N_L == 0 && K % BLOCK_TILE_K == 0)
+                        SgemmDiv64<BLOCK_TILE_M_L, BLOCK_TILE_N_L, BLOCK_TILE_K, THREAD_TILE_M, THREAD_TILE_N>
+                            <<<grid, block, 0, static_cast<cudaStream_t>(stream)>>>(A, B, C, M, N, K);
+                    else if (M % 4 == 0 && N % 4 == 0 && K % 4 == 0)
+                        SgemmDiv4<BLOCK_TILE_M_L, BLOCK_TILE_N_L, BLOCK_TILE_K, THREAD_TILE_M, THREAD_TILE_N>
+                            <<<grid, block, 0, static_cast<cudaStream_t>(stream)>>>(A, B, C, M, N, K);
+                    else
+                        SgemmDiv1<BLOCK_TILE_M_L, BLOCK_TILE_N_L, BLOCK_TILE_K, THREAD_TILE_M, THREAD_TILE_N>
+                            <<<grid, block, 0, static_cast<cudaStream_t>(stream)>>>(A, B, C, M, N, K);
+                }
+                A += M * K;
+                B += K * N;
+                C += M * N;
             }
         }
     }
