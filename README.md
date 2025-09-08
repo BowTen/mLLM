@@ -6,7 +6,7 @@
 
 - **🤖 模型支持**: 目前支持 Qwen3-0.6B 模型，直接兼容 Hugging Face 官方模型文件格式
 - **⚡ 双后端支持**: 实现了 CUDA 和 CPU 算子，支持 GPU 和 CPU 推理
-- **🧮 Sgemm**: 实现了 CUDA 的 Sgemm 算子，目前性能达到 cublas 的 82%
+- **🧮 Sgemm**: 实现了 CUDA 的 Sgemm 算子，在 RTX3060 上性能达到 cublas 的 105%，RTX4090 上达到 82%
 - **📝 BPE Tokenizer**: 自主实现的字节对编码分词器
 - **💾 KV Cache**: 实现了键值缓存机制，提升推理效率
 
@@ -64,15 +64,24 @@ MiniLLM/
 └── README.md
 ```
 
-## 🧮 Sgemm 性能对比
-**使用设备的是 4090**
+## 🧮 Sgemm 优化
+### 主要优化手段：
+- **矩阵分块**: 将矩阵分为若干tile，每个线程块负责一个tile的计算。每个tile再分为若干frag，每个线程负责一个frag的计算。线程间并行计算frag，提高效率。同时大量线程并发可隐藏访存延迟。
+- **缓存**: 每个线程块处理一个tile前先将其从全局内存缓存到共享内存中，每个线程处理一个frag前将其从共享内存缓存到寄存器中。减少访存次数，防止计算核心等待，提高其利用率。
+- **预取**: 在处理当前tile/frag时，可以发射指令预加载下一个tile/frag到寄存器中。当前计算不依赖这次访存，可并行执行，实现一定的访存延迟隐藏
 
-M=N=K, M 整除64的情况
-![SgemmDiv64性能对比图](https://github.com/BowTen/mLLM/raw/main/resources/gemm_performance_comparison_div64.png)
+### M=N=K, M 整除64的情况
+RTX 3060:
+![RTX3060 SgemmDiv64性能对比图](https://github.com/BowTen/mLLM/raw/main/resources/gemm_performance_comparison_3060_div64.png)
+RTX 4090:
+![RTX4090 SgemmDiv64性能对比图](https://github.com/BowTen/mLLM/raw/main/resources/gemm_performance_comparison_4090_div64.png)
 
-M=N=K, M 整除1的情况<br>
+### M=N=K, M 整除1的情况
 这种情况目前只是在 div64 的基础上将所有 float4 存取展开，导致性能大幅下降，后续优化TODO
-![SgemmDiv1性能对比图](https://github.com/BowTen/mLLM/raw/main/resources/gemm_performance_comparison_div1.png)
+RTX 3060:
+![RTX3060 SgemmDiv1性能对比图](https://github.com/BowTen/mLLM/raw/main/resources/gemm_performance_comparison_3060_div1.png)
+RTX 4090:
+![RTX4090 SgemmDiv1性能对比图](https://github.com/BowTen/mLLM/raw/main/resources/gemm_performance_comparison_4090_div1.png)
 
 
 ## 🤖 Qwen3 架构图
