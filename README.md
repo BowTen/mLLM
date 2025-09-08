@@ -162,3 +162,4 @@ int main()
 - armadillo
 - glog
 - gtest
+- cnpy
