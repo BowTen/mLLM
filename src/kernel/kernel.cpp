@@ -205,5 +205,63 @@ namespace mllm
                 throw std::runtime_error("Unsupported device");
             }
         }
+
+        void sampling_kernel(base::Tensor *probability,
+                             base::Tensor *output,
+                             size_t top_k,
+                             float top_p,
+                             float min_p)
+        {
+            auto orig_device = probability->device();
+            probability->toDevice(base::Device::CPU);
+            output->toDevice(base::Device::CPU);
+
+            std::vector<std::pair<float, uint32_t>> prob_data;
+            float *data = probability->data();
+            size_t vocab_size = probability->logic_size();
+            for (size_t i = 0; i < vocab_size; i++)
+            {
+                prob_data.emplace_back(data[i], i);
+            }
+
+            std::sort(prob_data.begin(), prob_data.end(), std::greater<std::pair<float, uint32_t>>());
+            if (top_k > 0 && top_k < prob_data.size())
+            {
+                prob_data.erase(prob_data.begin() + top_k, prob_data.end());
+            }
+            for (size_t i = 0; i < prob_data.size(); i++)
+            {
+                top_p -= prob_data[i].first;
+                if (top_p <= 0)
+                {
+                    prob_data.erase(prob_data.begin() + i + 1, prob_data.end());
+                    break;
+                }
+            }
+            min_p *= prob_data[0].first;
+            for (size_t i = 0; i < prob_data.size(); i++)
+            {
+                if (prob_data[i].first < min_p)
+                {
+                    prob_data.erase(prob_data.begin() + i, prob_data.end());
+                    break;
+                }
+            }
+
+            float rand_num = base::get_random_float();
+            float eps = 1e-6;
+            for (size_t i = 0; i < prob_data.size(); i++)
+            {
+                rand_num -= prob_data[i].first;
+                if (rand_num <= eps)
+                {
+                    reinterpret_cast<uint32_t *>(output->data())[0] = prob_data[i].second;
+                    break;
+                }
+            }
+
+            probability->toDevice(orig_device);
+            output->toDevice(orig_device);
+        }
     }
 }

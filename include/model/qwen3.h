@@ -42,15 +42,19 @@ namespace mllm
             Tensor temperature_scaling;
             Tensor final_probability;
 
-            Qwen3(std::string model_path, base::Device device, float temperature);
+            size_t top_k;
+            float top_p;
+            float min_p;
+
+            Qwen3(std::string model_path, base::Device device, float temperature, size_t top_k, float top_p, float min_p);
 
             cudaStream_t init_cuda_stream(base::Device device);
             void print_top_tokens_cpu(Tensor &probabilities, size_t top_k);
 
         public:
-            static Qwen3 from_pretrained(const std::string &model_path, base::Device device, float temperature = 1.0f)
+            static Qwen3 from_pretrained(const std::string &model_path, base::Device device, float temperature = 0.6f, size_t top_k = 20, float top_p = 0.95f, float min_p = 0.0f)
             {
-                return Qwen3(model_path, device, temperature);
+                return Qwen3(model_path, device, temperature, top_k, top_p, min_p);
             }
 
             void forward(Tensor &token_ids, Tensor &next_token_id);

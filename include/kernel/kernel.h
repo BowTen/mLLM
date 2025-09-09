@@ -71,6 +71,12 @@ namespace mllm
         SiLUKernel get_silu_kernel(base::Device device);
         LastHiddenStateKernel get_last_hidden_state_kernel(base::Device device);
         RandomSamplingKernel get_random_sampling_kernel(base::Device device);
+
+        void sampling_kernel(base::Tensor *probability,
+                             base::Tensor *output,
+                             size_t top_k,
+                             float top_p,
+                             float min_p);
     }
 }
 

@@ -6,8 +6,8 @@ using namespace mllm::tokenizer;
 class Qwen3Chat
 {
 public:
-    Qwen3Chat(const std::string &model_path, mllm::base::Device device, float temperature)
-        : model(mllm::model::Qwen3::from_pretrained(model_path, device, temperature)),
+    Qwen3Chat(const std::string &model_path, mllm::base::Device device, float temperature, float top_p, size_t top_k, float min_p)
+        : model(mllm::model::Qwen3::from_pretrained(model_path, device, temperature, top_k, top_p, min_p)),
           tokenizer(model.get_tokenizer())
     {
     }
@@ -60,7 +60,7 @@ int main()
 {
     std::string model_path = "/home/hznuojai/ai_infra/MiniLLM/resources/Qwen/Qwen3-0.6B";
     std::cout << "Loading model..." << std::endl;
-    Qwen3Chat qwen3(model_path, base::Device::CUDA, 0.6);
+    Qwen3Chat qwen3(model_path, base::Device::CUDA, 1.0, 1, 10000, 0.0);
     std::cout << "Loading accomplished." << std::endl;
 
     while (true)
@@ -72,7 +72,7 @@ int main()
             break;
         std::cout << "Qwen3: ";
         std::cout.flush();
-        qwen3.chat(input, true);
+        qwen3.chat(input, false);
     }
 
     return 0;

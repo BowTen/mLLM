@@ -22,7 +22,7 @@ namespace mllm
             return stream;
         }
 
-        Qwen3::Qwen3(std::string model_path, base::Device device, float temperature)
+        Qwen3::Qwen3(std::string model_path, base::Device device, float temperature, size_t top_k, float top_p, float min_p)
             : Layer(1, 1, device, init_cuda_stream(device)),
               config_(base::load_json(model_path + "/config.json")),
               vocab_size(config_["vocab_size"]),
@@ -36,7 +36,10 @@ namespace mllm
               softmax(device_, stream_),
               pos_id(0),
               temperature_scaling(base::Tensor::from_float(1.0f / temperature, device_, false, stream_)),
-              final_probability({1, vocab_size}, device_, false, stream_)
+              final_probability({1, vocab_size}, device_, false, stream_),
+              top_k(top_k),
+              top_p(top_p),
+              min_p(min_p)
         {
             VLOG(TRACE) << "Loading Qwen3 model from: " << model_path;
             VLOG(TRACE) << "Loading safetensors from: " << model_path + "/model.safetensors";
@@ -119,7 +122,7 @@ namespace mllm
             temp_scal.forward(hidden_state, temperature_scaling, hidden_state);
             softmax.forward(final_probability, final_probability);
 
-            kernel::get_random_sampling_kernel(device_)(&final_probability, &next_token_id, stream_);
+            kernel::sampling_kernel(&final_probability, &next_token_id, top_k, top_p, min_p);
         }
 
         std::vector<WLayer *> Qwen3::weighted_layers()
