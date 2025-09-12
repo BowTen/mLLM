@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.14)
 
 # Demo executables
 add_executable(qwen3_chat qwen3_chat.cpp)
+add_executable(token_speed_cal token_speed_cal.cpp)
 
 # Link required libraries (reuse those defined in src/CMakeLists)
 target_link_libraries(qwen3_chat
@@ -15,9 +16,21 @@ target_link_libraries(qwen3_chat
         armadillo
         openblas
 )
+target_link_libraries(token_speed_cal
+    PRIVATE
+        model
+        op
+        kernel
+        tokenizer
+        base
+        glog
+        armadillo
+        openblas
+)
 
 # Include public headers
 target_include_directories(qwen3_chat PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(token_speed_cal PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
 # Debug flags for demo if in Debug build
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
