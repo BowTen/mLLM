@@ -1,6 +1,7 @@
 #include "kernel/kernel.h"
 #include "kernel/cuda/mat_mul_kernel.cuh"
 #include "kernel/cuda/mat_mul_backend_selector.h"
+#include "base/util.h"
 #include "base/tensor.h"
 #include <gtest/gtest.h>
 #include <cuda_runtime.h>
@@ -31,6 +32,24 @@ namespace
             const float value = static_cast<float>((static_cast<int>(i % 23) - 11)) * 0.03125f;
             *tensor[i] = value;
         }
+    }
+
+    Tensor tensor_from_fp32_as_bf16(const std::vector<float> &values,
+                                    const std::vector<size_t> &shape,
+                                    Device device,
+                                    cudaStream_t stream)
+    {
+        std::vector<uint16_t> bf16(values.size());
+        load_f32_to_bf16(values.data(), bf16.data(), bf16.size());
+        return Tensor::from_vector(bf16, shape, device, false, stream);
+    }
+
+    std::vector<float> tensor_to_fp32_vector(Tensor tensor)
+    {
+        tensor.toDevice(Device::CPU);
+        std::vector<float> values(tensor.size());
+        materialize_float_storage(tensor.raw_data(), tensor.dtype(), values.data(), DType::FP32, values.size());
+        return values;
     }
 
     void expect_tensor_values_near(const Tensor &expected, const Tensor &actual, float tolerance)
@@ -709,4 +728,57 @@ TEST(MatMulBackendSelectionTest, FallsBackForScalarRhs)
 
     EXPECT_EQ(decision.backend, kernel::MatMulBackend::HandwrittenFallback);
     EXPECT_NE(decision.reason.find("scalar rhs"), std::string::npos);
+}
+
+TEST(MatMulKernelBF16Test, PublicKernelSupportsBF16StorageOnCpuAndCuda)
+{
+    const std::vector<size_t> lhs_shape = {2, 3};
+    const std::vector<size_t> rhs_shape = {3, 2};
+    const std::vector<size_t> out_shape = {2, 2};
+    const std::vector<float> lhs_values = {
+        1.0f, 2.0f, 3.0f,
+        4.0f, 5.0f, 6.0f,
+    };
+    const std::vector<float> rhs_values = {
+        7.0f, 8.0f,
+        9.0f, 10.0f,
+        11.0f, 12.0f,
+    };
+    const std::vector<float> expected = {
+        58.0f, 64.0f,
+        139.0f, 154.0f,
+    };
+
+    Tensor cpu_lhs = tensor_from_fp32_as_bf16(lhs_values, lhs_shape, Device::CPU, nullptr);
+    Tensor cpu_rhs = tensor_from_fp32_as_bf16(rhs_values, rhs_shape, Device::CPU, nullptr);
+    Tensor cpu_out(out_shape, Device::CPU, false, nullptr, DType::BF16);
+
+    kernel::get_mat_mul_kernel(Device::CPU)(&cpu_lhs, &cpu_rhs, &cpu_out, nullptr);
+
+    EXPECT_EQ(cpu_out.dtype(), DType::BF16);
+    const std::vector<float> cpu_values = tensor_to_fp32_vector(cpu_out);
+    ASSERT_EQ(cpu_values.size(), expected.size());
+    for (size_t i = 0; i < expected.size(); ++i)
+    {
+        EXPECT_NEAR(cpu_values[i], expected[i], kMatMulComparisonTolerance) << "cpu index " << i;
+    }
+
+    Tensor cuda_lhs = cpu_lhs.clone();
+    Tensor cuda_rhs = cpu_rhs.clone();
+    Tensor cuda_out(out_shape, Device::CUDA, false, nullptr, DType::BF16);
+    cuda_lhs.toDevice(Device::CUDA);
+    cuda_rhs.toDevice(Device::CUDA);
+
+    kernel::reset_last_mat_mul_backend_execution();
+    kernel::get_mat_mul_kernel(Device::CUDA)(&cuda_lhs, &cuda_rhs, &cuda_out, nullptr);
+
+    EXPECT_EQ(cuda_out.dtype(), DType::BF16);
+    const std::vector<float> cuda_values = tensor_to_fp32_vector(cuda_out);
+    ASSERT_EQ(cuda_values.size(), expected.size());
+    for (size_t i = 0; i < expected.size(); ++i)
+    {
+        EXPECT_NEAR(cuda_values[i], expected[i], kMatMulComparisonTolerance) << "cuda index " << i;
+    }
+
+    EXPECT_NE(kernel::get_last_mat_mul_backend_execution(), kernel::MatMulBackendExecution::Unknown);
 }

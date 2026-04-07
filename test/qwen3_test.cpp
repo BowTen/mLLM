@@ -10,9 +10,9 @@ using namespace mllm;
 using namespace mllm::base;
 using namespace mllm::model;
 
-int main()
+int main(int argc, char **argv)
 {
-    testing::InitGoogleTest();
+    testing::InitGoogleTest(&argc, argv);
     google::InitGoogleLogging("Qwen3Test");
     FLAGS_logtostderr = true;
 
@@ -52,9 +52,9 @@ TEST(Qwen3ConstructionTest, DefaultsFloatingPointStorageToBF16)
     EXPECT_EQ(model.embed_tokens.weight().dtype(), DType::BF16);
     EXPECT_EQ(model.norm.weight().dtype(), DType::BF16);
     EXPECT_EQ(model.lm_head.weight().dtype(), DType::BF16);
-    EXPECT_EQ(model.rotary_embedding.inv_freq.dtype(), DType::BF16);
-    EXPECT_EQ(model.temperature_scaling.dtype(), DType::BF16);
-    EXPECT_EQ(model.final_probability.dtype(), DType::BF16);
+    EXPECT_EQ(model.rotary_embedding.inv_freq.dtype(), DType::FP32);
+    EXPECT_EQ(model.temperature_scaling.dtype(), DType::FP32);
+    EXPECT_EQ(model.final_probability.dtype(), DType::FP32);
     ASSERT_FALSE(model.layers.empty());
     EXPECT_EQ(model.layers.front().self_attn.q_proj.weight().dtype(), DType::BF16);
     EXPECT_EQ(model.layers.front().mlp.gate_proj.weight().dtype(), DType::BF16);
@@ -73,6 +73,24 @@ TEST(Qwen3ConstructionTest, AllowsExplicitFP32InferenceOverride)
     EXPECT_EQ(model.final_probability.dtype(), DType::FP32);
 }
 
+TEST(Qwen3ConstructionTest, DefaultBF16ForwardPreservesDynamicTensorDTypes)
+{
+    Qwen3 model = Qwen3::from_pretrained(resolve_qwen3_model_path(), Device::CPU, 0.3f);
+    Tensor input_id = Tensor::from_vector(std::vector<uint32_t>{151644u}, {1, 1}, Device::CPU, false, nullptr);
+    Tensor next_id({1, 1}, Device::CPU, false, nullptr, DType::U32);
+
+    model.forward(input_id, next_id);
+
+    EXPECT_EQ(model.hidden_state.dtype(), DType::BF16);
+    EXPECT_EQ(model.cos.dtype(), DType::BF16);
+    EXPECT_EQ(model.sin.dtype(), DType::BF16);
+    EXPECT_EQ(model.final_probability.dtype(), DType::FP32);
+    ASSERT_FALSE(model.layers.empty());
+    EXPECT_EQ(model.layers.front().self_attn.k_cache.dtype(), DType::BF16);
+    EXPECT_EQ(model.layers.front().self_attn.v_cache.dtype(), DType::BF16);
+    EXPECT_EQ(next_id.dtype(), DType::U32);
+}
+
 TEST_F(Qwen3Test, Demo)
 {
     LOG(INFO) << "Run Demo";
@@ -85,7 +103,7 @@ TEST_F(Qwen3Test, Demo)
     cout << endl;
 
     Tensor input_id = Tensor::from_vector(ids, {ids.size(), 1}, Device::CPU, false, nullptr);
-    Tensor next_id({1, 1}, Device::CPU, false, nullptr);
+    Tensor next_id({1, 1}, Device::CPU, false, nullptr, DType::U32);
 
     for (int i = 0; i < 100; i++)
     {
@@ -93,7 +111,7 @@ TEST_F(Qwen3Test, Demo)
         model.forward(input_id, next_id);
         LOG(INFO) << "Model forward completed.";
 
-        size_t next_id_value = *reinterpret_cast<uint32_t *>(next_id[0]);
+        size_t next_id_value = next_id.data<uint32_t>()[0];
         cout << "next id: " << next_id_value << endl;
         cout << "decode token: " << tokenizer->decode(next_id_value) << endl;
         input_text += tokenizer->decode(next_id_value);

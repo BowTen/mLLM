@@ -140,6 +140,7 @@ namespace mllm
             float *data() { return compatible_float_data(); } // Compatibility path for legacy FP32 callers.
             const float *data() const { return compatible_float_data(); }
             bool empty() const { return meta_->buffer_ == nullptr; }
+            Tensor astype(DType target_dtype) const;
             Tensor toDevice(Device device);
             Tensor clone();
 
@@ -156,6 +157,7 @@ namespace mllm
             base::Device device() const { return meta_->device_; }
             DType dtype() const { return meta_->dtype_; }
             size_t element_size() const { return dtype_element_size(meta_->dtype_); }
+            bool is_mutable() const { return meta_->mut_; }
             cudaStream_t stream() const { return meta_->stream_; }
             void set_stream(cudaStream_t stream) { meta_->stream_ = stream; }
         };

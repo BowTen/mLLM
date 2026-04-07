@@ -18,7 +18,7 @@ namespace mllm
 
         inline DType default_float_dtype()
         {
-            return DType::FP32;
+            return DType::BF16;
         }
 
         inline bool is_floating_point_dtype(DType dtype)

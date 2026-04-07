@@ -273,6 +273,15 @@ namespace mllm
 
         void softmax_kernel_cuda_library_first(base::Tensor *input, base::Tensor *output, void *stream)
         {
+            if (input->dtype() != base::DType::FP32 || output->dtype() != base::DType::FP32)
+            {
+                base::Tensor input_fp32 = input->astype(base::DType::FP32);
+                base::Tensor output_fp32(output->shape(), base::Device::CUDA, output->is_mutable(), static_cast<cudaStream_t>(stream), base::DType::FP32);
+                softmax_kernel_cuda_library_first(&input_fp32, &output_fp32, stream);
+                *output = output_fp32.astype(output->dtype());
+                return;
+            }
+
             SoftmaxBackendSelectionOptions options;
             options.library_enabled = true;
             options.library_available = cuda_library_available();

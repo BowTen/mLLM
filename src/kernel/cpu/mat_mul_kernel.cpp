@@ -25,6 +25,18 @@ namespace mllm
 
         void mat_mul_kernel_cpu(base::Tensor *input0, base::Tensor *input1, base::Tensor *output, [[maybe_unused]] void *stream)
         {
+            if ((base::is_floating_point_dtype(input0->dtype()) && input0->dtype() != base::DType::FP32) ||
+                (base::is_floating_point_dtype(input1->dtype()) && input1->dtype() != base::DType::FP32) ||
+                output->dtype() != base::DType::FP32)
+            {
+                base::Tensor input0_fp32 = input0->dtype() == base::DType::FP32 ? input0->clone() : input0->astype(base::DType::FP32);
+                base::Tensor input1_fp32 = input1->dtype() == base::DType::FP32 ? input1->clone() : input1->astype(base::DType::FP32);
+                base::Tensor output_fp32(output->shape(), base::Device::CPU, output->is_mutable(), nullptr, base::DType::FP32);
+                mat_mul_kernel_cpu(&input0_fp32, &input1_fp32, &output_fp32, stream);
+                *output = output_fp32.astype(output->dtype());
+                return;
+            }
+
             if (input1->size() == 1)
             {
                 CHECK(input0->shape() == output->shape());

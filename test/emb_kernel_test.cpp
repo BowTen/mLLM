@@ -14,6 +14,27 @@ using namespace std;
 using namespace mllm;
 using namespace mllm::base;
 
+namespace
+{
+    Tensor tensor_from_fp32_as_bf16(const std::vector<float> &values,
+                                    const std::vector<size_t> &shape,
+                                    Device device,
+                                    cudaStream_t stream)
+    {
+        std::vector<uint16_t> bf16(values.size());
+        load_f32_to_bf16(values.data(), bf16.data(), bf16.size());
+        return Tensor::from_vector(bf16, shape, device, false, stream);
+    }
+
+    std::vector<float> tensor_to_fp32_vector(Tensor tensor)
+    {
+        tensor.toDevice(Device::CPU);
+        std::vector<float> values(tensor.size());
+        materialize_float_storage(tensor.raw_data(), tensor.dtype(), values.data(), DType::FP32, values.size());
+        return values;
+    }
+}
+
 class EmbeddingKernelTest : public ::testing::Test
 {
 protected:
@@ -238,4 +259,59 @@ TEST_F(TokenizerEmbeddingKernelTest, CPUvsCUDAQwen3)
     cout << "...\n";
 
     EXPECT_EQ(diff, 0);
+}
+
+TEST(EmbeddingKernelBF16Test, PublicKernelSupportsBF16StorageOnCpuAndCuda)
+{
+    const size_t hidden_size = 4;
+    const std::vector<size_t> input_shape = {2, 2, 1};
+    const std::vector<size_t> weight_shape = {8, hidden_size};
+    const std::vector<size_t> output_shape = {2, 2, hidden_size};
+    const std::vector<uint32_t> input_data = {4, 1, 6, 3};
+    const std::vector<float> weight_data = {
+        1.0f, 1.0f, 4.0f, 9.0f,
+        2.0f, 3.0f, 1.0f, 2.0f,
+        3.0f, 2.0f, 5.0f, 6.0f,
+        4.0f, 7.0f, 9.0f, 8.0f,
+        5.0f, 2.0f, 7.0f, 3.0f,
+        6.0f, 1.0f, 5.0f, 8.0f,
+        7.0f, 2.0f, 4.0f, 7.0f,
+        8.0f, 3.0f, 6.0f, 8.0f,
+    };
+    const std::vector<float> expected = {
+        5.0f, 2.0f, 7.0f, 3.0f,
+        2.0f, 3.0f, 1.0f, 2.0f,
+        7.0f, 2.0f, 4.0f, 7.0f,
+        4.0f, 7.0f, 9.0f, 8.0f,
+    };
+
+    Tensor input = Tensor::from_vector(input_data, input_shape, Device::CPU, false, nullptr);
+    Tensor cpu_weight = tensor_from_fp32_as_bf16(weight_data, weight_shape, Device::CPU, nullptr);
+    Tensor cpu_output(output_shape, Device::CPU, false, nullptr, DType::BF16);
+
+    kernel::get_emb_kernel(Device::CPU)(&input, &cpu_weight, &cpu_output, hidden_size, nullptr);
+
+    EXPECT_EQ(cpu_output.dtype(), DType::BF16);
+    const std::vector<float> cpu_values = tensor_to_fp32_vector(cpu_output);
+    ASSERT_EQ(cpu_values.size(), expected.size());
+    for (size_t i = 0; i < expected.size(); ++i)
+    {
+        EXPECT_NEAR(cpu_values[i], expected[i], 1e-3f) << "cpu index " << i;
+    }
+
+    Tensor cuda_input = input.clone();
+    Tensor cuda_weight = cpu_weight.clone();
+    Tensor cuda_output(output_shape, Device::CUDA, false, nullptr, DType::BF16);
+    cuda_input.toDevice(Device::CUDA);
+    cuda_weight.toDevice(Device::CUDA);
+
+    kernel::get_emb_kernel(Device::CUDA)(&cuda_input, &cuda_weight, &cuda_output, hidden_size, nullptr);
+
+    EXPECT_EQ(cuda_output.dtype(), DType::BF16);
+    const std::vector<float> cuda_values = tensor_to_fp32_vector(cuda_output);
+    ASSERT_EQ(cuda_values.size(), expected.size());
+    for (size_t i = 0; i < expected.size(); ++i)
+    {
+        EXPECT_NEAR(cuda_values[i], expected[i], 1e-3f) << "cuda index " << i;
+    }
 }

@@ -9,6 +9,28 @@
 
 using namespace mllm::base;
 
+namespace
+{
+    Tensor tensor_from_fp32_as_bf16(const std::vector<float> &values,
+                                    const std::vector<size_t> &shape,
+                                    Device device,
+                                    bool mut,
+                                    cudaStream_t stream)
+    {
+        std::vector<uint16_t> bf16(values.size());
+        load_f32_to_bf16(values.data(), bf16.data(), bf16.size());
+        return Tensor::from_vector(bf16, shape, device, mut, stream);
+    }
+
+    std::vector<float> tensor_to_fp32_vector(Tensor tensor)
+    {
+        tensor.toDevice(Device::CPU);
+        std::vector<float> values(tensor.logic_size(), 0.0f);
+        materialize_float_storage(tensor.raw_data(), tensor.dtype(), values.data(), DType::FP32, values.size());
+        return values;
+    }
+} // namespace
+
 // Test fixture for Tensor tests
 class TensorTest : public ::testing::Test
 {
@@ -100,6 +122,58 @@ TEST_F(TensorTest, RawAndTypedAccessRespectTensorDType)
     ASSERT_NE(raw, nullptr);
     ASSERT_EQ(raw, static_cast<void *>(bf16));
     EXPECT_EQ(tensor.compatible_float_data(), nullptr);
+}
+
+TEST_F(TensorTest, BF16CloneAndDeviceTransferPreserveValues)
+{
+    const std::vector<float> values = {1.0f, -2.5f, 3.25f, 4.5f};
+    Tensor tensor = tensor_from_fp32_as_bf16(values, {2, 2}, Device::CPU, false, nullptr);
+
+    Tensor clone = tensor.clone();
+    EXPECT_EQ(clone.dtype(), DType::BF16);
+    EXPECT_EQ(tensor_to_fp32_vector(clone), values);
+
+    tensor.toDevice(Device::CUDA);
+    EXPECT_EQ(tensor.dtype(), DType::BF16);
+    tensor.toDevice(Device::CPU);
+    EXPECT_EQ(tensor.dtype(), DType::BF16);
+    EXPECT_EQ(tensor_to_fp32_vector(tensor), values);
+}
+
+TEST_F(TensorTest, BF16ContiguousMaterializationPreservesLogicalValues)
+{
+    const std::vector<float> values = {
+        1.0f, 2.0f, 3.0f,
+        4.0f, 5.0f, 6.0f,
+    };
+    Tensor tensor = tensor_from_fp32_as_bf16(values, {2, 3}, Device::CPU, false, nullptr);
+
+    tensor.transpose(0, 1);
+    ASSERT_FALSE(tensor.is_contiguous());
+    tensor.contiguous();
+
+    EXPECT_EQ(tensor.dtype(), DType::BF16);
+    EXPECT_TRUE(tensor.is_contiguous());
+    EXPECT_EQ(tensor.shape(), (std::vector<size_t>{3, 2}));
+    EXPECT_EQ(tensor_to_fp32_vector(tensor), (std::vector<float>{1.0f, 4.0f, 2.0f, 5.0f, 3.0f, 6.0f}));
+}
+
+TEST_F(TensorTest, BF16CatPreservesDTypeAcrossCpuAndCuda)
+{
+    Tensor a = tensor_from_fp32_as_bf16({1.0f, 2.0f, 3.0f, 4.0f}, {2, 2}, Device::CPU, true, nullptr);
+    Tensor b = tensor_from_fp32_as_bf16({5.0f, 6.0f, 7.0f, 8.0f}, {2, 2}, Device::CPU, false, nullptr);
+
+    a.cat(b, 0);
+    EXPECT_EQ(a.dtype(), DType::BF16);
+    EXPECT_EQ(a.shape(), (std::vector<size_t>{4, 2}));
+    EXPECT_EQ(tensor_to_fp32_vector(a), (std::vector<float>{1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f}));
+
+    Tensor cuda_a = tensor_from_fp32_as_bf16({1.0f, 2.0f, 3.0f, 4.0f}, {2, 2}, Device::CUDA, true, nullptr);
+    Tensor cuda_b = tensor_from_fp32_as_bf16({5.0f, 6.0f, 7.0f, 8.0f}, {2, 2}, Device::CUDA, false, nullptr);
+    cuda_a.cat(cuda_b, 0);
+    EXPECT_EQ(cuda_a.dtype(), DType::BF16);
+    EXPECT_EQ(cuda_a.shape(), (std::vector<size_t>{4, 2}));
+    EXPECT_EQ(tensor_to_fp32_vector(cuda_a), (std::vector<float>{1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f}));
 }
 
 TEST_F(TensorTest, FromVectorUint32UsesU32Storage)

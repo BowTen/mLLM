@@ -46,20 +46,11 @@ namespace mllm
               softmax(device_, stream_),
               k_cache(),
               v_cache(),
-              scaling(Tensor::from_vector(std::vector<uint16_t>{static_cast<uint16_t>(0)}, {1}, base::Device::CPU, false, nullptr))
+              scaling(Tensor::from_float(0.0f, base::Device::CPU, false, nullptr))
         {
             Tensor scaling_fp32 = Tensor::from_float(static_cast<float>(std::pow(head_dim, -0.5f)), base::Device::CPU, false, nullptr);
-            if (inference_dtype_ == base::DType::BF16)
-            {
-                std::vector<uint16_t> scaling_bf16(1);
-                base::load_f32_to_bf16(scaling_fp32.raw_data(), scaling_bf16.data(), scaling_bf16.size());
-                scaling = Tensor::from_vector(scaling_bf16, {1}, device_, false, stream_);
-            }
-            else
-            {
-                scaling = scaling_fp32;
-                scaling.toDevice(device_);
-            }
+            scaling = scaling_fp32;
+            scaling.toDevice(device_);
             VLOG(TRACE) << "Constructor: Qwen3SelfAttn with layer index: " << layer_index_;
         }
 
@@ -76,8 +67,8 @@ namespace mllm
             }
             if (k_output.shape() != kv_shape)
             {
-                k_output = Tensor(kv_shape, device_, true, stream_, inference_dtype_); // reapeat_kv需要扩展Tensor
-                v_output = Tensor(kv_shape, device_, true, stream_, inference_dtype_); // reapeat_kv需要扩展Tensor
+                k_output = Tensor(kv_shape, device_, true, stream_, inference_dtype_); // repeat_kv needs mutable expansion buffers
+                v_output = Tensor(kv_shape, device_, true, stream_, inference_dtype_); // repeat_kv needs mutable expansion buffers
             }
 
             q_proj.forward(*hidden_state, q_output);
@@ -105,19 +96,22 @@ namespace mllm
             CHECK(k_output.shape() == v_output.shape());
             CHECK_EQ(k_output.num_mats(), v_output.num_mats());
 
+            Tensor k_cache_append = inference_dtype_ == base::DType::BF16 ? k_output.astype(base::DType::BF16) : k_output.clone();
+            Tensor v_cache_append = inference_dtype_ == base::DType::BF16 ? v_output.astype(base::DType::BF16) : v_output.clone();
+
             if (k_cache.empty())
             {
                 VLOG(DEBUG) << "Creating new KV cache tensors in layer " << layer_index_;
-                k_cache = k_output.clone();
-                v_cache = v_output.clone();
+                k_cache = k_cache_append;
+                v_cache = v_cache_append;
             }
             else
             {
-                k_cache.cat(k_output, -2);
-                v_cache.cat(v_output, -2);
+                k_cache.cat(k_cache_append, -2);
+                v_cache.cat(v_cache_append, -2);
             }
 
-            Tensor attn_weights({num_attention_heads, q_output.shape(-2), k_cache.shape(-2)}, device_, false, stream_, inference_dtype_);
+            Tensor attn_weights({num_attention_heads, q_output.shape(-2), k_cache.shape(-2)}, device_, false, stream_, base::DType::FP32);
 
             k_cache.t();
             mat_mul.forward(q_output, k_cache, attn_weights);

@@ -80,6 +80,16 @@ namespace mllm
 
         void rms_norm_kernel_cuda(base::Tensor *input, base::Tensor *weight, base::Tensor *output, float eps, void *stream)
         {
+            if (input->dtype() != base::DType::FP32 || weight->dtype() != base::DType::FP32 || output->dtype() != base::DType::FP32)
+            {
+                base::Tensor input_fp32 = input->astype(base::DType::FP32);
+                base::Tensor weight_fp32 = weight->astype(base::DType::FP32);
+                base::Tensor output_fp32(output->shape(), base::Device::CUDA, output->is_mutable(), static_cast<cudaStream_t>(stream), base::DType::FP32);
+                rms_norm_kernel_cuda(&input_fp32, &weight_fp32, &output_fp32, eps, stream);
+                *output = output_fp32.astype(output->dtype());
+                return;
+            }
+
             CHECK(input->shape() == output->shape());
             input->contiguous();
             weight->contiguous();

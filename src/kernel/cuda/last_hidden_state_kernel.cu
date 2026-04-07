@@ -9,6 +9,14 @@ namespace mllm
         void last_hidden_state_kernel_cuda(base::Tensor *input,
                                            [[maybe_unused]] void *stream)
         {
+            if (input->dtype() != base::DType::FP32)
+            {
+                base::Tensor input_fp32 = input->astype(base::DType::FP32);
+                last_hidden_state_kernel_cuda(&input_fp32, stream);
+                *input = input_fp32.astype(input->dtype());
+                return;
+            }
+
             if (input->shape(-2) == 1)
             {
                 return;

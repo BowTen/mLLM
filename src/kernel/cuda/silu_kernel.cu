@@ -33,6 +33,14 @@ namespace mllm
 
         void silu_kernel_cuda(base::Tensor *input, [[maybe_unused]] void *stream)
         {
+            if (input->dtype() != base::DType::FP32)
+            {
+                base::Tensor input_fp32 = input->astype(base::DType::FP32);
+                silu_kernel_cuda(&input_fp32, stream);
+                *input = input_fp32.astype(input->dtype());
+                return;
+            }
+
             size_t seq_len = input->shape(-2);
             input->contiguous();
             size_t head_dim = input->shape(-1);

@@ -30,18 +30,31 @@ namespace mllm
                             size_t hidden_size,
                             [[maybe_unused]] void *stream)
         {
-            VLOG(DEBUG) << "input[0]: " << reinterpret_cast<uint32_t *>(input->data())[0];
+            CHECK(input->dtype() == base::DType::U32) << "Embedding input must use U32 token ids.";
             CHECK(input->shape(-2) == output->shape(-2));
-            float *weight_data = weight->data();
+            if (weight->dtype() != base::DType::FP32 || output->dtype() != base::DType::FP32)
+            {
+                base::Tensor weight_fp32 = weight->astype(base::DType::FP32);
+                base::Tensor output_fp32(output->shape(), base::Device::CPU, output->is_mutable(), nullptr, base::DType::FP32);
+                emb_kernel_cpu(input, &weight_fp32, &output_fp32, hidden_size, stream);
+                *output = output_fp32.astype(output->dtype());
+                return;
+            }
+
+            const uint32_t *input_data = input->data<uint32_t>();
+            CHECK(input_data != nullptr) << "Embedding input token ids are unavailable.";
+            float *weight_data = weight->data<float>();
+            float *output_data = output->data<float>();
+            VLOG(DEBUG) << "input[0]: " << input_data[0];
 
             size_t sqe_size = input->shape(-2);
             size_t num_mats = input->num_mats();
             for (size_t i = 0; i < num_mats; i++)
             {
                 VLOG(DEBUG) << "Embedding kernel, processing matrix " << i;
-                mat_emb_kernel_cpu(reinterpret_cast<uint32_t *>(input->mat(i)),
+                mat_emb_kernel_cpu(const_cast<uint32_t *>(input_data + i * sqe_size),
                                    weight_data,
-                                   reinterpret_cast<float *>(output->mat(i)),
+                                   output_data + i * sqe_size * hidden_size,
                                    sqe_size,
                                    hidden_size);
             }

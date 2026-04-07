@@ -39,6 +39,20 @@ namespace mllm
                               base::Tensor *output,
                               void *stream)
         {
+            if (input->dtype() != base::DType::FP32 ||
+                cos->dtype() != base::DType::FP32 ||
+                sin->dtype() != base::DType::FP32 ||
+                output->dtype() != base::DType::FP32)
+            {
+                base::Tensor input_fp32 = input->astype(base::DType::FP32);
+                base::Tensor cos_fp32 = cos->astype(base::DType::FP32);
+                base::Tensor sin_fp32 = sin->astype(base::DType::FP32);
+                base::Tensor output_fp32(output->shape(), base::Device::CUDA, output->is_mutable(), static_cast<cudaStream_t>(stream), base::DType::FP32);
+                rope_kernel_cuda(&input_fp32, &cos_fp32, &sin_fp32, &output_fp32, stream);
+                *output = output_fp32.astype(output->dtype());
+                return;
+            }
+
             CHECK(input->shape(-1) % 2 == 0) << "head dim must be even";
             CHECK(input->shape() == output->shape()) << "Input and output shapes must be the same.";
             CHECK(cos->shape() == sin->shape()) << "Cosine and sine shapes must be the same.";

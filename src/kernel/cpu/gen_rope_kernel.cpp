@@ -25,6 +25,17 @@ namespace mllm
                                  base::Tensor *sin,
                                  [[maybe_unused]] void *stream)
         {
+            if (inv_freq->dtype() != base::DType::FP32 || cos->dtype() != base::DType::FP32 || sin->dtype() != base::DType::FP32)
+            {
+                base::Tensor inv_freq_fp32 = inv_freq->astype(base::DType::FP32);
+                base::Tensor cos_fp32(cos->shape(), base::Device::CPU, cos->is_mutable(), nullptr, base::DType::FP32);
+                base::Tensor sin_fp32(sin->shape(), base::Device::CPU, sin->is_mutable(), nullptr, base::DType::FP32);
+                gen_rope_kernel_cpu(&inv_freq_fp32, pos_start, pos_end, &cos_fp32, &sin_fp32, stream);
+                *cos = cos_fp32.astype(cos->dtype());
+                *sin = sin_fp32.astype(sin->dtype());
+                return;
+            }
+
             CHECK(inv_freq->size() == cos->shape(-1));
             CHECK(cos->shape() == sin->shape());
             CHECK(pos_end - pos_start == cos->shape(-2));

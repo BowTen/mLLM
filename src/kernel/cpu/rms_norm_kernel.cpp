@@ -29,6 +29,16 @@ namespace mllm
 
         void rms_norm_kernel_cpu(base::Tensor *input, base::Tensor *weight, base::Tensor *output, float eps, [[maybe_unused]] void *stream)
         {
+            if (input->dtype() != base::DType::FP32 || weight->dtype() != base::DType::FP32 || output->dtype() != base::DType::FP32)
+            {
+                base::Tensor input_fp32 = input->astype(base::DType::FP32);
+                base::Tensor weight_fp32 = weight->astype(base::DType::FP32);
+                base::Tensor output_fp32(output->shape(), base::Device::CPU, output->is_mutable(), nullptr, base::DType::FP32);
+                rms_norm_kernel_cpu(&input_fp32, &weight_fp32, &output_fp32, eps, stream);
+                *output = output_fp32.astype(output->dtype());
+                return;
+            }
+
             CHECK(input->shape() == output->shape());
             CHECK(input->num_mats() > 0);
             CHECK(weight->shape(-1) == input->shape(-1));

@@ -7,6 +7,14 @@ namespace mllm
         void causal_mask_kernel_cpu(base::Tensor *input,
                                     [[maybe_unused]] void *stream)
         {
+            if (input->dtype() != base::DType::FP32)
+            {
+                base::Tensor input_fp32 = input->astype(base::DType::FP32);
+                causal_mask_kernel_cpu(&input_fp32, stream);
+                *input = input_fp32.astype(input->dtype());
+                return;
+            }
+
             size_t seq_len = input->shape(-2);
             if (seq_len <= 1)
                 return;

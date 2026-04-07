@@ -212,13 +212,14 @@ namespace mllm
                              float top_p,
                              float min_p)
         {
-            auto orig_device = probability->device();
-            probability->toDevice(base::Device::CPU);
-            output->toDevice(base::Device::CPU);
+            auto orig_output_device = output->device();
+            base::Tensor probability_fp32 = probability->dtype() == base::DType::FP32 ? probability->clone() : probability->astype(base::DType::FP32);
+            probability_fp32.toDevice(base::Device::CPU);
+            base::Tensor output_host({1, 1}, base::Device::CPU, false, nullptr, base::DType::U32);
 
             std::vector<std::pair<float, uint32_t>> prob_data;
-            float *data = probability->data();
-            size_t vocab_size = probability->logic_size();
+            float *data = probability_fp32.data<float>();
+            size_t vocab_size = probability_fp32.logic_size();
             for (size_t i = 0; i < vocab_size; i++)
             {
                 prob_data.emplace_back(data[i], i);
@@ -255,13 +256,28 @@ namespace mllm
                 rand_num -= prob_data[i].first;
                 if (rand_num <= eps)
                 {
-                    reinterpret_cast<uint32_t *>(output->data())[0] = prob_data[i].second;
+                    output_host.data<uint32_t>()[0] = prob_data[i].second;
                     break;
                 }
             }
 
-            probability->toDevice(orig_device);
-            output->toDevice(orig_device);
+            if (output->dtype() == base::DType::U32)
+            {
+                if (orig_output_device == base::Device::CUDA)
+                {
+                    output_host.toDevice(base::Device::CUDA);
+                }
+                *output = output_host;
+            }
+            else
+            {
+                base::Allocator::device_memcpy(output->raw_data(),
+                                               output_host.raw_data(),
+                                               sizeof(uint32_t),
+                                               orig_output_device == base::Device::CUDA ? cudaMemcpyHostToDevice : cudaMemcpyHostToHost);
+                output->set_stream(probability->stream());
+            }
+
         }
     }
 }

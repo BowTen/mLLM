@@ -35,24 +35,17 @@ namespace mllm
               lm_head({hidden_size, vocab_size}, device_, stream_, inference_dtype),
               softmax(device_, stream_),
               pos_id(0),
-              temperature_scaling(base::Tensor::from_vector(std::vector<uint16_t>{static_cast<uint16_t>(0)}, {1}, base::Device::CPU, false, nullptr)),
-              final_probability({1, vocab_size}, device_, false, stream_, inference_dtype),
+              temperature_scaling(base::Tensor::from_float(0.0f, base::Device::CPU, false, nullptr)),
+              // Keep probability buffers in FP32 for softmax/sampling stability while the rest of
+              // the model defaults to BF16 storage.
+              final_probability({1, vocab_size}, device_, false, stream_, base::DType::FP32),
               top_k(top_k),
               top_p(top_p),
               min_p(min_p),
               inference_dtype_(inference_dtype)
         {
             temperature_scaling = base::Tensor::from_float(1.0f / temperature, base::Device::CPU, false, nullptr);
-            if (inference_dtype_ == base::DType::BF16)
-            {
-                std::vector<uint16_t> bf16_scale(1);
-                base::load_f32_to_bf16(temperature_scaling.raw_data(), bf16_scale.data(), bf16_scale.size());
-                temperature_scaling = base::Tensor::from_vector(bf16_scale, {1}, device_, false, stream_);
-            }
-            else
-            {
-                temperature_scaling.toDevice(device_);
-            }
+            temperature_scaling.toDevice(device_);
             VLOG(TRACE) << "Loading Qwen3 model from: " << model_path;
             VLOG(TRACE) << "Loading safetensors from: " << model_path + "/model.safetensors";
             // 加载safetensors
@@ -77,7 +70,9 @@ namespace mllm
         {
             size_t vocab_size = probabilities.shape(-1);
             std::vector<std::pair<size_t, float>> token_probs;
-            float *data = probabilities.data();
+            Tensor fp32_probabilities = probabilities.dtype() == base::DType::FP32 ? probabilities.clone() : probabilities.astype(base::DType::FP32);
+            fp32_probabilities.toDevice(base::Device::CPU);
+            float *data = fp32_probabilities.data<float>();
             for (size_t i = 0; i < vocab_size; ++i)
             {
                 token_probs.emplace_back(i, data[i]);

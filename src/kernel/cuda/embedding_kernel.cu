@@ -68,14 +68,23 @@ namespace mllm
                              size_t hidden_size,
                              void *stream)
         {
+            CHECK(input->dtype() == base::DType::U32) << "Embedding input must use U32 token ids.";
             CHECK(input->shape(-2) == output->shape(-2));
+            if (weight->dtype() != base::DType::FP32 || output->dtype() != base::DType::FP32)
+            {
+                base::Tensor weight_fp32 = weight->astype(base::DType::FP32);
+                base::Tensor output_fp32(output->shape(), base::Device::CUDA, output->is_mutable(), static_cast<cudaStream_t>(stream), base::DType::FP32);
+                emb_kernel_cuda(input, &weight_fp32, &output_fp32, hidden_size, stream);
+                *output = output_fp32.astype(output->dtype());
+                return;
+            }
             input->contiguous();
             weight->contiguous();
             output->contiguous();
 
-            uint32_t *input_data = (uint32_t *)input->data();
-            float *weight_data = (float *)weight->data();
-            float *output_data = (float *)output->data();
+            uint32_t *input_data = input->data<uint32_t>();
+            float *weight_data = weight->data<float>();
+            float *output_data = output->data<float>();
             size_t seq_len = input->shape(-2);
 
             dim3 grid(input->num_mats(), seq_len);

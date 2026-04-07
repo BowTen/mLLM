@@ -6,19 +6,34 @@ namespace mllm
     {
         void row_softmax_kernel_cpu(float *input, float *output, size_t length)
         {
+            float row_max = -std::numeric_limits<float>::infinity();
+            for (size_t i = 0; i < length; i++)
+            {
+                row_max = std::max(row_max, input[i]);
+            }
+
             float sum = 0.f;
             for (size_t i = 0; i < length; i++)
             {
-                sum += exp(input[i]);
+                sum += exp(input[i] - row_max);
             }
             for (size_t i = 0; i < length; i++)
             {
-                output[i] = exp(input[i]) / sum;
+                output[i] = exp(input[i] - row_max) / sum;
             }
         }
 
         void softmax_kernel_cpu(base::Tensor *input, base::Tensor *output, [[maybe_unused]] void *stream)
         {
+            if (input->dtype() != base::DType::FP32 || output->dtype() != base::DType::FP32)
+            {
+                base::Tensor input_fp32 = input->astype(base::DType::FP32);
+                base::Tensor output_fp32(output->shape(), base::Device::CPU, output->is_mutable(), nullptr, base::DType::FP32);
+                softmax_kernel_cpu(&input_fp32, &output_fp32, stream);
+                *output = output_fp32.astype(output->dtype());
+                return;
+            }
+
             CHECK(input->shape() == output->shape()) << "Input and output shapes must be the same.";
             size_t num_mats = input->num_mats();
             size_t n = input->shape(-2);

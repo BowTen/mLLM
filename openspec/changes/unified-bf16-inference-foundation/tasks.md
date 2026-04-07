@@ -12,12 +12,12 @@
 
 ## 3. Qwen3 CPU/CUDA BF16 Execution
 
-- [ ] 3.1 Port the CPU Qwen3-critical operator chain to support `bf16` storage with `fp32` compute fallback.
-- [ ] 3.2 Port the CUDA Qwen3-critical operator chain to support `bf16` storage, using `fp32` accumulation for numerically sensitive paths where needed.
-- [ ] 3.3 Verify cache updates, tensor transforms, and backend dispatch logic preserve dtype contracts across the Qwen3 inference path.
+- [x] 3.1 Port the CPU Qwen3-critical operator chain to support `bf16` storage with `fp32` compute fallback.
+- [x] 3.2 Port the CUDA Qwen3-critical operator chain to support `bf16` storage, using `fp32` accumulation for numerically sensitive paths where needed.
+- [x] 3.3 Verify cache updates, tensor transforms, and backend dispatch logic preserve dtype contracts across the Qwen3 inference path.
 
 ## 4. Validation And Default Rollout
 
-- [ ] 4.1 Add dtype-aware tensor/runtime tests covering allocation, copy, contiguous materialization, concatenation, and device transfer.
-- [ ] 4.2 Add operator-level parity tests comparing `bf16` execution against `fp32` references on CPU and CUDA within defined tolerances.
-- [ ] 4.3 Add Qwen3 end-to-end `bf16` vs `fp32` regression checks and memory/resource measurements, then flip the default floating-point inference dtype to `bf16`.
+- [x] 4.1 Add dtype-aware tensor/runtime tests covering allocation, copy, contiguous materialization, concatenation, and device transfer.
+- [x] 4.2 Add operator-level parity tests comparing `bf16` execution against `fp32` references on CPU and CUDA within defined tolerances.
+- [x] 4.3 Add Qwen3 end-to-end `bf16` vs `fp32` regression checks and memory/resource measurements, then flip the default floating-point inference dtype to `bf16`.

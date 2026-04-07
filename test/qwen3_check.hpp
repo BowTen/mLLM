@@ -164,8 +164,8 @@ public:
 
         Tensor token_ids_cpu = Tensor::from_vector(token_ids, {token_ids.size(), 1}, Device::CPU, false, nullptr);
         Tensor token_ids_cuda = Tensor::from_vector(token_ids, {token_ids.size(), 1}, Device::CUDA, false, model_cuda.stream_);
-        Tensor next_token_cpu({1, 1}, Device::CPU, false, nullptr);
-        Tensor next_token_cuda({1, 1}, Device::CUDA, false, model_cuda.stream_);
+        Tensor next_token_cpu({1, 1}, Device::CPU, false, nullptr, DType::U32);
+        Tensor next_token_cuda({1, 1}, Device::CUDA, false, model_cuda.stream_, DType::U32);
 
         model_cpu.forward(token_ids_cpu, next_token_cpu);
 

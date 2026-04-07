@@ -30,6 +30,24 @@ namespace
         }
     }
 
+    Tensor tensor_from_fp32_as_bf16(const std::vector<float> &values,
+                                    const std::vector<size_t> &shape,
+                                    Device device,
+                                    cudaStream_t stream)
+    {
+        std::vector<uint16_t> bf16(values.size());
+        load_f32_to_bf16(values.data(), bf16.data(), bf16.size());
+        return Tensor::from_vector(bf16, shape, device, false, stream);
+    }
+
+    std::vector<float> tensor_to_fp32_vector(Tensor tensor)
+    {
+        tensor.toDevice(Device::CPU);
+        std::vector<float> values(tensor.size());
+        materialize_float_storage(tensor.raw_data(), tensor.dtype(), values.data(), DType::FP32, values.size());
+        return values;
+    }
+
     void expect_tensor_values_near(const Tensor &expected, const Tensor &actual, float tolerance)
     {
         ASSERT_EQ(expected.shape(), actual.shape());
@@ -585,4 +603,44 @@ TEST(SoftmaxBackendSelectionTest, FallsBackWhenLibraryIsUnavailable)
 
     EXPECT_EQ(decision.backend, kernel::SoftmaxBackend::HandwrittenFallback);
     EXPECT_NE(decision.reason.find("unavailable"), std::string::npos);
+}
+
+TEST(SoftmaxKernelBF16Test, PublicKernelSupportsBF16StorageOnCpuAndCuda)
+{
+    const std::vector<size_t> shape = {2, 4};
+    const std::vector<float> values = {
+        1.0f, 2.0f, 3.0f, 4.0f,
+        -1.0f, 0.0f, 1.0f, 2.0f,
+    };
+
+    Tensor input_fp32(shape, Device::CPU, false, nullptr);
+    Tensor expected(shape, Device::CPU, false, nullptr);
+    std::copy(values.begin(), values.end(), input_fp32.data());
+    kernel::get_softmax_kernel(Device::CPU)(&input_fp32, &expected, nullptr);
+
+    Tensor cpu_input = tensor_from_fp32_as_bf16(values, shape, Device::CPU, nullptr);
+    Tensor cpu_output(shape, Device::CPU, false, nullptr, DType::BF16);
+    kernel::get_softmax_kernel(Device::CPU)(&cpu_input, &cpu_output, nullptr);
+
+    EXPECT_EQ(cpu_output.dtype(), DType::BF16);
+    const std::vector<float> cpu_values = tensor_to_fp32_vector(cpu_output);
+    const float *expected_values = expected.data();
+    for (size_t i = 0; i < expected.size(); ++i)
+    {
+        EXPECT_NEAR(cpu_values[i], expected_values[i], 2e-2f) << "cpu index " << i;
+    }
+
+    Tensor cuda_input = cpu_input.clone();
+    Tensor cuda_output(shape, Device::CUDA, false, nullptr, DType::BF16);
+    cuda_input.toDevice(Device::CUDA);
+    kernel::reset_last_softmax_backend_execution();
+    kernel::get_softmax_kernel(Device::CUDA)(&cuda_input, &cuda_output, nullptr);
+
+    EXPECT_EQ(cuda_output.dtype(), DType::BF16);
+    const std::vector<float> cuda_values = tensor_to_fp32_vector(cuda_output);
+    for (size_t i = 0; i < expected.size(); ++i)
+    {
+        EXPECT_NEAR(cuda_values[i], expected_values[i], 2e-2f) << "cuda index " << i;
+    }
+    EXPECT_NE(kernel::get_last_softmax_backend_execution(), kernel::SoftmaxBackendExecution::Unknown);
 }

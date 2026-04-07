@@ -199,6 +199,39 @@ namespace mllm
             return static_cast<const float *>(raw_data());
         }
 
+        Tensor Tensor::astype(DType target_dtype) const
+        {
+            CHECK(meta_->buffer_ != nullptr) << "Tensor buffer is empty, cannot cast dtype.";
+            if (meta_->dtype_ == target_dtype)
+            {
+                return const_cast<Tensor *>(this)->clone();
+            }
+
+            CHECK(is_floating_point_dtype(meta_->dtype_)) << "Tensor::astype only supports floating-point source dtypes.";
+            CHECK(is_floating_point_dtype(target_dtype)) << "Tensor::astype only supports floating-point target dtypes.";
+
+            Tensor host_tensor = const_cast<Tensor *>(this)->clone();
+            host_tensor.toDevice(Device::CPU);
+            if (!host_tensor.is_contiguous())
+            {
+                host_tensor.contiguous();
+            }
+
+            Tensor converted(meta_->shape_, Device::CPU, meta_->mut_, nullptr, target_dtype);
+            materialize_float_storage(host_tensor.raw_data(),
+                                      host_tensor.dtype(),
+                                      converted.raw_data(),
+                                      target_dtype,
+                                      host_tensor.logic_size());
+
+            if (meta_->device_ == Device::CUDA)
+            {
+                converted.toDevice(Device::CUDA);
+            }
+            converted.set_stream(meta_->stream_);
+            return converted;
+        }
+
         Tensor Tensor::toDevice(Device device)
         {
             if (meta_->device_ == device)
