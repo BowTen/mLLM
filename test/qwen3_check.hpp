@@ -5,6 +5,7 @@
 #define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
