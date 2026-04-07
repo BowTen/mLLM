@@ -157,7 +157,7 @@ public:
         return best_index;
     }
 
-    void forward_model_and_check(const vector<size_t> &token_ids)
+    void forward_model_and_check(const vector<uint32_t> &token_ids)
     {
         LOG(INFO) << "Running production Qwen3::forward CPU vs CUDA comparison";
 
@@ -188,7 +188,7 @@ public:
             << "Expected at least one library-backed CUDA matmul during Qwen3::forward";
     }
 
-    size_t forward(vector<size_t> token_ids)
+    size_t forward(vector<uint32_t> token_ids)
     {
         LOG(INFO) << "Starting forward pass comparison between CPU and CUDA";
 

@@ -102,6 +102,19 @@ TEST_F(TensorTest, RawAndTypedAccessRespectTensorDType)
     EXPECT_EQ(tensor.compatible_float_data(), nullptr);
 }
 
+TEST_F(TensorTest, FromVectorUint32UsesU32Storage)
+{
+    std::vector<uint32_t> token_ids = {1u, 7u, 42u};
+    Tensor tensor = Tensor::from_vector(token_ids, {token_ids.size(), 1}, Device::CPU, false, nullptr);
+
+    EXPECT_EQ(tensor.dtype(), DType::U32);
+    auto *ids_ptr = tensor.data<uint32_t>();
+    ASSERT_NE(ids_ptr, nullptr);
+    EXPECT_EQ(ids_ptr[0], 1u);
+    EXPECT_EQ(ids_ptr[1], 7u);
+    EXPECT_EQ(ids_ptr[2], 42u);
+}
+
 // Test Tensor construction with 4D shape
 TEST_F(TensorTest, Constructor4D)
 {

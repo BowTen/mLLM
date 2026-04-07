@@ -75,6 +75,7 @@ namespace mllm
             if (total_logic_size > input->size())
             {
                 auto vec_buffer = std::dynamic_pointer_cast<base::VecBuffer>(input->buffer());
+                CHECK(vec_buffer != nullptr) << "Buffer is not VecBuffer, cannot resize.";
                 vec_buffer->resize(total_logic_size * element_size);
             }
             auto *new_data = input->raw_data();
