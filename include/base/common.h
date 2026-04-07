@@ -1,6 +1,7 @@
 #ifndef MLLM_BASE_COMMON_H
 #define MLLM_BASE_COMMON_H
 
+#include "dtype.h"
 #include <utility>
 
 namespace mllm

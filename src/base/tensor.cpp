@@ -59,16 +59,18 @@ namespace mllm
                                    is_contiguous_(true),
                                    buffer_(nullptr),
                                    device_(Device::CPU),
+                                   dtype_(default_float_dtype()),
                                    mut_(false),
                                    stream_(nullptr)
         {
             update();
         }
-        TensorMeta::TensorMeta(const std::vector<size_t> &shape, Buffer::BufferPtr buffer, Device device, bool mut, cudaStream_t stream)
+        TensorMeta::TensorMeta(const std::vector<size_t> &shape, Buffer::BufferPtr buffer, Device device, DType dtype, bool mut, cudaStream_t stream)
             : shape_(shape),
               is_contiguous_(true),
               buffer_(buffer),
               device_(device),
+              dtype_(dtype),
               mut_(mut),
               stream_(stream)
         {
@@ -78,8 +80,8 @@ namespace mllm
             update();
         }
 
-        TensorMeta::TensorMeta(const std::vector<size_t> &shape, Device device, bool mut, cudaStream_t stream)
-            : shape_(shape), is_contiguous_(true), device_(device), mut_(mut), stream_(stream)
+        TensorMeta::TensorMeta(const std::vector<size_t> &shape, Device device, bool mut, cudaStream_t stream, DType dtype)
+            : shape_(shape), is_contiguous_(true), device_(device), dtype_(dtype), mut_(mut), stream_(stream)
         {
             if (shape_.size() == 1)
                 shape_.insert(shape_.begin(), 1);
@@ -109,8 +111,8 @@ namespace mllm
             update();
         }
 
-        TensorMeta::TensorMeta(void *data, const std::vector<size_t> &shape, bool copy, Device device, bool mut, cudaStream_t stream)
-            : shape_(shape), is_contiguous_(true), device_(device), mut_(mut), stream_(stream)
+        TensorMeta::TensorMeta(void *data, const std::vector<size_t> &shape, bool copy, Device device, bool mut, cudaStream_t stream, DType dtype)
+            : shape_(shape), is_contiguous_(true), device_(device), dtype_(dtype), mut_(mut), stream_(stream)
         {
             if (shape_.size() == 1)
                 shape_.insert(shape_.begin(), 1);

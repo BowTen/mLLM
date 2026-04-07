@@ -60,6 +60,15 @@ TEST_F(TensorTest, ConstructorMutable)
     EXPECT_NE(tensor.data(), nullptr);
 }
 
+TEST_F(TensorTest, DefaultFloatingPointTensorUsesProjectDefaultDType)
+{
+    Tensor tensor({2, 3}, Device::CPU, false, nullptr);
+
+    EXPECT_EQ(tensor.dtype(), DType::BF16);
+    EXPECT_EQ(tensor.element_size(), sizeof(uint16_t));
+    EXPECT_TRUE(is_floating_point_dtype(tensor.dtype()));
+}
+
 // Test Tensor construction with 4D shape
 TEST_F(TensorTest, Constructor4D)
 {
