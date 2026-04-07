@@ -1,4 +1,5 @@
 #include "base/safetensors.h"
+#include "base/util.h"
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -97,6 +98,19 @@ namespace mllm
             return header;
         }
 
+        DType SafeTensors::get_weight_dtype(std::string weight_name) const
+        {
+            CHECK(header.find(weight_name) != header.end()) << "Weight name not found in header: " << weight_name;
+            const auto &weight_info = header[weight_name];
+            CHECK(weight_info.find("dtype") != weight_info.end()) << "Weight dtype not found in header: " << weight_name;
+            const std::string dtype = weight_info["dtype"];
+            if (dtype == "F32")
+                return DType::FP32;
+            if (dtype == "BF16")
+                return DType::BF16;
+            CHECK(false) << "Unsupported safetensors dtype: " << dtype;
+        }
+
         void *SafeTensors::get_weight(std::string weight_name) const
         {
             CHECK(weight != nullptr);
@@ -111,6 +125,17 @@ namespace mllm
 
             uint64_t start_offset = offsets[0];
             return reinterpret_cast<char *>(weight) + start_offset;
+        }
+
+        void SafeTensors::materialize_weight(std::string weight_name, void *dst, DType target_dtype) const
+        {
+            CHECK(dst != nullptr);
+            const DType source_dtype = get_weight_dtype(weight_name);
+            const auto weight_shape = get_weight_shape(weight_name);
+            size_t num_elements = 1;
+            for (size_t dim : weight_shape)
+                num_elements *= dim;
+            materialize_float_storage(get_weight(weight_name), source_dtype, dst, target_dtype, num_elements);
         }
 
         std::vector<size_t> SafeTensors::get_weight_shape(std::string weight_name) const

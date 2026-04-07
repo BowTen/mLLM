@@ -10,12 +10,13 @@ namespace mllm
 {
     namespace model
     {
-        Qwen3DecodeLayer::Qwen3DecodeLayer(size_t layer_index, JsonConfig config, base::Device device, cudaStream_t stream)
+        Qwen3DecodeLayer::Qwen3DecodeLayer(size_t layer_index, JsonConfig config, base::Device device, cudaStream_t stream, base::DType inference_dtype)
             : layer_index_(layer_index),
-              input_layernorm(config["hidden_size"], config["rms_norm_eps"], device, stream),
-              post_attention_layernorm(config["hidden_size"], config["rms_norm_eps"], device, stream),
-              self_attn(layer_index, config, device, stream),
-              mlp(layer_index, config, device, stream),
+              inference_dtype_(inference_dtype),
+              input_layernorm(config["hidden_size"], config["rms_norm_eps"], device, stream, inference_dtype),
+              post_attention_layernorm(config["hidden_size"], config["rms_norm_eps"], device, stream, inference_dtype),
+              self_attn(layer_index, config, device, stream, inference_dtype),
+              mlp(layer_index, config, device, stream, inference_dtype),
               add_op(device, stream)
         {
         }

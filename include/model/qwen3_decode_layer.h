@@ -23,6 +23,7 @@ namespace mllm
         {
         private:
             size_t layer_index_;
+            base::DType inference_dtype_;
             RMSNorm input_layernorm;
             RMSNorm post_attention_layernorm;
             Qwen3SelfAttn self_attn;
@@ -34,7 +35,7 @@ namespace mllm
             base::Tensor mlp_residual;
 
         public:
-            Qwen3DecodeLayer(size_t layer_index, JsonConfig config, base::Device device, cudaStream_t stream);
+            Qwen3DecodeLayer(size_t layer_index, JsonConfig config, base::Device device, cudaStream_t stream, base::DType inference_dtype);
             void forward(Tensor *input, Tensor *output, base::PosEmb position_embeddings);
             void loadWeight(const std::string &name, base::SafeTensors &st);
 

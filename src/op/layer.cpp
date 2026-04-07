@@ -57,21 +57,18 @@ namespace mllm
                 weight_.view(this_shape);
             }
 
-            auto weight_data = weight_.data();
             size_t weight_size = weight_.size();
             if (device_ == base::Device::CPU)
             {
                 VLOG(TRACE) << "Loading " << name << " weights to CPU";
-                // CPU设备，直接加载权重
-                base::load_bf16_to_f32(st.get_weight(name_ + ".weight"), weight_data, weight_size);
+                st.materialize_weight(name_ + ".weight", weight_.raw_data(), weight_.dtype());
             }
             else if (device_ == base::Device::CUDA)
             {
                 VLOG(TRACE) << "Loading " << name << " weights to CUDA";
-                // CUDA设备，先拷贝到临时缓冲区处理
-                base::ArrBuffer buffer(base::HostAllocator::getInstance(), weight_size * sizeof(float));
-                base::load_bf16_to_f32(st.get_weight(name_ + ".weight"), buffer.data(), weight_size);
-                base::Allocator::device_memcpy(weight_data, buffer.data(), weight_size * sizeof(float), cudaMemcpyHostToDevice);
+                base::ArrBuffer buffer(base::HostAllocator::getInstance(), weight_size * weight_.element_size());
+                st.materialize_weight(name_ + ".weight", buffer.data(), weight_.dtype());
+                base::Allocator::device_memcpy(weight_.raw_data(), buffer.data(), weight_size * weight_.element_size(), cudaMemcpyHostToDevice);
             }
             if (transpose)
             {

@@ -74,10 +74,10 @@ public:
 
     size_t hidden_size;
 
-    Qwen3Check(string model_path, float temperature, float check_eps)
+    Qwen3Check(string model_path, float temperature, float check_eps, DType inference_dtype = DType::FP32)
         : check_eps(check_eps),
-          model_cpu(Qwen3::from_pretrained(model_path, Device::CPU, temperature)),
-          model_cuda(Qwen3::from_pretrained(model_path, Device::CUDA, temperature)),
+          model_cpu(Qwen3::from_pretrained(model_path, Device::CPU, temperature, 20, 0.95f, 0.0f, inference_dtype)),
+          model_cuda(Qwen3::from_pretrained(model_path, Device::CUDA, temperature, 20, 0.95f, 0.0f, inference_dtype)),
           hidden_size(model_cpu.hidden_size)
     {
         LOG(INFO) << "Load model completed";

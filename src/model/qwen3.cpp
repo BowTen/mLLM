@@ -22,25 +22,37 @@ namespace mllm
             return stream;
         }
 
-        Qwen3::Qwen3(std::string model_path, base::Device device, float temperature, size_t top_k, float top_p, float min_p)
+        Qwen3::Qwen3(std::string model_path, base::Device device, float temperature, size_t top_k, float top_p, float min_p, base::DType inference_dtype)
             : Layer(1, 1, device, init_cuda_stream(device)),
               config_(base::load_json(model_path + "/config.json")),
               vocab_size(config_["vocab_size"]),
               hidden_size(config_["hidden_size"]),
               tokenizer(std::make_shared<BPETokenizer>(model_path + "/tokenizer.json")),
-              embed_tokens(vocab_size, hidden_size, device_, stream_),
-              rotary_embedding(config_, device_, stream_),
-              norm(hidden_size, config_["rms_norm_eps"], device_, stream_),
+              embed_tokens(vocab_size, hidden_size, device_, stream_, inference_dtype),
+              rotary_embedding(config_, device_, stream_, inference_dtype),
+              norm(hidden_size, config_["rms_norm_eps"], device_, stream_, inference_dtype),
               temp_scal(device_, stream_),
-              lm_head({hidden_size, vocab_size}, device_, stream_),
+              lm_head({hidden_size, vocab_size}, device_, stream_, inference_dtype),
               softmax(device_, stream_),
               pos_id(0),
-              temperature_scaling(base::Tensor::from_float(1.0f / temperature, device_, false, stream_)),
-              final_probability({1, vocab_size}, device_, false, stream_),
+              temperature_scaling(base::Tensor::from_vector(std::vector<uint16_t>{static_cast<uint16_t>(0)}, {1}, base::Device::CPU, false, nullptr)),
+              final_probability({1, vocab_size}, device_, false, stream_, inference_dtype),
               top_k(top_k),
               top_p(top_p),
-              min_p(min_p)
+              min_p(min_p),
+              inference_dtype_(inference_dtype)
         {
+            temperature_scaling = base::Tensor::from_float(1.0f / temperature, base::Device::CPU, false, nullptr);
+            if (inference_dtype_ == base::DType::BF16)
+            {
+                std::vector<uint16_t> bf16_scale(1);
+                base::load_f32_to_bf16(temperature_scaling.raw_data(), bf16_scale.data(), bf16_scale.size());
+                temperature_scaling = base::Tensor::from_vector(bf16_scale, {1}, device_, false, stream_);
+            }
+            else
+            {
+                temperature_scaling.toDevice(device_);
+            }
             VLOG(TRACE) << "Loading Qwen3 model from: " << model_path;
             VLOG(TRACE) << "Loading safetensors from: " << model_path + "/model.safetensors";
             // 加载safetensors
@@ -55,7 +67,7 @@ namespace mllm
             VLOG(TRACE) << "Loading layers";
             for (size_t i = 0; i < config_["num_hidden_layers"]; ++i)
             {
-                layers.emplace_back(i, config_, device, stream_);
+                layers.emplace_back(i, config_, device, stream_, inference_dtype_);
                 layers.back().loadWeight("model.layers." + std::to_string(i), st);
             }
             VLOG(TRACE) << "Successfully loaded all weights";
@@ -94,15 +106,15 @@ namespace mllm
 
             std::vector<size_t> hidden_shape({token_ids.shape(-2), hidden_size});
             if (hidden_state.shape() != hidden_shape)
-                hidden_state = Tensor(hidden_shape, device_, false, stream_);
+                hidden_state = Tensor(hidden_shape, device_, false, stream_, inference_dtype_);
             embed_tokens.forward(token_ids, hidden_state);
 
             auto rope_emb_shape = hidden_state.shape();
             rope_emb_shape.back() = config_["head_dim"];
             if (cos.shape() != rope_emb_shape)
             {
-                cos = Tensor(rope_emb_shape, device_, false, stream_);
-                sin = Tensor(rope_emb_shape, device_, false, stream_);
+                cos = Tensor(rope_emb_shape, device_, false, stream_, inference_dtype_);
+                sin = Tensor(rope_emb_shape, device_, false, stream_, inference_dtype_);
             }
             base::PosEmb pos_emb(&cos, &sin);
             size_t seq_len = hidden_state.shape(-2);

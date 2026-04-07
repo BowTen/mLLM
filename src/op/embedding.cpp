@@ -8,8 +8,8 @@ namespace mllm
 {
     namespace op
     {
-        Embedding::Embedding(size_t vocab_size, size_t hidden_size, base::Device device, cudaStream_t stream)
-            : WLayer(1, 1, {vocab_size, hidden_size}, device, stream)
+        Embedding::Embedding(size_t vocab_size, size_t hidden_size, base::Device device, cudaStream_t stream, base::DType dtype)
+            : WLayer(1, 1, {vocab_size, hidden_size}, device, stream, dtype)
         {
         }
 

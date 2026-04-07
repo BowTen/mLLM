@@ -23,6 +23,7 @@ namespace mllm
             size_t layer_index_;
             base::Device device_;
             cudaStream_t stream_;
+            base::DType inference_dtype_;
             JsonConfig config_;
             size_t hidden_size;
             size_t intermediate_size;
@@ -37,7 +38,7 @@ namespace mllm
             Tensor up_state;
 
         public:
-            Qwen3MLP(size_t layer_index, JsonConfig config, base::Device device, cudaStream_t stream);
+            Qwen3MLP(size_t layer_index, JsonConfig config, base::Device device, cudaStream_t stream, base::DType inference_dtype);
             void forward(Tensor *hidden_state, Tensor *output);
             void loadWeight(const std::string &name, base::SafeTensors &st);
 

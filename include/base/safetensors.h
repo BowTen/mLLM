@@ -1,6 +1,7 @@
 #ifndef MLLM_BASE_SAFETENSORS_H
 #define MLLM_BASE_SAFETENSORS_H
 
+#include "common.h"
 #include "json.hpp"
 #include <string>
 
@@ -23,7 +24,9 @@ namespace mllm
 
             json get_header() const;
             std::vector<size_t> get_weight_shape(std::string weight_name) const;
+            DType get_weight_dtype(std::string weight_name) const;
             void *get_weight(std::string weight_name) const;
+            void materialize_weight(std::string weight_name, void *dst, DType target_dtype) const;
         };
 
     }

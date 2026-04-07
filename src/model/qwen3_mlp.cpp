@@ -10,16 +10,17 @@ namespace mllm
 {
     namespace model
     {
-        Qwen3MLP::Qwen3MLP(size_t layer_index, JsonConfig config, base::Device device, cudaStream_t stream)
+        Qwen3MLP::Qwen3MLP(size_t layer_index, JsonConfig config, base::Device device, cudaStream_t stream, base::DType inference_dtype)
             : layer_index_(layer_index),
               device_(device),
               stream_(stream),
+              inference_dtype_(inference_dtype),
               config_(config),
               hidden_size(config["hidden_size"]),
               intermediate_size(config["intermediate_size"]),
-              gate_proj({hidden_size, intermediate_size}, device, stream),
-              up_proj({hidden_size, intermediate_size}, device, stream),
-              down_proj({intermediate_size, hidden_size}, device, stream),
+              gate_proj({hidden_size, intermediate_size}, device, stream, inference_dtype),
+              up_proj({hidden_size, intermediate_size}, device, stream, inference_dtype),
+              down_proj({intermediate_size, hidden_size}, device, stream, inference_dtype),
               silu(device, stream),
               ele_mul(device, stream)
         {
@@ -33,8 +34,8 @@ namespace mllm
             intermediate_shape.back() = intermediate_size;
             if (gate_state.shape() != intermediate_shape)
             {
-                gate_state = Tensor(intermediate_shape, device_, false, stream_);
-                up_state = Tensor(intermediate_shape, device_, false, stream_);
+                gate_state = Tensor(intermediate_shape, device_, false, stream_, inference_dtype_);
+                up_state = Tensor(intermediate_shape, device_, false, stream_, inference_dtype_);
             }
 
             up_proj.forward(*hidden_state, up_state);

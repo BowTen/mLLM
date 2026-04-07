@@ -1,4 +1,6 @@
 #include "base/safetensors.h"
+#include "base/common.h"
+#include "base/util.h"
 #include <gtest/gtest.h>
 #include <iostream>
 #include <fstream>
@@ -10,21 +12,48 @@
 
 using namespace mllm::base;
 
+namespace
+{
+std::string resolve_qwen3_safetensors_path()
+{
+    const char *env_model_path = std::getenv("QWEN3_MODEL_PATH");
+    const std::vector<std::string> candidates = {
+        env_model_path != nullptr ? std::string(env_model_path) : std::string(),
+        "/data/zz/hf/Qwen/Qwen3-0.6B-msfull",
+        "/home/hznuojai/ai_infra/MiniLLM/resources/Qwen/Qwen3-0.6B",
+    };
+
+    for (const auto &candidate : candidates)
+    {
+        if (candidate.empty())
+            continue;
+        const std::string safetensors_path = candidate + "/model.safetensors";
+        std::ifstream file(safetensors_path, std::ios::binary);
+        if (file.good())
+            return safetensors_path;
+    }
+    return {};
+}
+} // namespace
+
 // Test fixture for SafeTensors tests
 class SafeTensorsTest : public ::testing::Test
 {
 protected:
     std::string test_file_path;
+    std::string mixed_dtype_test_file_path;
 
     void SetUp() override
     {
         test_file_path = "/tmp/test_safetensors.bin";
+        mixed_dtype_test_file_path = "/tmp/test_safetensors_mixed_dtype.bin";
     }
 
     void TearDown() override
     {
         // Clean up test file
         std::remove(test_file_path.c_str());
+        std::remove(mixed_dtype_test_file_path.c_str());
     }
 
     // Helper function to create a test safetensors file
@@ -67,6 +96,47 @@ protected:
         file.write(reinterpret_cast<const char *>(weight1.data()), weight1.size() * sizeof(float));
         file.write(reinterpret_cast<const char *>(weight2.data()), weight2.size() * sizeof(float));
 
+        file.close();
+        return true;
+    }
+
+    static uint16_t fp32_to_bf16_bits(float value)
+    {
+        uint32_t bits = 0;
+        std::memcpy(&bits, &value, sizeof(bits));
+        return static_cast<uint16_t>(bits >> 16);
+    }
+
+    bool create_mixed_dtype_safetensors_file(const std::string &file_path)
+    {
+        json header;
+        header["f32_weight"] = {
+            {"dtype", "F32"},
+            {"shape", {2}},
+            {"data_offsets", {0, 8}}};
+        header["bf16_weight"] = {
+            {"dtype", "BF16"},
+            {"shape", {2}},
+            {"data_offsets", {8, 12}}};
+
+        const std::string header_str = header.dump();
+        const uint64_t header_size = header_str.size();
+
+        const std::vector<float> f32_weight = {1.5f, -2.25f};
+        const std::vector<uint16_t> bf16_weight = {
+            fp32_to_bf16_bits(3.5f),
+            fp32_to_bf16_bits(-4.75f)};
+
+        std::ofstream file(file_path, std::ios::binary);
+        if (!file.is_open())
+        {
+            return false;
+        }
+
+        file.write(reinterpret_cast<const char *>(&header_size), sizeof(header_size));
+        file.write(header_str.c_str(), header_size);
+        file.write(reinterpret_cast<const char *>(f32_weight.data()), f32_weight.size() * sizeof(float));
+        file.write(reinterpret_cast<const char *>(bf16_weight.data()), bf16_weight.size() * sizeof(uint16_t));
         file.close();
         return true;
     }
@@ -137,6 +207,36 @@ TEST_F(SafeTensorsTest, GetWeightData)
     }
 }
 
+TEST_F(SafeTensorsTest, ReportsSourceDTypeMetadata)
+{
+    ASSERT_TRUE(create_mixed_dtype_safetensors_file(mixed_dtype_test_file_path));
+
+    SafeTensors st(mixed_dtype_test_file_path);
+
+    EXPECT_EQ(st.get_weight_dtype("f32_weight"), DType::FP32);
+    EXPECT_EQ(st.get_weight_dtype("bf16_weight"), DType::BF16);
+}
+
+TEST_F(SafeTensorsTest, MaterializesWeightIntoRequestedTargetDType)
+{
+    ASSERT_TRUE(create_mixed_dtype_safetensors_file(mixed_dtype_test_file_path));
+
+    SafeTensors st(mixed_dtype_test_file_path);
+
+    std::vector<float> bf16_to_f32(2, 0.0f);
+    st.materialize_weight("bf16_weight", bf16_to_f32.data(), DType::FP32);
+    EXPECT_FLOAT_EQ(bf16_to_f32[0], 3.5f);
+    EXPECT_FLOAT_EQ(bf16_to_f32[1], -4.75f);
+
+    std::vector<uint16_t> f32_to_bf16(2, 0);
+    st.materialize_weight("f32_weight", f32_to_bf16.data(), DType::BF16);
+
+    std::vector<float> roundtrip(2, 0.0f);
+    load_bf16_to_f32(f32_to_bf16.data(), roundtrip.data(), roundtrip.size());
+    EXPECT_FLOAT_EQ(roundtrip[0], 1.5f);
+    EXPECT_FLOAT_EQ(roundtrip[1], -2.25f);
+}
+
 // Test error handling for non-existent file
 TEST_F(SafeTensorsTest, NonExistentFile)
 {
@@ -193,7 +293,11 @@ TEST_F(SafeTensorsTest, InvalidJsonHeader)
 
 TEST(Qwen3Safetensors, Test)
 {
-    std::string file_path = "/home/hznuojai/ai_infra/MiniLLM/resources/Qwen/Qwen3-0.6B/model.safetensors";
+    const std::string file_path = resolve_qwen3_safetensors_path();
+    if (file_path.empty())
+    {
+        GTEST_SKIP() << "Qwen3 safetensors file not available in known locations.";
+    }
     SafeTensors st(file_path);
     auto header = st.get_header();
     // auto head_str = header.dump(4); // 打印header内容

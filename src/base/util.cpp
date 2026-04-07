@@ -35,6 +35,46 @@ namespace mllm
             }
         }
 
+        void load_f32_to_bf16(const void *src, void *dst, size_t num_elements)
+        {
+            CHECK(src);
+            CHECK(dst);
+            const uint32_t *src_fp32 = static_cast<const uint32_t *>(src);
+            uint16_t *dst_bf16 = static_cast<uint16_t *>(dst);
+            for (size_t i = 0; i < num_elements; ++i)
+            {
+                dst_bf16[i] = static_cast<uint16_t>(src_fp32[i] >> 16);
+            }
+        }
+
+        void materialize_float_storage(const void *src, DType src_dtype, void *dst, DType dst_dtype, size_t num_elements)
+        {
+            CHECK(src);
+            CHECK(dst);
+            CHECK(is_floating_point_dtype(src_dtype)) << "Source dtype must be floating point.";
+            CHECK(is_floating_point_dtype(dst_dtype)) << "Destination dtype must be floating point.";
+
+            if (src_dtype == dst_dtype)
+            {
+                HostAllocator::getInstance()->memcpy(dst, src, num_elements * dtype_element_size(src_dtype));
+                return;
+            }
+
+            if (src_dtype == DType::BF16 && dst_dtype == DType::FP32)
+            {
+                load_bf16_to_f32(src, dst, num_elements);
+                return;
+            }
+
+            if (src_dtype == DType::FP32 && dst_dtype == DType::BF16)
+            {
+                load_f32_to_bf16(src, dst, num_elements);
+                return;
+            }
+
+            CHECK(false) << "Unsupported float storage conversion.";
+        }
+
         std::mt19937 global_mt(time(0));
         std::uniform_real_distribution<> global_urd(0.0, 1.0);
 

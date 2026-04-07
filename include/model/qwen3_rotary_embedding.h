@@ -13,6 +13,7 @@ namespace mllm
         private:
             base::Device device_;
             cudaStream_t stream_;
+            base::DType inference_dtype_;
             size_t head_dim;
             float rope_theta;
             base::Tensor inv_freq;
@@ -20,7 +21,8 @@ namespace mllm
         public:
             Qwen3RotaryEmbedding(op::JsonConfig config,
                                  base::Device device,
-                                 cudaStream_t stream);
+                                 cudaStream_t stream,
+                                 base::DType inference_dtype);
             void forward(size_t pos_start, size_t pos_end, base::PosEmb pos_emb);
         };
     }

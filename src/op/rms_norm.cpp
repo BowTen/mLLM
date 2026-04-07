@@ -5,8 +5,8 @@ namespace mllm
 {
     namespace op
     {
-        RMSNorm::RMSNorm(size_t hidden_size, float eps, base::Device device, cudaStream_t stream)
-            : WLayer(1, 1, {hidden_size}, device, stream), eps_(eps)
+        RMSNorm::RMSNorm(size_t hidden_size, float eps, base::Device device, cudaStream_t stream, base::DType dtype)
+            : WLayer(1, 1, {hidden_size}, device, stream, dtype), eps_(eps)
         {
         }
 

@@ -1,6 +1,6 @@
-#include "model/qwen3.h"
 #include <gtest/gtest.h>
 #include "base/util.h"
+#include "qwen3_check.hpp"
 
 #define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
@@ -28,9 +28,12 @@ int main()
 class Qwen3Test : public ::testing::Test
 {
 protected:
+    std::string model_path;
     Qwen3 model;
 
-    Qwen3Test() : model(Qwen3::from_pretrained("/home/hznuojai/ai_infra/MiniLLM/resources/Qwen/Qwen3-0.6B", base::Device::CPU, 0.3f))
+    Qwen3Test()
+        : model_path(resolve_qwen3_model_path()),
+          model(Qwen3::from_pretrained(model_path, base::Device::CPU, 0.3f, 20, 0.95f, 0.0f, DType::FP32))
     {
         VLOG(DEBUG) << "Set up Qwen3Test";
     }
@@ -40,6 +43,35 @@ protected:
         VLOG(DEBUG) << "Tearing down Qwen3Test";
     }
 };
+
+TEST(Qwen3ConstructionTest, DefaultsFloatingPointStorageToBF16)
+{
+    Qwen3 model = Qwen3::from_pretrained(resolve_qwen3_model_path(), Device::CPU, 0.3f);
+
+    EXPECT_EQ(model.inference_dtype(), DType::BF16);
+    EXPECT_EQ(model.embed_tokens.weight().dtype(), DType::BF16);
+    EXPECT_EQ(model.norm.weight().dtype(), DType::BF16);
+    EXPECT_EQ(model.lm_head.weight().dtype(), DType::BF16);
+    EXPECT_EQ(model.rotary_embedding.inv_freq.dtype(), DType::BF16);
+    EXPECT_EQ(model.temperature_scaling.dtype(), DType::BF16);
+    EXPECT_EQ(model.final_probability.dtype(), DType::BF16);
+    ASSERT_FALSE(model.layers.empty());
+    EXPECT_EQ(model.layers.front().self_attn.q_proj.weight().dtype(), DType::BF16);
+    EXPECT_EQ(model.layers.front().mlp.gate_proj.weight().dtype(), DType::BF16);
+}
+
+TEST(Qwen3ConstructionTest, AllowsExplicitFP32InferenceOverride)
+{
+    Qwen3 model = Qwen3::from_pretrained(resolve_qwen3_model_path(), Device::CPU, 0.3f, 20, 0.95f, 0.0f, DType::FP32);
+
+    EXPECT_EQ(model.inference_dtype(), DType::FP32);
+    EXPECT_EQ(model.embed_tokens.weight().dtype(), DType::FP32);
+    EXPECT_EQ(model.norm.weight().dtype(), DType::FP32);
+    EXPECT_EQ(model.lm_head.weight().dtype(), DType::FP32);
+    EXPECT_EQ(model.rotary_embedding.inv_freq.dtype(), DType::FP32);
+    EXPECT_EQ(model.temperature_scaling.dtype(), DType::FP32);
+    EXPECT_EQ(model.final_probability.dtype(), DType::FP32);
+}
 
 TEST_F(Qwen3Test, Demo)
 {

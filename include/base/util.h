@@ -1,6 +1,7 @@
 #ifndef MLLM_BASE_UTIL_H
 #define MLLM_BASE_UTIL_H
 
+#include "common.h"
 #include "json.hpp"
 #include <random>
 #include <cuda_runtime.h>
@@ -27,6 +28,8 @@ namespace mllm
         json load_json(const std::string &file_path);
 
         void load_bf16_to_f32(const void *src, void *dst, size_t num_elements);
+        void load_f32_to_bf16(const void *src, void *dst, size_t num_elements);
+        void materialize_float_storage(const void *src, DType src_dtype, void *dst, DType dst_dtype, size_t num_elements);
 
         float get_random_float();
 

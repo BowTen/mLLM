@@ -23,21 +23,22 @@ namespace mllm
             v.reshape(target_shape);
         }
 
-        Qwen3SelfAttn::Qwen3SelfAttn(size_t layer_index, JsonConfig config, base::Device device, cudaStream_t stream)
+        Qwen3SelfAttn::Qwen3SelfAttn(size_t layer_index, JsonConfig config, base::Device device, cudaStream_t stream, base::DType inference_dtype)
             : layer_index_(layer_index),
               device_(device),
               stream_(stream),
+              inference_dtype_(inference_dtype),
               config_(config),
               hidden_size(config["hidden_size"]),
               head_dim(config["head_dim"]),
               num_attention_heads(config["num_attention_heads"]),
               num_key_value_heads(config["num_key_value_heads"]),
-              q_proj({hidden_size, num_attention_heads * head_dim}, device, stream),
-              k_proj({hidden_size, num_key_value_heads * head_dim}, device, stream),
-              v_proj({hidden_size, num_key_value_heads * head_dim}, device, stream),
-              o_proj({num_attention_heads * head_dim, hidden_size}, device, stream),
-              q_norm(head_dim, config["rms_norm_eps"], device, stream),
-              k_norm(head_dim, config["rms_norm_eps"], device, stream),
+              q_proj({hidden_size, num_attention_heads * head_dim}, device, stream, inference_dtype),
+              k_proj({hidden_size, num_key_value_heads * head_dim}, device, stream, inference_dtype),
+              v_proj({hidden_size, num_key_value_heads * head_dim}, device, stream, inference_dtype),
+              o_proj({num_attention_heads * head_dim, hidden_size}, device, stream, inference_dtype),
+              q_norm(head_dim, config["rms_norm_eps"], device, stream, inference_dtype),
+              k_norm(head_dim, config["rms_norm_eps"], device, stream, inference_dtype),
               mat_mul(device_, stream_),
               mat_sc_mul(device_, stream_),
               mat_mul_attn_output(device_, stream_),
@@ -45,8 +46,20 @@ namespace mllm
               softmax(device_, stream_),
               k_cache(),
               v_cache(),
-              scaling(Tensor::from_float(static_cast<float>(std::pow(head_dim, -0.5f)), device_, false, stream_))
+              scaling(Tensor::from_vector(std::vector<uint16_t>{static_cast<uint16_t>(0)}, {1}, base::Device::CPU, false, nullptr))
         {
+            Tensor scaling_fp32 = Tensor::from_float(static_cast<float>(std::pow(head_dim, -0.5f)), base::Device::CPU, false, nullptr);
+            if (inference_dtype_ == base::DType::BF16)
+            {
+                std::vector<uint16_t> scaling_bf16(1);
+                base::load_f32_to_bf16(scaling_fp32.raw_data(), scaling_bf16.data(), scaling_bf16.size());
+                scaling = Tensor::from_vector(scaling_bf16, {1}, device_, false, stream_);
+            }
+            else
+            {
+                scaling = scaling_fp32;
+                scaling.toDevice(device_);
+            }
             VLOG(TRACE) << "Constructor: Qwen3SelfAttn with layer index: " << layer_index_;
         }
 
@@ -59,12 +72,12 @@ namespace mllm
             kv_shape.back() = num_key_value_heads * head_dim;
             if (q_output.shape() != q_shape)
             {
-                q_output = Tensor(q_shape, device_, false, stream_);
+                q_output = Tensor(q_shape, device_, false, stream_, inference_dtype_);
             }
             if (k_output.shape() != kv_shape)
             {
-                k_output = Tensor(kv_shape, device_, true, stream_); // reapeat_kv需要扩展Tensor
-                v_output = Tensor(kv_shape, device_, true, stream_); // reapeat_kv需要扩展Tensor
+                k_output = Tensor(kv_shape, device_, true, stream_, inference_dtype_); // reapeat_kv需要扩展Tensor
+                v_output = Tensor(kv_shape, device_, true, stream_, inference_dtype_); // reapeat_kv需要扩展Tensor
             }
 
             q_proj.forward(*hidden_state, q_output);
@@ -104,7 +117,7 @@ namespace mllm
                 v_cache.cat(v_output, -2);
             }
 
-            Tensor attn_weights({num_attention_heads, q_output.shape(-2), k_cache.shape(-2)}, device_, false, stream_);
+            Tensor attn_weights({num_attention_heads, q_output.shape(-2), k_cache.shape(-2)}, device_, false, stream_, inference_dtype_);
 
             k_cache.t();
             mat_mul.forward(q_output, k_cache, attn_weights);

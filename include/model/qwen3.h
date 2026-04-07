@@ -45,16 +45,17 @@ namespace mllm
             size_t top_k;
             float top_p;
             float min_p;
+            base::DType inference_dtype_;
 
-            Qwen3(std::string model_path, base::Device device, float temperature, size_t top_k, float top_p, float min_p);
+            Qwen3(std::string model_path, base::Device device, float temperature, size_t top_k, float top_p, float min_p, base::DType inference_dtype);
 
             cudaStream_t init_cuda_stream(base::Device device);
             void print_top_tokens_cpu(Tensor &probabilities, size_t top_k);
 
         public:
-            static Qwen3 from_pretrained(const std::string &model_path, base::Device device, float temperature = 0.6f, size_t top_k = 20, float top_p = 0.95f, float min_p = 0.0f)
+            static Qwen3 from_pretrained(const std::string &model_path, base::Device device, float temperature = 0.6f, size_t top_k = 20, float top_p = 0.95f, float min_p = 0.0f, base::DType inference_dtype = base::DType::BF16)
             {
-                return Qwen3(model_path, device, temperature, top_k, top_p, min_p);
+                return Qwen3(model_path, device, temperature, top_k, top_p, min_p, inference_dtype);
             }
 
             void forward(Tensor &token_ids, Tensor &next_token_id);
@@ -70,6 +71,7 @@ namespace mllm
             Tensor get_final_probability() const { return final_probability; }
             base::Device device() const { return device_; }
             cudaStream_t stream() const { return stream_; }
+            base::DType inference_dtype() const { return inference_dtype_; }
 
             std::vector<WLayer *> weighted_layers();
             void register_hooks(WLayer::Hook hook);

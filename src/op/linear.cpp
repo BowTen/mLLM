@@ -5,8 +5,8 @@ namespace mllm
 {
     namespace op
     {
-        Linear::Linear(std::vector<size_t> shape, base::Device device, cudaStream_t stream)
-            : WLayer(1, 1, shape, device, stream)
+        Linear::Linear(std::vector<size_t> shape, base::Device device, cudaStream_t stream, base::DType dtype)
+            : WLayer(1, 1, shape, device, stream, dtype)
         {
         }
         void Linear::forward(Tensor &input, Tensor &output)

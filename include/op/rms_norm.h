@@ -13,7 +13,7 @@ namespace mllm
             float eps_;
 
         public:
-            RMSNorm(size_t hidden_size, float eps, base::Device device, cudaStream_t stream);
+            RMSNorm(size_t hidden_size, float eps, base::Device device, cudaStream_t stream, base::DType dtype = base::default_float_dtype());
             void forward(Tensor &input, Tensor &output);
         };
     }

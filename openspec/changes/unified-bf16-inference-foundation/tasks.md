@@ -6,9 +6,9 @@
 
 ## 2. Weight Loading And Runtime Configuration
 
-- [ ] 2.1 Extend safetensors loading and weight materialization to preserve source dtype and convert into a requested target storage dtype.
-- [ ] 2.2 Add model/runtime configuration to choose floating-point inference dtype, with `bf16` as the default and `fp32` as an explicit override.
-- [ ] 2.3 Update Qwen3 model construction and weight-loading code so default floating-point weights remain in `bf16` storage.
+- [x] 2.1 Extend safetensors loading and weight materialization to preserve source dtype and convert into a requested target storage dtype.
+- [x] 2.2 Add model/runtime configuration to choose floating-point inference dtype, with `bf16` as the default and `fp32` as an explicit override.
+- [x] 2.3 Update Qwen3 model construction and weight-loading code so default floating-point weights remain in `bf16` storage.
 
 ## 3. Qwen3 CPU/CUDA BF16 Execution
 

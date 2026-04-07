@@ -53,8 +53,9 @@ namespace mllm
                    size_t output_count,
                    const std::vector<size_t> &shape,
                    base::Device device,
-                   cudaStream_t stream) : Layer(input_count, output_count, device, stream),
-                                          weight_(Tensor(shape, device, false, stream_)),
+                   cudaStream_t stream,
+                   base::DType dtype = base::default_float_dtype()) : Layer(input_count, output_count, device, stream),
+                                                                     weight_(Tensor(shape, device, false, stream_, dtype)),
                                           hook_(nullptr)
             {
             }
