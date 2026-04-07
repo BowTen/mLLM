@@ -99,14 +99,15 @@ namespace mllm
                 allocator = CudaAllocator::getInstance();
             else
                 throw std::invalid_argument("Tensor::Tensor(const std::vector<size_t> &shape, Device device, bool mut): Unsupported device type.");
+            const size_t bytes = expected_size * dtype_element_size(dtype_);
             if (mut)
             {
-                buffer_ = std::make_shared<VecBuffer>(allocator, expected_size * sizeof(float) * 2, expected_size * sizeof(float));
+                buffer_ = std::make_shared<VecBuffer>(allocator, bytes * 2, bytes);
             }
             else
             {
                 CHECK(expected_size > 0) << "Non-Mutable Tensor size must be greater than 0";
-                buffer_ = std::make_shared<ArrBuffer>(allocator, expected_size * sizeof(float));
+                buffer_ = std::make_shared<ArrBuffer>(allocator, bytes);
             }
             update();
         }
@@ -131,10 +132,11 @@ namespace mllm
                 allocator = CudaAllocator::getInstance();
             else
                 throw std::invalid_argument("Tensor::Tensor(void *data... ):Unsupported device type.");
+            const size_t bytes = expected_size * dtype_element_size(dtype_);
             if (mut)
-                buffer_ = std::make_shared<VecBuffer>(allocator, data, expected_size * sizeof(float), expected_size * sizeof(float), copy);
+                buffer_ = std::make_shared<VecBuffer>(allocator, data, bytes, bytes, copy);
             else
-                buffer_ = std::make_shared<ArrBuffer>(allocator, data, expected_size * sizeof(float), copy);
+                buffer_ = std::make_shared<ArrBuffer>(allocator, data, bytes, copy);
             update();
         }
 
@@ -154,7 +156,7 @@ namespace mllm
 
         Tensor Tensor::rand(const std::vector<size_t> &shape, Device device, bool mut, cudaStream_t stream)
         {
-            Tensor tensor(shape, base::Device::CPU, mut, stream);
+            Tensor tensor(shape, base::Device::CPU, mut, stream, DType::FP32);
             size_t total_size = tensor.logic_size();
             for (size_t i = 0; i < total_size; ++i)
             {
@@ -169,11 +171,32 @@ namespace mllm
             return Tensor::from_vector(std::vector<float>({value}), {1}, device, mut, stream);
         }
 
-        float *Tensor::data()
+        void *Tensor::raw_data()
         {
             if (!meta_->buffer_)
                 return nullptr;
-            return static_cast<float *>(meta_->buffer_->data());
+            return meta_->buffer_->data();
+        }
+
+        const void *Tensor::raw_data() const
+        {
+            if (!meta_->buffer_)
+                return nullptr;
+            return meta_->buffer_->data();
+        }
+
+        float *Tensor::compatible_float_data()
+        {
+            if (meta_->dtype_ != DType::FP32)
+                return nullptr;
+            return static_cast<float *>(raw_data());
+        }
+
+        const float *Tensor::compatible_float_data() const
+        {
+            if (meta_->dtype_ != DType::FP32)
+                return nullptr;
+            return static_cast<const float *>(raw_data());
         }
 
         Tensor Tensor::toDevice(Device device)
@@ -307,16 +330,20 @@ namespace mllm
 
         float *Tensor::operator[](size_t idx)
         {
+            auto *base_ptr = compatible_float_data();
+            CHECK(base_ptr != nullptr) << "Tensor::operator[] is only valid for FP32 tensors.";
             size_t offset = 0;
             for (int i = meta_->shape_.size() - 1; i >= 0; i--)
             {
                 offset += (idx % meta_->shape_[i]) * meta_->stride_[i];
                 idx /= meta_->shape_[i];
             }
-            return this->data() + offset;
+            return base_ptr + offset;
         }
         float *Tensor::operator[](std::vector<size_t> idx)
         {
+            auto *base_ptr = compatible_float_data();
+            CHECK(base_ptr != nullptr) << "Tensor::operator[] is only valid for FP32 tensors.";
             if (idx.size() != meta_->shape_.size())
             {
                 throw std::invalid_argument("Index size must match tensor shape size.");
@@ -332,27 +359,29 @@ namespace mllm
                                                         std::to_string(meta_->shape_[i]);
                 offset += idx[i] * meta_->stride_[i];
             }
-            return data() + offset;
+            return base_ptr + offset;
         }
 
         float *Tensor::mat(size_t idx)
         {
+            auto *base_ptr = compatible_float_data();
+            CHECK(base_ptr != nullptr) << "Tensor::mat is only valid for FP32 tensors.";
             if (idx >= meta_->num_mats_)
             {
                 throw std::out_of_range("Matrix index out of range in mat()");
             }
             if (meta_->num_mats_ == 1)
-                return data();
+                return base_ptr;
             size_t offset = 0;
             for (int i = static_cast<int>(meta_->stride_.size()) - 3; i >= 0; i--)
             {
                 offset += (idx % meta_->shape_[i]) * meta_->stride_[i];
                 idx /= meta_->shape_[i];
             }
-            return data() + offset;
+            return base_ptr + offset;
         }
 
-        void Tensor::push(float *bytes, size_t num_bytes)
+        void Tensor::push(const void *bytes, size_t num_bytes)
         {
             CHECK(meta_->mut_) << "Tensor must be mutable in push()";
             CHECK(bytes != nullptr) << "Invalid data pointer in push()";
@@ -367,19 +396,18 @@ namespace mllm
         void Tensor::cat(Tensor &other, int dim_int)
         {
             CHECK(meta_->mut_) << "Tensor must be mutable in cat()";
+            CHECK(other.dtype() == this->dtype()) << "Tensor dtype must match in cat().";
             int dim = check_index(dim_int);
             CHECK(other.shape().size() == this->shape().size()) << "Other tensor must have the same number of dimensions.";
             auto other_shape = other.shape();
             other_shape[dim] = meta_->shape_[dim];
             CHECK(other_shape == meta_->shape_) << "Other tensor must have the same shape except for the concatenation dimension.";
+            const size_t elem_size = element_size();
 
-            std::vector<size_t> next_idx(meta_->shape_.size(), 0);
-            next_idx[dim] = meta_->shape_[dim] - 1;
-            float *next_ptr = this->operator[](next_idx) + meta_->stride_[dim];
-            if (next_ptr == this->data() + this->size() && other.stride() == this->stride())
+            if (this->is_contiguous() && other.is_contiguous() && other.stride() == this->stride())
             {
                 VLOG(DEBUG) << "directly pushing data to cat Tensors";
-                this->push(other.data(), other.size() * sizeof(float));
+                this->push(other.raw_data(), other.logic_size() * elem_size);
                 this->meta_->shape_[dim] += other.shape(dim);
                 this->view(this->shape());
                 return;
@@ -394,22 +422,22 @@ namespace mllm
             other.contiguous();
             size_t block_size = std::accumulate(meta_->shape_.begin() + dim + 1, meta_->shape_.end(), 1, std::multiplies<size_t>());
 
-            float *new_data = this->data();
-            float *new_data_end = new_data + total_size;
-            float *this_cp_data = this_cp.data();
-            float *other_data = other.data();
+            auto *new_data = static_cast<uint8_t *>(this->raw_data());
+            auto *new_data_end = new_data + total_size * elem_size;
+            auto *this_cp_data = static_cast<const uint8_t *>(this_cp.raw_data());
+            auto *other_data = static_cast<const uint8_t *>(other.raw_data());
 
             size_t this_cp_stride = this_cp.shape(dim) * block_size;
             size_t other_stride = other.shape(dim) * block_size;
             Allocator *allocator = this->meta_->buffer_->get_allocator();
             while (new_data < new_data_end)
             {
-                allocator->memcpy(new_data, this_cp_data, this_cp_stride * sizeof(float));
-                new_data += this_cp_stride;
-                this_cp_data += this_cp_stride;
-                allocator->memcpy(new_data, other_data, other_stride * sizeof(float));
-                new_data += other_stride;
-                other_data += other_stride;
+                allocator->memcpy(new_data, this_cp_data, this_cp_stride * elem_size);
+                new_data += this_cp_stride * elem_size;
+                this_cp_data += this_cp_stride * elem_size;
+                allocator->memcpy(new_data, other_data, other_stride * elem_size);
+                new_data += other_stride * elem_size;
+                other_data += other_stride * elem_size;
             }
 
             this->meta_->shape_[dim] += other.shape(dim);
@@ -438,14 +466,14 @@ namespace mllm
             CHECK(meta_->mut_) << "Tensor must be mutable in reserve()";
             std::shared_ptr<VecBuffer> vec_buffer = std::dynamic_pointer_cast<VecBuffer>(meta_->buffer_);
             CHECK(vec_buffer);
-            vec_buffer->reserve(size * sizeof(float));
+            vec_buffer->reserve(size * element_size());
         }
         void Tensor::resize(size_t size)
         {
             CHECK(meta_->mut_) << "Tensor must be mutable in reserve()";
             std::shared_ptr<VecBuffer> vec_buffer = std::dynamic_pointer_cast<VecBuffer>(meta_->buffer_);
             CHECK(vec_buffer);
-            vec_buffer->resize(size * sizeof(float));
+            vec_buffer->resize(size * element_size());
         }
 
         std::vector<size_t> Tensor::index(size_t id)

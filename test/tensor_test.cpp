@@ -64,9 +64,42 @@ TEST_F(TensorTest, DefaultFloatingPointTensorUsesProjectDefaultDType)
 {
     Tensor tensor({2, 3}, Device::CPU, false, nullptr);
 
-    EXPECT_EQ(tensor.dtype(), DType::BF16);
-    EXPECT_EQ(tensor.element_size(), sizeof(uint16_t));
+    EXPECT_EQ(tensor.dtype(), default_float_dtype());
+    EXPECT_EQ(tensor.element_size(), dtype_element_size(default_float_dtype()));
     EXPECT_TRUE(is_floating_point_dtype(tensor.dtype()));
+}
+
+TEST_F(TensorTest, MutableTensorReserveAndResizeUseDTypeSizedStorage)
+{
+    Tensor tensor({2, 2}, Device::CPU, true, nullptr, DType::BF16);
+
+    tensor.reserve(10);
+    tensor.resize(6);
+
+    auto buffer = std::dynamic_pointer_cast<VecBuffer>(tensor.buffer());
+    ASSERT_NE(buffer, nullptr);
+    EXPECT_EQ(tensor.size(), 6);
+    EXPECT_EQ(buffer->size(), 6 * sizeof(uint16_t));
+    EXPECT_GE(buffer->capacity(), 10 * sizeof(uint16_t));
+}
+
+TEST_F(TensorTest, BF16TensorStorageBytesAgreeWithLogicalSizeInvariant)
+{
+    Tensor tensor({2, 3}, Device::CPU, false, nullptr, DType::BF16);
+    ASSERT_NE(tensor.buffer(), nullptr);
+    EXPECT_EQ(tensor.buffer()->size(), tensor.logic_size() * tensor.element_size());
+}
+
+TEST_F(TensorTest, RawAndTypedAccessRespectTensorDType)
+{
+    Tensor tensor({2, 2}, Device::CPU, false, nullptr, DType::BF16);
+
+    auto *raw = tensor.raw_data();
+    auto *bf16 = tensor.data<uint16_t>();
+
+    ASSERT_NE(raw, nullptr);
+    ASSERT_EQ(raw, static_cast<void *>(bf16));
+    EXPECT_EQ(tensor.compatible_float_data(), nullptr);
 }
 
 // Test Tensor construction with 4D shape

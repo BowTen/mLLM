@@ -8,6 +8,7 @@
 #include "buffer.h"
 #include "common.h"
 #include <cuda_runtime.h>
+#include <type_traits>
 
 #define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
@@ -52,6 +53,19 @@ namespace mllm
 
             size_t check_index(int idx) const;
 
+            template <class T>
+            static DType infer_dtype_from_cpp_type()
+            {
+                if constexpr (std::is_same_v<T, float>)
+                    return DType::FP32;
+                else if constexpr (std::is_same_v<T, uint16_t>)
+                    return DType::BF16;
+                else if constexpr (std::is_same_v<T, uint32_t>)
+                    return DType::U32;
+                else
+                    static_assert(!std::is_same_v<T, T>, "Unsupported Tensor::from_vector element type.");
+            }
+
         public:
             Tensor() : meta_(std::make_shared<TensorMeta>()) {}
             Tensor(std::shared_ptr<TensorMeta> meta) : meta_(meta) {}
@@ -67,7 +81,8 @@ namespace mllm
             template <class T>
             static Tensor from_vector(std::vector<T> vec, std::vector<size_t> shape, Device device, bool mut, cudaStream_t stream)
             {
-                Tensor tensor(vec.data(), shape, true, Device::CPU, mut, stream);
+                const DType storage_dtype = infer_dtype_from_cpp_type<T>();
+                Tensor tensor(vec.data(), shape, true, Device::CPU, mut, stream, storage_dtype);
                 tensor.toDevice(device);
                 return tensor;
             }
@@ -99,14 +114,36 @@ namespace mllm
             {
                 if (!meta_->buffer_)
                     return 0;
-                return meta_->buffer_->size() / sizeof(float);
+                return meta_->buffer_->size() / element_size();
             }
-            float *data();
+            void *raw_data();
+            const void *raw_data() const;
+
+            template <class T>
+            T *data()
+            {
+                if (infer_dtype_from_cpp_type<T>() != meta_->dtype_)
+                    return nullptr;
+                return static_cast<T *>(raw_data());
+            }
+
+            template <class T>
+            const T *data() const
+            {
+                if (infer_dtype_from_cpp_type<T>() != meta_->dtype_)
+                    return nullptr;
+                return static_cast<const T *>(raw_data());
+            }
+
+            float *compatible_float_data();
+            const float *compatible_float_data() const;
+            float *data() { return compatible_float_data(); } // Compatibility path for legacy FP32 callers.
+            const float *data() const { return compatible_float_data(); }
             bool empty() const { return meta_->buffer_ == nullptr; }
             Tensor toDevice(Device device);
             Tensor clone();
 
-            void push(float *bytes, size_t num_bytes);
+            void push(const void *bytes, size_t num_bytes);
             void cat(Tensor &other, int dim_int);
 
             void insert_dim(int dim_int);

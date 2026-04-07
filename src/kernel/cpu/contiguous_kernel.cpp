@@ -8,6 +8,7 @@ namespace mllm
                                    [[maybe_unused]] void *stream)
         {
             auto buffer = input->buffer()->clone(true);
+            const size_t element_size = input->element_size();
 
             auto stride = input->stride();
             auto shape = input->shape();
@@ -17,11 +18,12 @@ namespace mllm
                 VLOG(DEBUG) << "Resize buffer to fit the Tensor logic size. logic: " << total_logic_size << ", size: " << input->size();
                 auto vec_buffer = std::dynamic_pointer_cast<base::VecBuffer>(input->buffer());
                 CHECK(vec_buffer != nullptr) << "Buffer is not VecBuffer, cannot resize.";
-                vec_buffer->resize(total_logic_size * sizeof(float));
+                vec_buffer->resize(total_logic_size * element_size);
             }
             int dim = stride.size();
-            auto new_data = input->data();
-            auto old_data = static_cast<float *>(buffer->data());
+            auto *new_data = static_cast<uint8_t *>(input->raw_data());
+            auto *old_data = static_cast<uint8_t *>(buffer->data());
+            auto *allocator = input->buffer()->get_allocator();
             for (size_t i = 0; i < total_logic_size; i++)
             {
                 size_t id = i;
@@ -31,7 +33,7 @@ namespace mllm
                     offset += (id % shape[j]) * stride[j];
                     id /= shape[j];
                 }
-                new_data[i] = old_data[offset];
+                allocator->memcpy(new_data + i * element_size, old_data + offset * element_size, element_size);
             }
         }
     }
