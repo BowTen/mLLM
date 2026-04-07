@@ -11,10 +11,10 @@
 #define CHECK_CUDA_ERR(err)                                            \
     do                                                                 \
     {                                                                  \
-        if ((err) && (err) != cudaSuccess)                             \
+        cudaError_t status = (err);                                    \
+        if (status != cudaSuccess)                                     \
         {                                                              \
-            CHECK(false) << "CUDA error: " << cudaGetErrorString(err); \
-            LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err);   \
+            CHECK(false) << "CUDA error: " << cudaGetErrorString(status); \
         }                                                              \
     } while (0)
 

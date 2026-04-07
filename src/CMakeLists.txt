@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.18)
 
 add_library(base 
     base/allocator.cpp
@@ -7,6 +7,9 @@ add_library(base
     base/safetensors.cpp
     base/util.cpp
     base/common.cpp
+)
+add_library(cuda_library_context
+    base/cuda_library_context.cpp
 )
 add_library(tokenizer 
     tokenizer/tokenizer.cpp
@@ -43,6 +46,7 @@ add_library(kernel
     kernel/cuda/gen_rope_kernel.cu
     kernel/cpu/softmax_kernel.cpp
     kernel/cuda/softmax_kernel.cu
+    kernel/cuda/softmax_backend_selector.cpp
     kernel/cpu/causal_mask_kernel.cpp
     kernel/cuda/causal_mask_kernel.cu
     kernel/cpu/silu_kernel.cpp
@@ -51,6 +55,7 @@ add_library(kernel
     kernel/cuda/last_hidden_state_kernel.cu
     kernel/cpu/random_sampling_kernel.cpp
     kernel/cuda/random_sampling_kernel.cu
+    kernel/cuda/mat_mul_backend_selector.cpp
     kernel/cuda/gemm_kernel.cu
 )
 add_library(model 
@@ -62,19 +67,22 @@ add_library(model
 )
 
 # Link libraries
-find_package(CUDAToolkit REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(ARMADILLO REQUIRED armadillo)
 
 target_link_libraries(base glog CUDA::cudart armadillo openblas)
+target_link_libraries(cuda_library_context PUBLIC glog CUDA::cudart CUDA::cublas)
 target_link_libraries(tokenizer base)
-target_link_libraries(kernel base armadillo openblas)
+target_link_libraries(kernel PUBLIC base cuda_library_context CUDA::cudart armadillo openblas)
 target_link_libraries(op base kernel)
 target_link_libraries(model tokenizer op)
 
 
 # Include directories for the libraries
 target_include_directories(base PUBLIC 
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_include_directories(cuda_library_context PUBLIC 
     ${CMAKE_SOURCE_DIR}/include
 )
 target_include_directories(tokenizer PUBLIC 
@@ -94,5 +102,11 @@ target_include_directories(model PUBLIC
 set_property(TARGET kernel PROPERTY CUDA_SEPARABLE_COMPILATION ON)
 set_property(TARGET kernel PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 
-# Link CUDA runtime for kernel library
-target_link_libraries(kernel ${CMAKE_CUDA_IMPLICIT_LINK_LIBRARIES})
+target_compile_definitions(cuda_library_context PUBLIC MLLM_CUDNN_AVAILABLE=$<BOOL:${MLLM_CUDNN_AVAILABLE}>)
+target_compile_definitions(kernel PUBLIC MLLM_CUDNN_AVAILABLE=$<BOOL:${MLLM_CUDNN_AVAILABLE}>)
+
+if(MLLM_CUDNN_AVAILABLE)
+    target_include_directories(cuda_library_context PUBLIC ${MLLM_CUDNN_INCLUDE_DIR})
+    target_include_directories(kernel PUBLIC ${MLLM_CUDNN_INCLUDE_DIR})
+    target_link_libraries(cuda_library_context PUBLIC ${MLLM_CUDNN_LIBRARY})
+endif()

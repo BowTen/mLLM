@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.18)
 
 # Find Google Test from system installation
 set(CMAKE_PREFIX_PATH /usr/local ${CMAKE_PREFIX_PATH})
@@ -33,6 +33,7 @@ add_executable(tensor_test tensor_test.cpp)
 add_executable(tensor_cat_test tensor_cat_test.cpp)
 add_executable(safetensors_test safetensors_test.cpp)
 add_executable(emb_kernel_test emb_kernel_test.cpp)
+add_executable(cuda_library_context_test cuda_library_context_test.cpp)
 add_executable(qwen3_test qwen3_test.cpp)
 add_executable(rms_norm_kernel_test rms_nrom_kernel_test.cpp)
 add_executable(mat_add_kernel_test mat_add_kernel_test.cpp)
@@ -119,6 +120,16 @@ target_link_libraries(emb_kernel_test
 )
 target_include_directories(emb_kernel_test PRIVATE ${GTEST_INCLUDE_DIRS})
 target_compile_options(emb_kernel_test PRIVATE ${GTEST_CFLAGS_OTHER})
+
+target_link_libraries(cuda_library_context_test
+    PRIVATE
+    cuda_library_context
+    ${GTEST_LIBRARIES}
+    ${GTEST_MAIN_LIBRARIES}
+    Threads::Threads
+)
+target_include_directories(cuda_library_context_test PRIVATE ${GTEST_INCLUDE_DIRS})
+target_compile_options(cuda_library_context_test PRIVATE ${GTEST_CFLAGS_OTHER})
 
 target_link_libraries(qwen3_test 
     base  # Link to the base library from src
@@ -331,9 +342,9 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(qwen3_incremental_check PRIVATE DEBUG)
 endif()
 
-target_link_libraries(gemm_eval 
-    cudart 
-    cublas
+target_link_libraries(gemm_eval
+    PRIVATE
+    CUDA::cudart
     base  # Link to the base library from src
     kernel  # Link to the kernel library from src
     op
@@ -344,8 +355,9 @@ target_link_libraries(gemm_eval
     ${GTEST_MAIN_LIBRARIES}
     Threads::Threads
     armadillo
-    openblas    
+    openblas
 )
+mllm_target_require_cuda_library(gemm_eval CUDA::cublas cuBLAS)
 target_include_directories(gemm_eval PRIVATE ${GTEST_INCLUDE_DIRS} ${CNPY_INCLUDE_DIR})
 target_compile_options(gemm_eval PRIVATE ${GTEST_CFLAGS_OTHER})
 
@@ -371,6 +383,7 @@ add_test(NAME TensorTest COMMAND tensor_test)
 add_test(NAME TensorCatTest COMMAND tensor_cat_test)
 add_test(NAME SafeTensorsTest COMMAND safetensors_test)
 add_test(NAME EmbKernelTest COMMAND emb_kernel_test)
+add_test(NAME CudaLibraryContextTest COMMAND cuda_library_context_test)
 add_test(NAME Qwen3Test COMMAND qwen3_test)
 add_test(NAME RMSNormKernelTest COMMAND rms_norm_kernel_test)
 add_test(NAME AddKernelTest COMMAND mat_add_kernel_test)

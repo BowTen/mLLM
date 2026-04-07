@@ -5,18 +5,64 @@
 #define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <cmath>
+#include <cstdlib>
 #include <exception>
+#include <filesystem>
+#include <vector>
 
 #define private public
 #define protected public
 #include "model/qwen3.h"
 #undef protected
 #undef private
+#include "kernel/cuda/mat_mul_backend_selector.h"
 
 using namespace std;
 using namespace mllm;
 using namespace mllm::base;
 using namespace mllm::model;
+
+inline bool qwen3_model_dir_ready(const std::filesystem::path &model_path)
+{
+    return std::filesystem::is_regular_file(model_path / "config.json") &&
+           std::filesystem::is_regular_file(model_path / "tokenizer.json") &&
+           std::filesystem::is_regular_file(model_path / "model.safetensors");
+}
+
+inline std::string resolve_qwen3_model_path()
+{
+    const char *env_model_path = std::getenv("QWEN3_MODEL_PATH");
+    const std::vector<std::string> candidates = {
+        env_model_path != nullptr ? std::string(env_model_path) : std::string(),
+        "/data/zz/hf/Qwen/Qwen3-0.6B-msfull",
+        "/home/hznuojai/ai_infra/MiniLLM/resources/Qwen/Qwen3-0.6B",
+    };
+
+    std::vector<std::string> tried_paths;
+    tried_paths.reserve(candidates.size());
+    for (const auto &candidate : candidates)
+    {
+        if (candidate.empty())
+        {
+            continue;
+        }
+
+        tried_paths.push_back(candidate);
+        if (qwen3_model_dir_ready(candidate))
+        {
+            return candidate;
+        }
+    }
+
+    std::string message = "Unable to locate a usable Qwen3 model directory. Tried:";
+    for (const auto &path : tried_paths)
+    {
+        message += " ";
+        message += path;
+    }
+    message += ". Set QWEN3_MODEL_PATH or place the model under /data/zz/hf/Qwen/Qwen3-0.6B-msfull.";
+    throw std::runtime_error(message);
+}
 
 class Qwen3Check
 {
@@ -87,6 +133,59 @@ public:
 
         CHECK(mismatch_count == 0) << "Found " << mismatch_count << " mismatches in " << tensor_name;
         cuda.toDevice(Device::CUDA);
+    }
+
+    size_t top_token_id(Tensor &tensor)
+    {
+        const auto original_device = tensor.device();
+        tensor.toDevice(Device::CPU);
+
+        CHECK_GT(tensor.size(), 0u);
+        size_t best_index = 0;
+        float best_value = *tensor[0];
+        for (size_t i = 1; i < tensor.size(); ++i)
+        {
+            const float value = *tensor[i];
+            if (value > best_value)
+            {
+                best_value = value;
+                best_index = i;
+            }
+        }
+
+        tensor.toDevice(original_device);
+        return best_index;
+    }
+
+    void forward_model_and_check(const vector<size_t> &token_ids)
+    {
+        LOG(INFO) << "Running production Qwen3::forward CPU vs CUDA comparison";
+
+        Tensor token_ids_cpu = Tensor::from_vector(token_ids, {token_ids.size(), 1}, Device::CPU, false, nullptr);
+        Tensor token_ids_cuda = Tensor::from_vector(token_ids, {token_ids.size(), 1}, Device::CUDA, false, model_cuda.stream_);
+        Tensor next_token_cpu({1, 1}, Device::CPU, false, nullptr);
+        Tensor next_token_cuda({1, 1}, Device::CUDA, false, model_cuda.stream_);
+
+        model_cpu.forward(token_ids_cpu, next_token_cpu);
+
+        kernel::reset_last_mat_mul_backend_execution();
+        model_cuda.forward(token_ids_cuda, next_token_cuda);
+
+        check_tensor(model_cpu.final_probability, model_cuda.final_probability, "final_probability");
+        CHECK_EQ(top_token_id(model_cpu.final_probability), top_token_id(model_cuda.final_probability));
+        CHECK_EQ(model_cpu.pos_id, model_cuda.pos_id);
+        CHECK_EQ(model_cpu.layers.size(), model_cuda.layers.size());
+        for (size_t i = 0; i < model_cpu.layers.size(); ++i)
+        {
+            check_tensor(model_cpu.layers[i].self_attn.k_cache,
+                         model_cuda.layers[i].self_attn.k_cache,
+                         "layer_" + to_string(i) + "_k_cache");
+            check_tensor(model_cpu.layers[i].self_attn.v_cache,
+                         model_cuda.layers[i].self_attn.v_cache,
+                         "layer_" + to_string(i) + "_v_cache");
+        }
+        CHECK(kernel::saw_mat_mul_backend_execution(kernel::MatMulBackendExecution::LibraryBacked))
+            << "Expected at least one library-backed CUDA matmul during Qwen3::forward";
     }
 
     size_t forward(vector<size_t> token_ids)

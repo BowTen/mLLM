@@ -7,9 +7,13 @@ namespace mllm
 {
     namespace kernel
     {
-        void softmax_kernel_cuda(base::Tensor *input,
-                                 base::Tensor *output,
-                                 void *stream);
+        bool cuda_softmax_library_available();
+        void softmax_kernel_cuda_handwritten(base::Tensor *input,
+                                             base::Tensor *output,
+                                             void *stream);
+        void softmax_kernel_cuda_library_first(base::Tensor *input,
+                                               base::Tensor *output,
+                                               void *stream);
     }
 }
 

@@ -1,8 +1,12 @@
 #include "base/tensor.h"
+#include "base/cuda_library_context.h"
 #include "base/util.h"
 #include "kernel/kernel.h"
+#include "kernel/cuda/mat_mul_backend_selector.h"
+#include "kernel/cuda/mat_mul_kernel.cuh"
 #include "kernel/cuda/gemm_kernel.cuh"
 #include <cub/block/block_reduce.cuh>
+#include <mutex>
 
 #define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
@@ -11,6 +15,38 @@ namespace mllm
 {
     namespace kernel
     {
+        namespace
+        {
+            base::CudaLibraryContext &library_context()
+            {
+                thread_local base::CudaLibraryContext context;
+                return context;
+            }
+
+            bool cuda_library_available()
+            {
+                static bool available = false;
+                static std::once_flag probe_once;
+
+                std::call_once(probe_once, []() {
+                    cublasHandle_t handle = nullptr;
+                    available = (cublasCreate(&handle) == CUBLAS_STATUS_SUCCESS);
+                    if (available)
+                    {
+                        const cublasStatus_t destroy_status = cublasDestroy(handle);
+                        if (destroy_status != CUBLAS_STATUS_SUCCESS)
+                        {
+                            LOG(WARNING) << "cuBLAS availability probe could not release handle: "
+                                         << base::cublas_status_string(destroy_status);
+                            available = false;
+                        }
+                    }
+                });
+
+                return available;
+            }
+        }
+
         // 朴素版本
         namespace simple
         {
@@ -109,6 +145,61 @@ namespace mllm
                     output_data[i] = mat_data[i] * scalar;
                 }
             }
+        }
+
+        void mat_mul_kernel_cuda_cublas(base::Tensor *input0, base::Tensor *input1, base::Tensor *output, void *stream)
+        {
+            record_last_mat_mul_backend_execution(MatMulBackendExecution::LibraryBacked);
+
+            CHECK(input0 != nullptr);
+            CHECK(input1 != nullptr);
+            CHECK(output != nullptr);
+
+            CHECK_EQ(input0->device(), base::Device::CUDA);
+            CHECK_EQ(input1->device(), base::Device::CUDA);
+            CHECK_EQ(output->device(), base::Device::CUDA);
+
+            CHECK(input0->is_contiguous());
+            CHECK(input1->is_contiguous());
+            CHECK(output->is_contiguous());
+
+            CHECK_EQ(input0->shape().size(), 2u);
+            CHECK_EQ(input1->shape().size(), 2u);
+            CHECK_EQ(output->shape().size(), 2u);
+            CHECK_GT(input1->size(), 1u);
+
+            const size_t lhs_rows = input0->shape(0);
+            const size_t lhs_cols = input0->shape(1);
+            const size_t rhs_rows = input1->shape(0);
+            const size_t rhs_cols = input1->shape(1);
+
+            CHECK_EQ(lhs_cols, rhs_rows);
+            CHECK_EQ(output->shape(0), lhs_rows);
+            CHECK_EQ(output->shape(1), rhs_cols);
+
+            input0->contiguous();
+            input1->contiguous();
+            output->contiguous();
+
+            auto &context = library_context();
+            context.bind_stream(static_cast<cudaStream_t>(stream));
+
+            const float alpha = 1.0f;
+            const float beta = 0.0f;
+            CHECK_CUBLAS_ERR(cublasSgemm(context.cublas_handle(),
+                                         CUBLAS_OP_N,
+                                         CUBLAS_OP_N,
+                                         static_cast<int>(rhs_cols),
+                                         static_cast<int>(lhs_rows),
+                                         static_cast<int>(lhs_cols),
+                                         &alpha,
+                                         input1->data(),
+                                         static_cast<int>(rhs_cols),
+                                         input0->data(),
+                                         static_cast<int>(lhs_cols),
+                                         &beta,
+                                         output->data(),
+                                         static_cast<int>(rhs_cols)));
         }
 
         __device__ void mat_mul_kernel_cuda_fp32_vec_fine(float *mat0_data,
@@ -242,9 +333,28 @@ namespace mllm
             }
         }
 
+        void mat_mul_kernel_cuda_library_first(base::Tensor *input0, base::Tensor *input1, base::Tensor *output, void *stream)
+        {
+            MatMulBackendSelectionOptions options;
+            options.library_enabled = true;
+            options.library_available = cuda_library_available();
+            options.allow_batched_matmul = false;
+
+            const auto backend = select_mat_mul_backend(*input0, *input1, *output, options);
+            if (backend.uses_library_backend())
+            {
+                mat_mul_kernel_cuda_cublas(input0, input1, output, stream);
+                return;
+            }
+
+            mat_mul_kernel_cuda_vec(input0, input1, output, stream);
+        }
+
         // TODO: 优化列数小的矩阵
         void mat_mul_kernel_cuda_vec(base::Tensor *input0, base::Tensor *input1, base::Tensor *output, void *stream)
         {
+            record_last_mat_mul_backend_execution(MatMulBackendExecution::HandwrittenFallback);
+
             if (input1->size() == 1)
             {
                 CHECK(input0->shape() == output->shape());

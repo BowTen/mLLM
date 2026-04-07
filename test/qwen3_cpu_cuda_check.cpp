@@ -23,11 +23,11 @@ int main()
 class Qwen3CpuCudaCheckTest : public ::testing::Test
 {
 protected:
-    float check_eps = 1e-6f;
+    float check_eps = 1e-3f;
     Qwen3Check qwen3_check;
 
     Qwen3CpuCudaCheckTest()
-        : qwen3_check("/home/hznuojai/ai_infra/MiniLLM/resources/Qwen/Qwen3-0.6B", 5.0f, 0.1f)
+        : qwen3_check(resolve_qwen3_model_path(), 5.0f, check_eps)
     {
         VLOG(DEBUG) << "Set up Qwen3CpuCudaCheckTest";
     }
@@ -41,6 +41,6 @@ protected:
 TEST_F(Qwen3CpuCudaCheckTest, Demo)
 {
     LOG(INFO) << "Run Qwen3 Check";
-    qwen3_check.forward({1234, 5678, 4356, 1246, 9870});
-    qwen3_check.forward({910});
+    qwen3_check.forward_model_and_check({1234, 5678, 4356, 1246, 9870});
+    qwen3_check.forward_model_and_check({910});
 }

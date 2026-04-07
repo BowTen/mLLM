@@ -84,7 +84,7 @@ namespace mllm
             case base::Device::CPU:
                 return mat_mul_kernel_cpu;
             case base::Device::CUDA:
-                return mat_mul_kernel_cuda_vec;
+                return mat_mul_kernel_cuda_library_first;
             default:
                 throw std::runtime_error("Unsupported device");
             }
@@ -149,7 +149,7 @@ namespace mllm
             case base::Device::CPU:
                 return softmax_kernel_cpu;
             case base::Device::CUDA:
-                return softmax_kernel_cuda;
+                return softmax_kernel_cuda_library_first;
             default:
                 throw std::runtime_error("Unsupported device");
             }
