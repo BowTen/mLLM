@@ -3,7 +3,10 @@
 
 #include "common.h"
 #include "json.hpp"
+#include <memory>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace mllm
 {
@@ -13,10 +16,17 @@ namespace mllm
 
         class SafeTensors
         {
-            int fd;
-            void *addr;
-            json header;
-            void *weight;
+            struct FileView;
+
+            json header_;
+            std::string root_dir_;
+            std::unique_ptr<FileView> primary_file_;
+            mutable std::unordered_map<std::string, std::unique_ptr<FileView>> shard_files_;
+            std::unordered_map<std::string, std::string> weight_to_shard_;
+
+            const FileView &resolve_file(const std::string &weight_name) const;
+            const json &resolve_weight_info(const std::string &weight_name) const;
+            const FileView &open_shard_file(const std::string &relative_path) const;
 
         public:
             SafeTensors(std::string file_path);

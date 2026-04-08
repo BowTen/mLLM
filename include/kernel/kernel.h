@@ -76,7 +76,8 @@ namespace mllm
                              base::Tensor *output,
                              size_t top_k,
                              float top_p,
-                             float min_p);
+                             float min_p,
+                             size_t valid_vocab_size = 0);
     }
 }
 

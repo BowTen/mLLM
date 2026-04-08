@@ -27,7 +27,8 @@ inline bool qwen3_model_dir_ready(const std::filesystem::path &model_path)
 {
     return std::filesystem::is_regular_file(model_path / "config.json") &&
            std::filesystem::is_regular_file(model_path / "tokenizer.json") &&
-           std::filesystem::is_regular_file(model_path / "model.safetensors");
+           (std::filesystem::is_regular_file(model_path / "model.safetensors") ||
+            std::filesystem::is_regular_file(model_path / "model.safetensors.index.json"));
 }
 
 inline std::string resolve_qwen3_model_path()
@@ -62,6 +63,40 @@ inline std::string resolve_qwen3_model_path()
         message += path;
     }
     message += ". Set QWEN3_MODEL_PATH or place the model under /data/zz/hf/Qwen/Qwen3-0.6B-msfull.";
+    throw std::runtime_error(message);
+}
+
+inline std::string resolve_qwen3_8b_model_path()
+{
+    const char *env_model_path = std::getenv("QWEN3_8B_MODEL_PATH");
+    const std::vector<std::string> candidates = {
+        env_model_path != nullptr ? std::string(env_model_path) : std::string(),
+        "/data/zz/hf/Qwen/Qwen3-8B-msfull",
+    };
+
+    std::vector<std::string> tried_paths;
+    tried_paths.reserve(candidates.size());
+    for (const auto &candidate : candidates)
+    {
+        if (candidate.empty())
+        {
+            continue;
+        }
+
+        tried_paths.push_back(candidate);
+        if (qwen3_model_dir_ready(candidate))
+        {
+            return candidate;
+        }
+    }
+
+    std::string message = "Unable to locate a usable Qwen3-8B model directory. Tried:";
+    for (const auto &path : tried_paths)
+    {
+        message += " ";
+        message += path;
+    }
+    message += ". Set QWEN3_8B_MODEL_PATH or place the model under /data/zz/hf/Qwen/Qwen3-8B-msfull.";
     throw std::runtime_error(message);
 }
 

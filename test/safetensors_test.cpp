@@ -6,6 +6,7 @@
 #include <fstream>
 #include <vector>
 #include <cstring>
+#include <filesystem>
 
 #define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
@@ -42,11 +43,13 @@ class SafeTensorsTest : public ::testing::Test
 protected:
     std::string test_file_path;
     std::string mixed_dtype_test_file_path;
+    std::string sharded_dir_path;
 
     void SetUp() override
     {
         test_file_path = "/tmp/test_safetensors.bin";
         mixed_dtype_test_file_path = "/tmp/test_safetensors_mixed_dtype.bin";
+        sharded_dir_path = "/tmp/test_safetensors_sharded";
     }
 
     void TearDown() override
@@ -54,6 +57,7 @@ protected:
         // Clean up test file
         std::remove(test_file_path.c_str());
         std::remove(mixed_dtype_test_file_path.c_str());
+        std::filesystem::remove_all(sharded_dir_path);
     }
 
     // Helper function to create a test safetensors file
@@ -138,6 +142,66 @@ protected:
         file.write(reinterpret_cast<const char *>(f32_weight.data()), f32_weight.size() * sizeof(float));
         file.write(reinterpret_cast<const char *>(bf16_weight.data()), bf16_weight.size() * sizeof(uint16_t));
         file.close();
+        return true;
+    }
+
+    bool create_single_weight_safetensors_file(const std::string &file_path,
+                                               const std::string &weight_name,
+                                               const std::vector<size_t> &shape,
+                                               const std::vector<float> &values)
+    {
+        json header;
+        header[weight_name] = {
+            {"dtype", "F32"},
+            {"shape", shape},
+            {"data_offsets", {0, values.size() * sizeof(float)}}};
+
+        const std::string header_str = header.dump();
+        const uint64_t header_size = header_str.size();
+
+        std::ofstream file(file_path, std::ios::binary);
+        if (!file.is_open())
+        {
+            return false;
+        }
+
+        file.write(reinterpret_cast<const char *>(&header_size), sizeof(header_size));
+        file.write(header_str.c_str(), header_size);
+        file.write(reinterpret_cast<const char *>(values.data()), values.size() * sizeof(float));
+        file.close();
+        return true;
+    }
+
+    bool create_sharded_safetensors_fixture()
+    {
+        std::filesystem::create_directories(sharded_dir_path);
+
+        const std::string shard1_path = sharded_dir_path + "/model-00001-of-00002.safetensors";
+        const std::string shard2_path = sharded_dir_path + "/model-00002-of-00002.safetensors";
+        const std::string index_path = sharded_dir_path + "/model.safetensors.index.json";
+
+        if (!create_single_weight_safetensors_file(shard1_path, "weight_a", {2}, {1.0f, 2.0f}))
+        {
+            return false;
+        }
+        if (!create_single_weight_safetensors_file(shard2_path, "weight_b", {3}, {3.0f, 4.0f, 5.0f}))
+        {
+            return false;
+        }
+
+        json manifest;
+        manifest["metadata"] = {{"total_size", 20}};
+        manifest["weight_map"] = {
+            {"weight_a", "model-00001-of-00002.safetensors"},
+            {"weight_b", "model-00002-of-00002.safetensors"}};
+
+        std::ofstream index_file(index_path, std::ios::binary);
+        if (!index_file.is_open())
+        {
+            return false;
+        }
+        index_file << manifest.dump();
+        index_file.close();
         return true;
     }
 };
@@ -235,6 +299,36 @@ TEST_F(SafeTensorsTest, MaterializesWeightIntoRequestedTargetDType)
     load_bf16_to_f32(f32_to_bf16.data(), roundtrip.data(), roundtrip.size());
     EXPECT_FLOAT_EQ(roundtrip[0], 1.5f);
     EXPECT_FLOAT_EQ(roundtrip[1], -2.25f);
+}
+
+TEST_F(SafeTensorsTest, ShardedManifestResolvesTensorMetadataAcrossFiles)
+{
+    ASSERT_TRUE(create_sharded_safetensors_fixture());
+
+    SafeTensors st(sharded_dir_path + "/model.safetensors.index.json");
+
+    EXPECT_EQ(st.get_weight_shape("weight_a"), std::vector<size_t>({2}));
+    EXPECT_EQ(st.get_weight_shape("weight_b"), std::vector<size_t>({3}));
+    EXPECT_EQ(st.get_weight_dtype("weight_a"), DType::FP32);
+    EXPECT_EQ(st.get_weight_dtype("weight_b"), DType::FP32);
+}
+
+TEST_F(SafeTensorsTest, ShardedManifestResolvesTensorDataAcrossFiles)
+{
+    ASSERT_TRUE(create_sharded_safetensors_fixture());
+
+    SafeTensors st(sharded_dir_path + "/model.safetensors.index.json");
+
+    float *weight_a = reinterpret_cast<float *>(st.get_weight("weight_a"));
+    float *weight_b = reinterpret_cast<float *>(st.get_weight("weight_b"));
+
+    ASSERT_NE(weight_a, nullptr);
+    ASSERT_NE(weight_b, nullptr);
+    EXPECT_FLOAT_EQ(weight_a[0], 1.0f);
+    EXPECT_FLOAT_EQ(weight_a[1], 2.0f);
+    EXPECT_FLOAT_EQ(weight_b[0], 3.0f);
+    EXPECT_FLOAT_EQ(weight_b[1], 4.0f);
+    EXPECT_FLOAT_EQ(weight_b[2], 5.0f);
 }
 
 // Test error handling for non-existent file

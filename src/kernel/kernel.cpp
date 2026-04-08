@@ -210,7 +210,8 @@ namespace mllm
                              base::Tensor *output,
                              size_t top_k,
                              float top_p,
-                             float min_p)
+                             float min_p,
+                             size_t valid_vocab_size)
         {
             auto orig_output_device = output->device();
             base::Tensor probability_fp32 = probability->dtype() == base::DType::FP32 ? probability->clone() : probability->astype(base::DType::FP32);
@@ -220,6 +221,10 @@ namespace mllm
             std::vector<std::pair<float, uint32_t>> prob_data;
             float *data = probability_fp32.data<float>();
             size_t vocab_size = probability_fp32.logic_size();
+            if (valid_vocab_size > 0)
+            {
+                vocab_size = std::min(vocab_size, valid_vocab_size);
+            }
             for (size_t i = 0; i < vocab_size; i++)
             {
                 prob_data.emplace_back(data[i], i);
@@ -249,8 +254,21 @@ namespace mllm
                 }
             }
 
+            CHECK(!prob_data.empty()) << "Sampling candidate set is empty after top-k/top-p/min-p filtering";
+            float retained_mass = 0.0f;
+            for (const auto &entry : prob_data)
+            {
+                retained_mass += entry.first;
+            }
+            CHECK_GT(retained_mass, 0.0f) << "Sampling candidate mass must stay positive";
+            for (auto &entry : prob_data)
+            {
+                entry.first /= retained_mass;
+            }
+
             float rand_num = base::get_random_float();
             float eps = 1e-6;
+            output_host.data<uint32_t>()[0] = prob_data.back().second;
             for (size_t i = 0; i < prob_data.size(); i++)
             {
                 rand_num -= prob_data[i].first;

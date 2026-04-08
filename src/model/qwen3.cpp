@@ -2,6 +2,7 @@
 #include "base/util.h"
 #include "base/safetensors.h"
 #include "cuda_runtime.h"
+#include <filesystem>
 #include <utility>
 
 #define GLOG_USE_GLOG_EXPORT
@@ -11,6 +12,27 @@ namespace mllm
 {
     namespace model
     {
+        namespace
+        {
+            std::string resolve_qwen3_checkpoint_path(const std::string &model_path)
+            {
+                const std::filesystem::path root(model_path);
+                const std::filesystem::path single_file = root / "model.safetensors";
+                if (std::filesystem::is_regular_file(single_file))
+                {
+                    return single_file.string();
+                }
+
+                const std::filesystem::path sharded_index = root / "model.safetensors.index.json";
+                if (std::filesystem::is_regular_file(sharded_index))
+                {
+                    return sharded_index.string();
+                }
+
+                throw std::runtime_error("Unable to locate Qwen3 checkpoint under: " + model_path);
+            }
+        } // namespace
+
         cudaStream_t Qwen3::init_cuda_stream(base::Device device)
         {
             cudaStream_t stream = nullptr;
@@ -46,10 +68,10 @@ namespace mllm
         {
             temperature_scaling = base::Tensor::from_float(1.0f / temperature, base::Device::CPU, false, nullptr);
             temperature_scaling.toDevice(device_);
+            const std::string checkpoint_path = resolve_qwen3_checkpoint_path(model_path);
             VLOG(TRACE) << "Loading Qwen3 model from: " << model_path;
-            VLOG(TRACE) << "Loading safetensors from: " << model_path + "/model.safetensors";
-            // 加载safetensors
-            base::SafeTensors st(model_path + "/model.safetensors");
+            VLOG(TRACE) << "Loading safetensors from: " << checkpoint_path;
+            base::SafeTensors st(checkpoint_path);
             VLOG(TRACE) << "Success to load safetensors";
             auto header = st.get_header();
 
@@ -129,7 +151,7 @@ namespace mllm
             temp_scal.forward(hidden_state, temperature_scaling, hidden_state);
             softmax.forward(final_probability, final_probability);
 
-            kernel::sampling_kernel(&final_probability, &next_token_id, top_k, top_p, min_p);
+            kernel::sampling_kernel(&final_probability, &next_token_id, top_k, top_p, min_p, tokenizer->vocab_size());
         }
 
         std::vector<WLayer *> Qwen3::weighted_layers()
